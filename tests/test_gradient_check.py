@@ -3,6 +3,7 @@ from collections.abc import Callable
 import numpy as np
 
 from src.layers import Conv2D, Linear
+from src.losses import SoftmaxCrossEntropyLoss
 
 
 def _centered_finite_difference(
@@ -106,3 +107,25 @@ def test_conv2d_backward_matches_numerical_gradients() -> None:
     assert _relative_error(analytical_grad_input, numerical_grad_input) < 1e-4
     assert _relative_error(analytical_grad_weight, numerical_grad_weight) < 1e-4
     assert _relative_error(analytical_grad_bias, numerical_grad_bias) < 1e-4
+
+
+def test_softmax_cross_entropy_backward_matches_numerical_gradient() -> None:
+    logits = np.array(
+        [[0.2, -0.1, 0.4], [0.1, 0.3, -0.2]],
+        dtype=np.float64,
+    )
+    labels = np.array([2, 0], dtype=np.int64)
+    loss_function = SoftmaxCrossEntropyLoss()
+
+    loss_function.forward(logits, labels)
+    analytical_grad_logits = loss_function.backward()
+
+    def objective() -> float:
+        return loss_function.forward(logits, labels)
+
+    numerical_grad_logits = _centered_finite_difference(logits, objective)
+
+    assert (
+        _relative_error(analytical_grad_logits, numerical_grad_logits)
+        < 1e-4
+    )
