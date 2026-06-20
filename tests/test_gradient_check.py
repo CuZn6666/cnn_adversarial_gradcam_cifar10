@@ -1,0 +1,65 @@
+from collections.abc import Callable
+
+import numpy as np
+
+from src.layers import Linear
+
+
+def _centered_finite_difference(
+    values: np.ndarray,
+    objective: Callable[[], float],
+    epsilon: float = 1e-6,
+) -> np.ndarray:
+    numerical_gradient = np.zeros_like(values)
+
+    for index in np.ndindex(values.shape):
+        original_value = values[index]
+
+        values[index] = original_value + epsilon
+        objective_plus = objective()
+
+        values[index] = original_value - epsilon
+        objective_minus = objective()
+
+        values[index] = original_value
+        numerical_gradient[index] = (
+            objective_plus - objective_minus
+        ) / (2.0 * epsilon)
+
+    return numerical_gradient
+
+
+def _relative_error(actual: np.ndarray, expected: np.ndarray) -> float:
+    denominator = np.maximum(
+        1e-12,
+        np.abs(actual) + np.abs(expected),
+    )
+    return float(np.max(np.abs(actual - expected) / denominator))
+
+
+def test_linear_backward_matches_numerical_gradients() -> None:
+    rng = np.random.default_rng(42)
+    layer = Linear(in_features=3, out_features=2, rng=rng)
+    layer.weights = rng.normal(size=(2, 3))
+    layer.bias = rng.normal(size=2)
+    inputs = rng.normal(size=(2, 3))
+    grad_out = rng.normal(size=(2, 2))
+
+    layer.forward(inputs)
+    analytical_grad_input = layer.backward(grad_out).copy()
+    analytical_grad_weight = layer.grad_weight.copy()
+    analytical_grad_bias = layer.grad_bias.copy()
+
+    def objective() -> float:
+        return float(np.sum(layer.forward(inputs) * grad_out))
+
+    numerical_grad_input = _centered_finite_difference(inputs, objective)
+    numerical_grad_weight = _centered_finite_difference(
+        layer.weights,
+        objective,
+    )
+    numerical_grad_bias = _centered_finite_difference(layer.bias, objective)
+
+    assert _relative_error(analytical_grad_input, numerical_grad_input) < 1e-4
+    assert _relative_error(analytical_grad_weight, numerical_grad_weight) < 1e-4
+    assert _relative_error(analytical_grad_bias, numerical_grad_bias) < 1e-4
