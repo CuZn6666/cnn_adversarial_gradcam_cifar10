@@ -106,8 +106,9 @@ Do not start WP3 manual backward implementation before WP2 forward validation pa
 
 Status:
 
-In progress. WP2 forward implementation has been completed and validated.
-`Linear.backward` is implemented and tested. `ReLU.backward` is the next step.
+Completed. Manual layer backward passes, `CompactCNN.backward`,
+Softmax Cross-Entropy forward/backward, and loss-to-model integration are
+implemented and validated.
 
 Goal:
 
@@ -117,18 +118,26 @@ Suggested commands:
 
 ```bash
 .venv/bin/python -m pytest tests/test_layers.py -v
+.venv/bin/python -m pytest tests/test_losses.py -v
 .venv/bin/python -m pytest tests/test_backward.py -v
+.venv/bin/python -m pytest tests/test_integration.py -v
 .venv/bin/python -m pytest tests/ -v
 ```
 
-Run `tests/test_backward.py` after full model backward integration exists.
-
 Expected results:
 
-* Linear backward returns correct gradient shapes.
-* ReLU backward returns correct gradient shapes and masks negative activations.
-* MaxPool backward routes gradients to the correct max locations.
-* Conv2D backward returns correct input, weight, and bias gradient shapes.
+* `Linear.backward` returns correct input, weight, and bias gradients.
+* `ReLU.backward` masks zero and negative activations.
+* `Flatten.backward` restores the original input shape.
+* `MaxPool2D.backward` routes gradients to deterministic maximum locations.
+* `Conv2D.backward` returns correct input, weight, and bias gradients,
+  including supported stride and padding behavior.
+* Softmax Cross-Entropy forward and backward match deterministic NumPy
+  references and remain stable for large logits.
+* `CompactCNN.backward` executes the complete reverse layer order and returns
+  finite input gradients with the expected shape.
+* The loss-to-model integration produces finite parameter gradients with
+  shapes matching their parameters.
 * No NaN or Inf occurs in gradients.
 
 Recommended implementation order:
@@ -137,7 +146,9 @@ Recommended implementation order:
 2. Test ReLU backward.
 3. Test MaxPool backward.
 4. Test Conv2D backward.
-5. Test full model backward.
+5. Test Softmax Cross-Entropy backward.
+6. Test full model backward.
+7. Test the loss-to-model backward integration.
 
 If a test fails:
 
@@ -147,15 +158,21 @@ If a test fails:
 
 ## WP4: Gradient Check and Input-Gradient Validation
 
+Status:
+
+Planned. This is the next target. Input gradients are already returned by
+`CompactCNN.backward`, but numerical gradient checking has not started.
+
 Goal:
 
-Compare manual gradients against numerical gradients and enable gradients with respect to input images.
+Compare manual gradients against numerical gradients and validate gradients
+with respect to input images.
 
 Suggested commands:
 
 ```bash
-pytest tests/test_gradient_check.py
-pytest tests/
+.venv/bin/python -m pytest tests/test_gradient_check.py -v
+.venv/bin/python -m pytest tests/ -v
 ```
 
 Expected results:

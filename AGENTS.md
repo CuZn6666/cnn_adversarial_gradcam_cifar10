@@ -18,27 +18,31 @@ The project is organized by Work Packages. Codex must follow `WP_PLAN.md` before
 * WP0 is mostly completed.
 * WP1 is mostly completed.
 * WP2 is completed.
-* WP3 is in progress.
-* `Linear.backward` is implemented and tested.
-* The next WP3 step is `ReLU.backward`.
+* WP3 is completed.
+* Manual layer backward passes, `CompactCNN.backward`,
+  `SoftmaxCrossEntropyLoss.backward`, and loss-to-model integration are
+  implemented and tested.
+* WP4 has not been started yet.
+* The next target is WP4: Gradient Checks and Input-Gradient Support.
 * Training, adversarial attacks, Grad-CAM, and final analysis have not been started.
 
 ## Current Development Priority
 
-The immediate priority is WP3 manual backward implementation.
+The immediate priority is WP4 numerical gradient checking and validation of
+input-gradient support.
 
-Before continuing WP3, Codex must:
+Before starting WP4, Codex must:
 
 1. Read `WP_PLAN.md`.
 2. Read `TESTING.md`.
 3. Inspect the current repository structure.
-4. Inspect the existing forward layers and completed backward components.
-5. Determine the next incomplete WP3 layer.
+4. Inspect the completed manual backward implementations and their tests.
+5. Confirm the WP4 validation criteria and dependencies.
 6. Make a small implementation plan before editing code.
 
-Implement and validate one backward component at a time. Do not start training,
-adversarial attacks, Grad-CAM, or final analysis before WP3 is completed and
-validated.
+Implement and validate one numerical gradient check at a time. Do not start
+training, adversarial attacks, Grad-CAM, or final analysis before WP4 is
+completed and validated.
 
 ## General Working Rules
 

@@ -33,7 +33,7 @@ Individual estimates are planning values and may vary during implementation.
 | WP0  | Focused Literature Review and Final Method Selection     | mostly completed |
 | WP1  | Project setup and CIFAR-10 pipeline                      | mostly completed |
 | WP2  | Compact CNN forward implementation                       | completed        |
-| WP3  | Manual Backward Implementation                           | in progress      |
+| WP3  | Manual Backward Implementation                           | completed        |
 | WP4  | Gradient Checks and Input-Gradient Support               | planned          |
 | WP5  | Baseline training and clean evaluation                   | planned          |
 | WP6  | Focused Runtime Bottleneck Handling                      | planned          |
@@ -49,12 +49,14 @@ Individual estimates are planning values and may vary during implementation.
 
 ## Immediate Next Step
 
-WP2 forward implementation and validation are completed.
+WP2 forward implementation and WP3 manual backward implementation are
+completed and validated.
 
-WP3 manual backward implementation is in progress. `Linear.backward` is
-implemented and tested. The next implementation step is `ReLU.backward`.
+The next target is WP4. Input gradients can already be returned through
+`CompactCNN.backward`, but numerical gradient checks for `Linear`, `Conv2D`,
+and Softmax Cross-Entropy have not been implemented yet.
 
-WP4–WP15 remain planned. Training, runtime optimization, adversarial attacks,
+WP5–WP15 remain planned. Training, runtime optimization, adversarial attacks,
 Grad-CAM, and final integration must not start before their prerequisite Work
 Packages are completed and validated.
 
@@ -231,6 +233,9 @@ src/layers/forward.py
 src/models/__init__.py
 src/models/compact_cnn.py
 tests/test_forward.py
+src/losses/__init__.py
+src/losses/cross_entropy.py
+tests/test_losses.py
 ```
 
 Suggested implementation order:
@@ -259,11 +264,10 @@ Suggested commands:
 .venv/bin/python -m pytest tests/ -v
 ```
 
-Known scope gap:
+Implementation note:
 
-* The source plan includes Softmax Cross-Entropy forward in WP2, but no
-  corresponding loss implementation exists in the current repository. Its
-  file location and validation remain `TBD`.
+* Softmax Cross-Entropy forward was added alongside its backward implementation
+  during WP3 and is validated in `tests/test_losses.py`.
 
 Dependencies:
 
@@ -302,18 +306,23 @@ src/layers/forward.py
 src/layers/__init__.py
 src/models/compact_cnn.py
 src/models/__init__.py
+src/losses/__init__.py
+src/losses/cross_entropy.py
 tests/test_layers.py
-tests/test_backward.py          # planned; not created yet
-TBD                             # Softmax Cross-Entropy implementation location
+tests/test_backward.py
+tests/test_losses.py
+tests/test_integration.py
 ```
 
 Suggested implementation order:
 
 1. Implement `Linear.backward` — 5h — completed and tested.
-2. Implement `ReLU.backward` — 4h — next step.
-3. Implement `MaxPool.backward` — 6h.
-4. Implement `Conv2D.backward` — 12h.
-5. Implement Softmax Cross-Entropy backward — 3h.
+2. Implement `ReLU.backward` — 4h — completed and tested.
+3. Implement `MaxPool.backward` — 6h — completed and tested.
+4. Implement `Conv2D.backward` — 12h — completed and tested.
+5. Implement Softmax Cross-Entropy backward — 3h — completed and tested.
+6. Integrate `CompactCNN.backward` and the loss-to-model backward chain —
+   completed and tested.
 
 Validation:
 
@@ -329,27 +338,27 @@ Validation:
   are validated.
 * All produced gradients are finite.
 * Existing data-pipeline and forward tests continue to pass.
-* Softmax Cross-Entropy backward validation remains `TBD` until its forward
-  implementation and file location are defined.
+* Softmax Cross-Entropy forward and backward match deterministic NumPy
+  references and remain finite for large logits.
+* The complete model-loss backward chain returns finite input and parameter
+  gradients with the expected shapes.
 
 Suggested commands:
 
 ```bash
 .venv/bin/python -m pytest tests/test_layers.py -v
+.venv/bin/python -m pytest tests/test_losses.py -v
 .venv/bin/python -m pytest tests/test_backward.py -v
+.venv/bin/python -m pytest tests/test_integration.py -v
 .venv/bin/python -m pytest tests/ -v
 ```
-
-Run `tests/test_backward.py` after full model backward integration exists.
 
 Dependencies:
 
 * WP2 forward layers and `CompactCNN.forward` are implemented and validated.
 * Forward methods must cache only the values required by their corresponding
   backward methods.
-* Softmax Cross-Entropy forward from the source-defined WP2 scope is required
-  before implementing its backward pass; this dependency is currently
-  unresolved.
+* Softmax Cross-Entropy forward is implemented and validated.
 * Numerical gradient checking is intentionally deferred to WP4.
 
 Estimated duration:
@@ -358,7 +367,7 @@ Estimated duration:
 
 Status:
 
-In progress. `Linear.backward` is completed and tested; `ReLU.backward` is next.
+Completed.
 
 ---
 
@@ -379,7 +388,14 @@ Expected deliverables:
 Relevant folders/files:
 
 ```text
-TBD — not specified in source spreadsheet.
+src/layers/forward.py
+src/models/compact_cnn.py
+src/losses/cross_entropy.py
+tests/test_layers.py
+tests/test_backward.py
+tests/test_losses.py
+tests/test_integration.py
+tests/test_gradient_check.py    # planned; not created yet
 ```
 
 Suggested implementation order:
@@ -387,16 +403,25 @@ Suggested implementation order:
 1. Add a numerical gradient check for the linear layer — 3h.
 2. Add a numerical gradient check for `Conv2D` — 5h.
 3. Add a numerical gradient check for the loss function — 3h.
-4. Implement gradients with respect to input images — 4h.
+4. Validate the existing gradients with respect to input images — 4h.
 5. Debug and document gradient correctness — 3h.
 
 Validation:
 
-TBD — not specified in source spreadsheet.
+* Selected analytical gradients match finite-difference numerical gradients
+  within a documented relative-error tolerance.
+* Numerical checks cover `Linear`, `Conv2D`, and Softmax Cross-Entropy.
+* `CompactCNN.backward` returns input gradients with the same shape as its
+  input.
+* Numerical and input gradients contain no NaN or Inf values.
+* Existing WP1–WP3 tests continue to pass.
 
 Dependencies:
 
-TBD — not specified in source spreadsheet.
+* WP3 manual backward implementations and full backward integration are
+  completed and validated.
+* Deterministic small inputs and parameters are used to keep finite-difference
+  checks reproducible and computationally manageable.
 
 Estimated duration:
 
@@ -404,7 +429,7 @@ Estimated duration:
 
 Status:
 
-Planned.
+Planned. This is the next target; numerical gradient checking has not started.
 
 ---
 
