@@ -19,7 +19,7 @@ env/
 .ipynb_checkpoints/
 
 # Downloaded datasets
-data/
+/data/
 datasets/
 
 # Model checkpoints
