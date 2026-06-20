@@ -94,7 +94,7 @@ class ReLU:
 
 
 class MaxPool2D:
-    """Forward-only square max pooling for NCHW inputs."""
+    """Square max pooling with manual forward and backward passes."""
 
     def __init__(self, kernel_size: int = 2, stride: int | None = None) -> None:
         if kernel_size <= 0:
@@ -102,6 +102,9 @@ class MaxPool2D:
 
         self.kernel_size = kernel_size
         self.stride = stride if stride is not None else kernel_size
+        self._input_shape: tuple[int, ...] | None = None
+        self._output_shape: tuple[int, ...] | None = None
+        self._max_indices: np.ndarray | None = None
 
         if self.stride <= 0:
             raise ValueError("Pooling stride must be positive.")
@@ -121,7 +124,54 @@ class MaxPool2D:
             axis=(2, 3),
         )
         windows = windows[:, :, :: self.stride, :: self.stride, :, :]
-        return windows.max(axis=(-2, -1))
+        outputs = windows.max(axis=(-2, -1))
+
+        self._input_shape = inputs.shape
+        self._output_shape = outputs.shape
+        flattened_windows = windows.reshape(*windows.shape[:4], -1)
+        # np.argmax selects the first maximum in row-major order for ties.
+        self._max_indices = flattened_windows.argmax(axis=-1)
+
+        return outputs
+
+    def backward(self, grad_out: np.ndarray) -> np.ndarray:
+        if (
+            self._input_shape is None
+            or self._output_shape is None
+            or self._max_indices is None
+        ):
+            raise RuntimeError("MaxPool2D.backward requires a preceding forward call.")
+        if grad_out.shape != self._output_shape:
+            raise ValueError("Output gradient shape does not match MaxPool2D output.")
+
+        grad_input = np.zeros(self._input_shape, dtype=grad_out.dtype)
+        batch_indices, channel_indices = np.indices(self._input_shape[:2])
+
+        for output_row in range(self._output_shape[2]):
+            for output_column in range(self._output_shape[3]):
+                max_indices = self._max_indices[
+                    :, :, output_row, output_column
+                ]
+                input_rows = (
+                    output_row * self.stride
+                    + max_indices // self.kernel_size
+                )
+                input_columns = (
+                    output_column * self.stride
+                    + max_indices % self.kernel_size
+                )
+                np.add.at(
+                    grad_input,
+                    (
+                        batch_indices,
+                        channel_indices,
+                        input_rows,
+                        input_columns,
+                    ),
+                    grad_out[:, :, output_row, output_column],
+                )
+
+        return grad_input
 
     __call__ = forward
 
