@@ -160,8 +160,8 @@ If a test fails:
 
 Status:
 
-Planned. This is the next target. Input gradients are already returned by
-`CompactCNN.backward`, but numerical gradient checking has not started.
+Completed. Numerical gradient checks and the full input-gradient pipeline
+sanity check are implemented and validated.
 
 Goal:
 
@@ -177,9 +177,20 @@ Suggested commands:
 
 Expected results:
 
-* Numerical and manual gradients have small relative error.
-* Input gradients have the same shape as the input image batch.
-* Input gradients do not contain NaN or Inf.
+* `Linear` input, weight, and bias gradients match centered finite
+  differences.
+* `Conv2D` input, weight, and bias gradients match centered finite
+  differences.
+* `SoftmaxCrossEntropyLoss.backward` matches the numerical gradient with
+  respect to logits.
+* Numerical checks satisfy `relative_error < 1e-4`.
+* The `CompactCNN` loss-to-input gradient pipeline returns gradients with the
+  same shape as the input batch.
+* Input gradients are finite and not entirely zero.
+* Model parameter gradients have the expected shapes and contain no NaN or
+  Inf values.
+* Latest validation result: `tests/test_gradient_check.py` reports 4 passed
+  and the full suite reports 53 passed.
 
 Suggested relative error criterion:
 
@@ -187,26 +198,47 @@ Suggested relative error criterion:
 relative_error < 1e-4
 ```
 
-This threshold may be relaxed for convolution or pooling layers if justified.
+The completed checks use this threshold. `Conv2D` uses a larger finite-
+difference epsilon to account for its `float32` forward output.
 
 ## WP5: Baseline Training Validation
+
+Status:
+
+Planned. This is the next target. No optimizer or training implementation has
+started.
 
 Goal:
 
 Check that the model can train and that metrics are saved.
 
-Suggested commands:
+Initial validation order:
+
+1. Add a deterministic optimizer parameter-update unit test.
+2. Add a short training smoke test on a small subset or repeated mini-batch.
+3. Add clean evaluation checks.
+4. Validate checkpoint, metric, and plot outputs.
+5. Run the full test suite.
+
+Planned commands:
 
 ```bash
-python experiments/train_baseline.py --config configs/baseline.yaml
+.venv/bin/python -m pytest tests/test_optimizer.py -v
+.venv/bin/python -m pytest tests/test_training.py -v
+.venv/bin/python -m pytest tests/ -v
 ```
+
+The baseline training entry point and configuration command remain `TBD` until
+their files are created.
 
 Expected results:
 
 * Training starts without runtime errors.
 * Loss decreases at least on a small subset or short run.
 * Accuracy is above random chance after training.
-* Metrics are saved under `results/`.
+* Clean loss is finite and accuracy is in `[0, 1]`.
+* Checkpoints, metrics, and loss/accuracy curves are saved under `results/`.
+* Existing WP1–WP4 tests continue to pass.
 
 For quick local testing, prefer a small number of batches or epochs.
 

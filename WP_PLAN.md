@@ -34,7 +34,7 @@ Individual estimates are planning values and may vary during implementation.
 | WP1  | Project setup and CIFAR-10 pipeline                      | mostly completed |
 | WP2  | Compact CNN forward implementation                       | completed        |
 | WP3  | Manual Backward Implementation                           | completed        |
-| WP4  | Gradient Checks and Input-Gradient Support               | planned          |
+| WP4  | Gradient Checks and Input-Gradient Support               | completed        |
 | WP5  | Baseline training and clean evaluation                   | planned          |
 | WP6  | Focused Runtime Bottleneck Handling                      | planned          |
 | WP7  | FGSM Attack and Input-Gradient Visualization             | planned          |
@@ -49,16 +49,18 @@ Individual estimates are planning values and may vary during implementation.
 
 ## Immediate Next Step
 
-WP2 forward implementation and WP3 manual backward implementation are
-completed and validated.
+WP2 forward implementation, WP3 manual backward implementation, and WP4
+gradient validation are completed.
 
-The next target is WP4. Input gradients can already be returned through
-`CompactCNN.backward`, but numerical gradient checks for `Linear`, `Conv2D`,
-and Softmax Cross-Entropy have not been implemented yet.
+WP4 numerical gradient checks pass for `Linear`, `Conv2D`, and
+`SoftmaxCrossEntropyLoss` with `relative_error < 1e-4`. The full
+loss-to-`CompactCNN` input-gradient pipeline also produces finite, nonzero input
+gradients. The latest full validation result is 53 passed.
 
-WP5–WP15 remain planned. Training, runtime optimization, adversarial attacks,
-Grad-CAM, and final integration must not start before their prerequisite Work
-Packages are completed and validated.
+The next target is WP5. Its first small step should define and test the
+optimizer and parameter-update API. WP6–WP15 remain planned. Adversarial
+attacks, Grad-CAM, and final integration must not start before their
+prerequisite Work Packages are completed and validated.
 
 ## Work Package Details
 
@@ -395,16 +397,17 @@ tests/test_layers.py
 tests/test_backward.py
 tests/test_losses.py
 tests/test_integration.py
-tests/test_gradient_check.py    # planned; not created yet
+tests/test_gradient_check.py
 ```
 
 Suggested implementation order:
 
-1. Add a numerical gradient check for the linear layer — 3h.
-2. Add a numerical gradient check for `Conv2D` — 5h.
-3. Add a numerical gradient check for the loss function — 3h.
-4. Validate the existing gradients with respect to input images — 4h.
-5. Debug and document gradient correctness — 3h.
+1. Add a numerical gradient check for the linear layer — 3h — completed.
+2. Add a numerical gradient check for `Conv2D` — 5h — completed.
+3. Add a numerical gradient check for the loss function — 3h — completed.
+4. Validate the existing gradients with respect to input images — 4h —
+   completed.
+5. Debug and document gradient correctness — 3h — completed.
 
 Validation:
 
@@ -415,6 +418,11 @@ Validation:
   input.
 * Numerical and input gradients contain no NaN or Inf values.
 * Existing WP1–WP3 tests continue to pass.
+* `Linear`, `Conv2D`, and Softmax Cross-Entropy numerical checks pass with
+  `relative_error < 1e-4`.
+* The `CompactCNN` input-gradient sanity check confirms finite, nonzero input
+  gradients and finite parameter gradients.
+* Latest full-suite result: 53 passed.
 
 Dependencies:
 
@@ -429,7 +437,7 @@ Estimated duration:
 
 Status:
 
-Planned. This is the next target; numerical gradient checking has not started.
+Completed.
 
 ---
 
@@ -451,7 +459,19 @@ Expected deliverables:
 Relevant folders/files:
 
 ```text
-TBD — not specified in source spreadsheet.
+configs/default_config.py
+src/data/
+src/layers/forward.py
+src/losses/cross_entropy.py
+src/models/compact_cnn.py
+src/optimizers/                 # planned; optimizer choice is TBD
+experiments/baseline/           # training and evaluation scripts planned
+tests/test_optimizer.py         # planned
+tests/test_training.py          # planned
+results/checkpoints/
+results/logs/
+results/figures/
+results/tables/
 ```
 
 Suggested implementation order:
@@ -464,11 +484,27 @@ Suggested implementation order:
 
 Validation:
 
-TBD — not specified in source spreadsheet.
+* Optimizer updates match a deterministic hand-computed parameter-update
+  example.
+* A short deterministic training run completes without runtime errors and
+  decreases loss on a small subset or repeated mini-batch.
+* Clean evaluation returns finite loss and accuracy in the valid range
+  `[0, 1]`.
+* Fixed seeds reproduce the intended short-run data order and initialization.
+* Checkpoints, metrics, and loss/accuracy curves are written to documented
+  locations under `results/`.
+* Existing WP1–WP4 tests continue to pass.
 
 Dependencies:
 
-TBD — not specified in source spreadsheet.
+* WP1 data loading and batching are available.
+* WP2 model and loss forward passes are completed.
+* WP3 parameter gradients and full backward integration are completed.
+* WP4 numerical gradient checks and input-gradient validation are completed.
+* The optimizer type and baseline hyperparameters remain `TBD` and must be
+  selected before implementation.
+* Local development should use short smoke runs; longer training should use
+  the configured compute environment.
 
 Estimated duration:
 
@@ -476,7 +512,7 @@ Estimated duration:
 
 Status:
 
-Planned.
+Planned. This is the next target; training has not started.
 
 ---
 

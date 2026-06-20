@@ -22,27 +22,32 @@ The project is organized by Work Packages. Codex must follow `WP_PLAN.md` before
 * Manual layer backward passes, `CompactCNN.backward`,
   `SoftmaxCrossEntropyLoss.backward`, and loss-to-model integration are
   implemented and tested.
-* WP4 has not been started yet.
-* The next target is WP4: Gradient Checks and Input-Gradient Support.
+* WP4 is completed.
+* Numerical gradient checks for `Linear`, `Conv2D`, and
+  `SoftmaxCrossEntropyLoss` pass with a relative-error threshold of `1e-4`.
+* The `CompactCNN` input-gradient pipeline sanity check passes.
+* WP5 has not been started yet.
+* The next target is WP5: Baseline training and clean evaluation.
 * Training, adversarial attacks, Grad-CAM, and final analysis have not been started.
 
 ## Current Development Priority
 
-The immediate priority is WP4 numerical gradient checking and validation of
-input-gradient support.
+The immediate priority is WP5 baseline training and clean evaluation.
 
-Before starting WP4, Codex must:
+Before starting WP5, Codex must:
 
 1. Read `WP_PLAN.md`.
 2. Read `TESTING.md`.
 3. Inspect the current repository structure.
-4. Inspect the completed manual backward implementations and their tests.
-5. Confirm the WP4 validation criteria and dependencies.
+4. Inspect the completed data pipeline, model, loss, backward pipeline, and
+   gradient-check tests.
+5. Confirm the WP5 validation criteria, dependencies, optimizer choice, and
+   training configuration.
 6. Make a small implementation plan before editing code.
 
-Implement and validate one numerical gradient check at a time. Do not start
-training, adversarial attacks, Grad-CAM, or final analysis before WP4 is
-completed and validated.
+Implement and validate one training component at a time. Start with the
+optimizer and parameter-update API. Do not start adversarial attacks, Grad-CAM,
+or final analysis before WP5 is completed and validated.
 
 ## General Working Rules
 
