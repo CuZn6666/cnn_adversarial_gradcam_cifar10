@@ -73,10 +73,22 @@ class Conv2D:
 
 
 class ReLU:
-    """Forward-only rectified linear activation."""
+    """Rectified linear activation with manual forward and backward passes."""
+
+    def __init__(self) -> None:
+        self._positive_mask: np.ndarray | None = None
 
     def forward(self, inputs: np.ndarray) -> np.ndarray:
+        self._positive_mask = inputs > 0
         return np.maximum(inputs, 0)
+
+    def backward(self, grad_out: np.ndarray) -> np.ndarray:
+        if self._positive_mask is None:
+            raise RuntimeError("ReLU.backward requires a preceding forward call.")
+        if grad_out.shape != self._positive_mask.shape:
+            raise ValueError("Output gradient shape does not match ReLU output.")
+
+        return grad_out * self._positive_mask
 
     __call__ = forward
 
