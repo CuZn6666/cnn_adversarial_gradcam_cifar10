@@ -17,24 +17,28 @@ The project is organized by Work Packages. Codex must follow `WP_PLAN.md` before
 
 * WP0 is mostly completed.
 * WP1 is mostly completed.
-* WP2 has not been started yet.
-* The next main target is WP2: Compact CNN forward implementation.
-* Do not start WP3, adversarial attacks, Grad-CAM, or final analysis before WP2 is implemented and validated.
+* WP2 is completed.
+* WP3 is in progress.
+* `Linear.backward` is implemented and tested.
+* The next WP3 step is `ReLU.backward`.
+* Training, adversarial attacks, Grad-CAM, and final analysis have not been started.
 
 ## Current Development Priority
 
-The immediate priority is WP2.
+The immediate priority is WP3 manual backward implementation.
 
-Before working on WP2, Codex must:
+Before continuing WP3, Codex must:
 
 1. Read `WP_PLAN.md`.
 2. Read `TESTING.md`.
 3. Inspect the current repository structure.
-4. Identify what WP0 and WP1 already provide.
-5. Determine what is missing for WP2.
+4. Inspect the existing forward layers and completed backward components.
+5. Determine the next incomplete WP3 layer.
 6. Make a small implementation plan before editing code.
 
-Do not assume that WP2 is already implemented.
+Implement and validate one backward component at a time. Do not start training,
+adversarial attacks, Grad-CAM, or final analysis before WP3 is completed and
+validated.
 
 ## General Working Rules
 
@@ -81,6 +85,7 @@ Suggested commit style:
 ```text
 wp2: implement compact cnn forward pass
 wp2: add forward pass tests
+wp3: implement and test linear backward
 docs: add project workflow files
 ```
 

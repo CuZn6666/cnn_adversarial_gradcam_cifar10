@@ -25,7 +25,7 @@ The goal of this project is to implement and analyze a compact CNN on CIFAR-10, 
 | WP0 | Project orientation, literature/context preparation, and basic planning | mostly completed          |
 | WP1 | Project setup and CIFAR-10 pipeline                                     | mostly completed          |
 | WP2 | Compact CNN forward implementation                                      | completed                 |
-| WP3 | Manual backward implementation                                          | not started / planned     |
+| WP3 | Manual backward implementation                                          | in progress               |
 | WP4 | Gradient check and input-gradient support                               | planned                   |
 | WP5 | Baseline training and evaluation                                        | planned                   |
 | WP6 | Adversarial attack implementation                                       | planned                   |
@@ -37,8 +37,11 @@ The goal of this project is to implement and analyze a compact CNN on CIFAR-10, 
 
 WP2 forward-only implementation and validation are completed.
 
-WP3 manual backward implementation is the next planned Work Package, but it has
-not been started.
+WP3 manual backward implementation is in progress. `Linear.backward` is
+implemented and tested. The next implementation step is `ReLU.backward`.
+
+Training, adversarial attacks, Grad-CAM, and final analysis have not been
+started.
 
 ## Work Package Details
 
@@ -181,8 +184,8 @@ tests/
 
 Implementation order:
 
-1. Linear backward
-2. ReLU backward
+1. Linear backward — completed and tested
+2. ReLU backward — next step
 3. MaxPool backward
 4. Conv2D backward
 5. Full model backward integration
@@ -193,7 +196,7 @@ See `TESTING.md`, section WP3.
 
 Status:
 
-Not started / planned.
+In progress. `Linear.backward` is completed and tested; `ReLU.backward` is next.
 
 ---
 

@@ -42,7 +42,7 @@ Expected results:
 * `WP_PLAN.md` exists.
 * `TESTING.md` exists.
 * The project status correctly says that WP0 and WP1 are mostly completed.
-* The project status correctly says that WP2 is the next target and has not been started yet.
+* The project status correctly reflects the current active Work Package.
 
 ## WP1: Data Pipeline Validation
 
@@ -106,7 +106,8 @@ Do not start WP3 manual backward implementation before WP2 forward validation pa
 
 Status:
 
-Planned. Do not run WP3 validation before WP2 forward implementation has been completed and validated.
+In progress. WP2 forward implementation has been completed and validated.
+`Linear.backward` is implemented and tested. `ReLU.backward` is the next step.
 
 Goal:
 
@@ -115,10 +116,12 @@ Check that manual backward functions return gradients with correct shapes and st
 Suggested commands:
 
 ```bash
-pytest tests/test_layers.py
-pytest tests/test_backward.py
-pytest tests/
+.venv/bin/python -m pytest tests/test_layers.py -v
+.venv/bin/python -m pytest tests/test_backward.py -v
+.venv/bin/python -m pytest tests/ -v
 ```
+
+Run `tests/test_backward.py` after full model backward integration exists.
 
 Expected results:
 
