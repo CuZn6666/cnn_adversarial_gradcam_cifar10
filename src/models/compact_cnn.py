@@ -13,7 +13,7 @@ from src.layers import Conv2D, Flatten, Linear, MaxPool2D, ReLU
 
 
 class CompactCNN:
-    """Compact forward-only CNN for CIFAR-10 classification."""
+    """Compact CNN with manual forward and backward passes."""
 
     def __init__(self, seed: int = SEED) -> None:
         rng = np.random.default_rng(seed)
@@ -34,6 +34,7 @@ class CompactCNN:
             NUM_CLASSES,
             rng=rng,
         )
+        self._logits_shape: tuple[int, ...] | None = None
 
     def forward(self, inputs: np.ndarray) -> np.ndarray:
         expected_shape = (IMAGE_CHANNELS, IMAGE_HEIGHT, IMAGE_WIDTH)
@@ -46,6 +47,27 @@ class CompactCNN:
         features = self.pool1(self.relu1(self.conv1(inputs)))
         features = self.pool2(self.relu2(self.conv2(features)))
         features = self.flatten(features)
-        return self.classifier(features)
+        logits = self.classifier(features)
+        self._logits_shape = logits.shape
+        return logits
+
+    def backward(self, grad_logits: np.ndarray) -> np.ndarray:
+        if self._logits_shape is None:
+            raise RuntimeError(
+                "CompactCNN.backward requires a preceding forward call."
+            )
+        if grad_logits.shape != self._logits_shape:
+            raise ValueError(
+                "Logits gradient shape does not match CompactCNN output."
+            )
+
+        gradients = self.classifier.backward(grad_logits)
+        gradients = self.flatten.backward(gradients)
+        gradients = self.pool2.backward(gradients)
+        gradients = self.relu2.backward(gradients)
+        gradients = self.conv2.backward(gradients)
+        gradients = self.pool1.backward(gradients)
+        gradients = self.relu1.backward(gradients)
+        return self.conv1.backward(gradients)
 
     __call__ = forward
