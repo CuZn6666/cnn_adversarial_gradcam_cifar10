@@ -4,6 +4,7 @@ import numpy as np
 
 from src.layers import Conv2D, Linear
 from src.losses import SoftmaxCrossEntropyLoss
+from src.models import CompactCNN
 
 
 def _centered_finite_difference(
@@ -129,3 +130,37 @@ def test_softmax_cross_entropy_backward_matches_numerical_gradient() -> None:
         _relative_error(analytical_grad_logits, numerical_grad_logits)
         < 1e-4
     )
+
+
+def test_compact_cnn_input_gradient_pipeline_is_finite_and_nonzero() -> None:
+    inputs = np.random.default_rng(11).random(
+        (1, 3, 32, 32),
+        dtype=np.float32,
+    )
+    labels = np.array([3], dtype=np.int64)
+    model = CompactCNN(seed=42)
+    loss_function = SoftmaxCrossEntropyLoss()
+
+    logits = model.forward(inputs)
+    loss = loss_function.forward(logits, labels)
+    grad_logits = loss_function.backward()
+    grad_input = model.backward(grad_logits)
+
+    assert logits.shape == (1, 10)
+    assert np.isfinite(loss)
+    assert grad_logits.shape == logits.shape
+    assert grad_input.shape == inputs.shape
+    assert np.isfinite(grad_input).all()
+    assert np.any(grad_input != 0.0)
+
+    parameters_and_gradients = (
+        (model.conv1.weights, model.conv1.grad_weight),
+        (model.conv1.bias, model.conv1.grad_bias),
+        (model.conv2.weights, model.conv2.grad_weight),
+        (model.conv2.bias, model.conv2.grad_bias),
+        (model.classifier.weights, model.classifier.grad_weight),
+        (model.classifier.bias, model.classifier.grad_bias),
+    )
+    for parameter, gradient in parameters_and_gradients:
+        assert gradient.shape == parameter.shape
+        assert np.isfinite(gradient).all()
