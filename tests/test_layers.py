@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from src.layers import Flatten, Linear, MaxPool2D, ReLU
+from src.layers import Conv2D, Flatten, Linear, MaxPool2D, ReLU
 
 
 def test_linear_backward_matches_hand_computed_gradients() -> None:
@@ -238,3 +238,128 @@ def test_max_pool2d_backward_routes_ties_to_first_row_major_maximum() -> None:
     grad_input = layer.backward(grad_out)
 
     np.testing.assert_array_equal(grad_input, expected_grad_input)
+
+
+def test_conv2d_backward_matches_hand_computed_gradients() -> None:
+    layer = Conv2D(
+        in_channels=1,
+        out_channels=1,
+        kernel_size=2,
+        rng=np.random.default_rng(0),
+    )
+    layer.weights = np.array(
+        [[[[1.0, 2.0], [3.0, 4.0]]]],
+        dtype=np.float32,
+    )
+    layer.bias = np.array([0.0], dtype=np.float32)
+
+    inputs = np.arange(1, 10, dtype=np.float32).reshape(1, 1, 3, 3)
+    grad_out = np.array(
+        [[[[1.0, 2.0], [3.0, 4.0]]]],
+        dtype=np.float32,
+    )
+    expected_grad_input = np.array(
+        [[[[1.0, 4.0, 4.0], [6.0, 20.0, 16.0], [9.0, 24.0, 16.0]]]],
+        dtype=np.float32,
+    )
+    expected_grad_weight = np.array(
+        [[[[37.0, 47.0], [67.0, 77.0]]]],
+        dtype=np.float32,
+    )
+    expected_grad_bias = np.array([10.0], dtype=np.float32)
+
+    layer.forward(inputs)
+    grad_input = layer.backward(grad_out)
+
+    np.testing.assert_allclose(grad_input, expected_grad_input)
+    np.testing.assert_allclose(layer.grad_weight, expected_grad_weight)
+    np.testing.assert_allclose(layer.grad_bias, expected_grad_bias)
+
+
+def test_conv2d_backward_restores_batch_and_channel_shapes() -> None:
+    layer = Conv2D(
+        in_channels=2,
+        out_channels=3,
+        kernel_size=2,
+        rng=np.random.default_rng(0),
+    )
+    inputs = np.arange(36, dtype=np.float32).reshape(2, 2, 3, 3)
+    outputs = layer.forward(inputs)
+    grad_out = np.arange(outputs.size, dtype=np.float32).reshape(outputs.shape)
+
+    grad_input = layer.backward(grad_out)
+
+    assert grad_input.shape == inputs.shape
+    assert layer.grad_weight.shape == layer.weights.shape
+    assert layer.grad_bias.shape == layer.bias.shape
+    assert np.isfinite(grad_input).all()
+    assert np.isfinite(layer.grad_weight).all()
+    assert np.isfinite(layer.grad_bias).all()
+
+
+def test_conv2d_backward_requires_forward_call() -> None:
+    layer = Conv2D(
+        in_channels=1,
+        out_channels=1,
+        kernel_size=2,
+        rng=np.random.default_rng(0),
+    )
+    grad_out = np.ones((1, 1, 2, 2), dtype=np.float32)
+
+    with pytest.raises(
+        RuntimeError,
+        match=r"Conv2D\.backward requires a preceding forward call\.",
+    ):
+        layer.backward(grad_out)
+
+
+def test_conv2d_backward_rejects_wrong_grad_out_shape() -> None:
+    layer = Conv2D(
+        in_channels=1,
+        out_channels=1,
+        kernel_size=2,
+        rng=np.random.default_rng(0),
+    )
+    inputs = np.arange(9, dtype=np.float32).reshape(1, 1, 3, 3)
+    wrong_grad_out = np.ones((1, 1, 1, 1), dtype=np.float32)
+
+    layer.forward(inputs)
+
+    with pytest.raises(
+        ValueError,
+        match="Output gradient shape does not match Conv2D output.",
+    ):
+        layer.backward(wrong_grad_out)
+
+
+def test_conv2d_backward_supports_padding_and_stride() -> None:
+    layer = Conv2D(
+        in_channels=1,
+        out_channels=1,
+        kernel_size=2,
+        padding=1,
+        stride=2,
+        rng=np.random.default_rng(0),
+    )
+    layer.weights = np.ones((1, 1, 2, 2), dtype=np.float32)
+    inputs = np.array(
+        [[[[1.0, 2.0], [3.0, 4.0]]]],
+        dtype=np.float32,
+    )
+    grad_out = np.array(
+        [[[[1.0, 2.0], [3.0, 4.0]]]],
+        dtype=np.float32,
+    )
+    expected_grad_input = grad_out.copy()
+    expected_grad_weight = np.array(
+        [[[[16.0, 9.0], [4.0, 1.0]]]],
+        dtype=np.float32,
+    )
+    expected_grad_bias = np.array([10.0], dtype=np.float32)
+
+    layer.forward(inputs)
+    grad_input = layer.backward(grad_out)
+
+    np.testing.assert_allclose(grad_input, expected_grad_input)
+    np.testing.assert_allclose(layer.grad_weight, expected_grad_weight)
+    np.testing.assert_allclose(layer.grad_bias, expected_grad_bias)

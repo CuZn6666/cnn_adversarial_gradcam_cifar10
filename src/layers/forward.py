@@ -5,7 +5,7 @@ from numpy.lib.stride_tricks import sliding_window_view
 
 
 class Conv2D:
-    """Forward-only 2D convolution for NCHW inputs."""
+    """2D convolution with manual forward and backward passes for NCHW inputs."""
 
     def __init__(
         self,
@@ -30,8 +30,13 @@ class Conv2D:
             size=(out_channels, in_channels, kernel_size, kernel_size),
         ).astype(np.float32)
         self.bias = np.zeros(out_channels, dtype=np.float32)
+        self.grad_weight = np.zeros_like(self.weights)
+        self.grad_bias = np.zeros_like(self.bias)
         self.padding = padding
         self.stride = stride
+        self._input_shape: tuple[int, ...] | None = None
+        self._output_shape: tuple[int, ...] | None = None
+        self._padded_inputs: np.ndarray | None = None
 
     def forward(self, inputs: np.ndarray) -> np.ndarray:
         if inputs.ndim != 4:
@@ -67,7 +72,70 @@ class Conv2D:
             optimize=True,
         )
         outputs += self.bias[None, :, None, None]
-        return outputs.astype(np.float32, copy=False)
+        outputs = outputs.astype(np.float32, copy=False)
+
+        self._input_shape = inputs.shape
+        self._output_shape = outputs.shape
+        self._padded_inputs = padded
+
+        return outputs
+
+    def backward(self, grad_out: np.ndarray) -> np.ndarray:
+        if (
+            self._input_shape is None
+            or self._output_shape is None
+            or self._padded_inputs is None
+        ):
+            raise RuntimeError("Conv2D.backward requires a preceding forward call.")
+        if grad_out.shape != self._output_shape:
+            raise ValueError("Output gradient shape does not match Conv2D output.")
+
+        kernel_height, kernel_width = self.weights.shape[2:]
+        grad_padded_input = np.zeros_like(
+            self._padded_inputs,
+            dtype=grad_out.dtype,
+        )
+        self.grad_weight = np.zeros_like(self.weights, dtype=grad_out.dtype)
+        self.grad_bias = grad_out.sum(axis=(0, 2, 3))
+
+        for batch_index in range(self._input_shape[0]):
+            for output_channel in range(self.weights.shape[0]):
+                for output_row in range(self._output_shape[2]):
+                    input_row = output_row * self.stride
+                    for output_column in range(self._output_shape[3]):
+                        input_column = output_column * self.stride
+                        gradient = grad_out[
+                            batch_index,
+                            output_channel,
+                            output_row,
+                            output_column,
+                        ]
+                        input_window = self._padded_inputs[
+                            batch_index,
+                            :,
+                            input_row : input_row + kernel_height,
+                            input_column : input_column + kernel_width,
+                        ]
+
+                        self.grad_weight[output_channel] += (
+                            gradient * input_window
+                        )
+                        grad_padded_input[
+                            batch_index,
+                            :,
+                            input_row : input_row + kernel_height,
+                            input_column : input_column + kernel_width,
+                        ] += gradient * self.weights[output_channel]
+
+        if self.padding == 0:
+            return grad_padded_input
+
+        return grad_padded_input[
+            :,
+            :,
+            self.padding : -self.padding,
+            self.padding : -self.padding,
+        ]
 
     __call__ = forward
 
