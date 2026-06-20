@@ -127,12 +127,28 @@ class MaxPool2D:
 
 
 class Flatten:
-    """Flatten all dimensions except the batch dimension."""
+    """Flatten layer with manual forward and backward passes."""
+
+    def __init__(self) -> None:
+        self._input_shape: tuple[int, ...] | None = None
+        self._output_shape: tuple[int, ...] | None = None
 
     def forward(self, inputs: np.ndarray) -> np.ndarray:
         if inputs.ndim < 2:
             raise ValueError("Flatten expects an input with a batch dimension.")
-        return inputs.reshape(inputs.shape[0], -1)
+
+        self._input_shape = inputs.shape
+        outputs = inputs.reshape(inputs.shape[0], -1)
+        self._output_shape = outputs.shape
+        return outputs
+
+    def backward(self, grad_out: np.ndarray) -> np.ndarray:
+        if self._input_shape is None or self._output_shape is None:
+            raise RuntimeError("Flatten.backward requires a preceding forward call.")
+        if grad_out.shape != self._output_shape:
+            raise ValueError("Output gradient shape does not match Flatten output.")
+
+        return grad_out.reshape(self._input_shape)
 
     __call__ = forward
 

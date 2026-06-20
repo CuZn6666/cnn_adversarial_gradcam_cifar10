@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from src.layers import Linear, ReLU
+from src.layers import Flatten, Linear, ReLU
 
 
 def test_linear_backward_matches_hand_computed_gradients() -> None:
@@ -107,5 +107,43 @@ def test_relu_backward_rejects_wrong_grad_out_shape() -> None:
     with pytest.raises(
         ValueError,
         match="Output gradient shape does not match ReLU output.",
+    ):
+        layer.backward(wrong_grad_out)
+
+
+def test_flatten_backward_restores_original_shape() -> None:
+    layer = Flatten()
+    inputs = np.arange(24, dtype=np.float32).reshape(2, 3, 4)
+    grad_out = np.arange(24, dtype=np.float32).reshape(2, 12) * 0.5
+    expected_grad_input = grad_out.reshape(2, 3, 4)
+
+    layer.forward(inputs)
+    grad_input = layer.backward(grad_out)
+
+    assert grad_input.shape == inputs.shape
+    np.testing.assert_array_equal(grad_input, expected_grad_input)
+
+
+def test_flatten_backward_requires_forward_call() -> None:
+    layer = Flatten()
+    grad_out = np.ones((2, 12), dtype=np.float32)
+
+    with pytest.raises(
+        RuntimeError,
+        match=r"Flatten\.backward requires a preceding forward call\.",
+    ):
+        layer.backward(grad_out)
+
+
+def test_flatten_backward_rejects_wrong_grad_out_shape() -> None:
+    layer = Flatten()
+    inputs = np.arange(24, dtype=np.float32).reshape(2, 3, 4)
+    wrong_grad_out = np.ones((2, 11), dtype=np.float32)
+
+    layer.forward(inputs)
+
+    with pytest.raises(
+        ValueError,
+        match="Output gradient shape does not match Flatten output.",
     ):
         layer.backward(wrong_grad_out)
