@@ -126,7 +126,7 @@ class Flatten:
 
 
 class Linear:
-    """Forward-only fully connected layer."""
+    """Fully connected layer with manual forward and backward passes."""
 
     def __init__(
         self,
@@ -146,6 +146,9 @@ class Linear:
             size=(out_features, in_features),
         ).astype(np.float32)
         self.bias = np.zeros(out_features, dtype=np.float32)
+        self.grad_weight = np.zeros_like(self.weights)
+        self.grad_bias = np.zeros_like(self.bias)
+        self._inputs: np.ndarray | None = None
 
     def forward(self, inputs: np.ndarray) -> np.ndarray:
         if inputs.ndim != 2:
@@ -153,6 +156,19 @@ class Linear:
         if inputs.shape[1] != self.weights.shape[1]:
             raise ValueError("Input features do not match linear weights.")
 
+        self._inputs = inputs
         return inputs @ self.weights.T + self.bias
+
+    def backward(self, grad_out: np.ndarray) -> np.ndarray:
+        if self._inputs is None:
+            raise RuntimeError("Linear.backward requires a preceding forward call.")
+        if grad_out.ndim != 2:
+            raise ValueError("Linear backward expects shape (N, out_features).")
+        if grad_out.shape != (self._inputs.shape[0], self.weights.shape[0]):
+            raise ValueError("Output gradient shape does not match Linear output.")
+
+        self.grad_weight = grad_out.T @ self._inputs
+        self.grad_bias = grad_out.sum(axis=0)
+        return grad_out @ self.weights
 
     __call__ = forward
