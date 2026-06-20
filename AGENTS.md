@@ -88,7 +88,38 @@ Before starting a new Work Package or larger task:
 git status
 ```
 
-After a stable Work Package step is completed and validated, suggest a Git commit, but do not commit automatically unless explicitly instructed.
+After completing any implementation, test, documentation update, or refactor
+task, do not automatically run `git add`, `git commit`, or `git push` unless
+the user explicitly requests those operations.
+
+At the end of each task, report:
+
+1. files inspected,
+2. files modified,
+3. commands run,
+4. test results,
+5. scope confirmation,
+6. current Git status.
+
+If the working tree contains only the expected changes and the relevant tests
+pass, ask whether the user wants to proceed with Git operations. Provide the
+exact recommended commands and prefer explicit file paths instead of
+`git add .`.
+
+Suggested Git workflow:
+
+```bash
+git status --short
+git diff --check
+git add <modified-file-1> <modified-file-2>
+git commit -m "<clear commit message>"
+git push
+git status -sb
+```
+
+After a stable Work Package step is completed and validated, suggest a Git
+commit, but do not stage, commit, or push automatically unless explicitly
+instructed.
 
 Suggested commit style:
 
