@@ -42,6 +42,16 @@ validated.
 
 ## General Working Rules
 
+Before starting a new Work Package:
+
+1. Review the project requirements, the source Work Package plan, the current
+   repository state, and `TESTING.md`.
+2. Complete or update the Work Package's `Relevant folders/files`,
+   `Validation`, and `Dependencies` entries in `WP_PLAN.md` before
+   implementation begins.
+3. Base those entries on documented requirements and existing repository
+   evidence. If an item is still unclear, keep it as `TBD` instead of guessing.
+
 Before making code changes:
 
 1. Read `WP_PLAN.md`.

@@ -1,0 +1,595 @@
+WorkPackagePlan.txt
+
+Source file: WorkPackagePlan.xlsx
+Source sheet: Sheet1
+Scope: WP0–WP15
+
+Source-column mapping:
+- WP number / Title: derived from column 'Work Package'
+- Goal: column 'Description'
+- Tasks / implementation steps: column 'More details(Subtasks)---(Suppose the time for each section is also divided equally between the two people)'
+- Expected deliverables: column 'Main Deliverables'
+- Estimated duration: column 'EstimatedDuration(The time for each section is split evenly between the two people also)'
+- Relevant files or folders, Validation / acceptance criteria, Dependencies, and Status were not separate columns in the source spreadsheet; they are preserved as TBD placeholders.
+
+========================================================================================
+
+WP number: WP0
+Title: Focused Literature Review and Final Method Selection
+
+Goal:
+Review Lecture 04 Example 8 and conduct focused literature research on adversarial attacks and explainability. The goal is to identify suitable gradient-based methods, such as FGSM and PGD, and one non-gradient-based black-box method, such as a simplified square-based attack. This phase also defines the final evaluation metrics, including accuracy drop, attack success rate, query count, and qualitative Grad-CAM analysis.
+
+Tasks / implementation steps:
+- Review Lecture 04 Example 8(and look through something like this example as well) 2h
+- Read FGSM / adversarial examples references (Basic knowledge rather than a complete thesis)3h
+- Read PGD / robust optimization references（As above） 3h
+- Read Grad-CAM reference（As above） 3h
+- Read non-gradient / black-box attack references（As above） 4h
+- Decide final methods and evaluation metrics 3h
+
+Expected deliverables:
+- Deliverable
+- Short method summary
+- Final attack selection
+- Final evaluation metrics
+- Updated project scope
+
+Relevant files or folders:
+TBD — not specified in source spreadsheet.
+
+Validation / acceptance criteria:
+TBD — not specified in source spreadsheet.
+
+Dependencies:
+TBD — not specified in source spreadsheet.
+
+Status:
+TBD — not specified in source spreadsheet.
+
+Notes:
+- Estimated duration: 18h（9+9）
+
+----------------------------------------------------------------------------------------
+
+WP number: WP1
+Title: Project setup and CIFAR-10 pipeline
+
+Goal:
+Set up the project structure, environment, data folders, logging structure, and reproducibility settings. Implement CIFAR-10 loading, preprocessing, batching, and basic dataset utilities. Since we are fairly advanced learners, this work package is kept compact and focuses only on the infrastructure needed for later experiments.
+
+Tasks / implementation steps:
+- Project structure and environment setup 4h
+- CIFAR-10 loading and preprocessing 4h
+- Mini-batch utilities 3h
+- Logging and result directories 3h
+- Basic reproducibility setup 2h
+
+Expected deliverables:
+- Working CIFAR-10 data pipeline
+- Reproducible project skeleton
+
+Relevant files or folders:
+TBD — not specified in source spreadsheet.
+
+Validation / acceptance criteria:
+TBD — not specified in source spreadsheet.
+
+Dependencies:
+TBD — not specified in source spreadsheet.
+
+Status:
+TBD — not specified in source spreadsheet.
+
+Notes:
+- Estimated duration: 16h（8+8）
+
+----------------------------------------------------------------------------------------
+
+WP number: WP2
+Title: Compact CNN forward implementation
+
+Goal:
+Implement the forward pass of a compact CNN from scratch. This includes Conv2D, ReLU, MaxPool, Flatten, Linear layers, and Softmax Cross-Entropy loss. The implementation is limited to the architecture needed for this project, rather than building a general deep learning framework.
+
+Tasks / implementation steps:
+- Conv2D forward 9h
+- ReLU and pooling forward 5h
+- Flatten and linear layer 4h
+- Softmax cross-entropy loss 4h
+- Shape tests and debugging 6h
+
+Expected deliverables:
+- Compact CNN forward pass
+- Shape tests
+- Initial predictions on CIFAR-10 batches
+
+Relevant files or folders:
+TBD — not specified in source spreadsheet.
+
+Validation / acceptance criteria:
+TBD — not specified in source spreadsheet.
+
+Dependencies:
+TBD — not specified in source spreadsheet.
+
+Status:
+TBD — not specified in source spreadsheet.
+
+Notes:
+- Estimated duration: 28h(14+14)
+
+----------------------------------------------------------------------------------------
+
+WP number: WP3
+Title: Manual Backward Implementation
+
+Goal:
+Implement the manual backward pass for the CNN layers. This includes gradients for Linear, ReLU, MaxPool, Conv2D, and Softmax Cross-Entropy loss. This forms the technical basis for training the CNN and later computing gradients with respect to input images and feature maps.
+This project involves a lot of manual equation writing and calculation, and there are likely to be many areas that require debugging—especially in the convolution section—so I’ve allocated 15 hours per person. This is a reduction from the original estimate of approximately 40 hours per person.
+
+Tasks / implementation steps:
+- Linear backward 5h
+- ReLU backward 4h
+- MaxPool backward 6h
+- Conv2D backward 12h
+- Softmax cross-entropy backward 3h
+
+Expected deliverables:
+- Manual backward pass for the compact CNN
+
+Relevant files or folders:
+TBD — not specified in source spreadsheet.
+
+Validation / acceptance criteria:
+TBD — not specified in source spreadsheet.
+
+Dependencies:
+TBD — not specified in source spreadsheet.
+
+Status:
+TBD — not specified in source spreadsheet.
+
+Notes:
+- Estimated duration: 30h(15+15)
+
+----------------------------------------------------------------------------------------
+
+WP number: WP4
+Title: Gradient Checks and Input-Gradient Support
+
+Goal:
+Verify selected gradients numerically to ensure that the manual backpropagation implementation is correct. In addition, extend the backward pipeline so that gradients with respect to input images can be computed. This is necessary for FGSM, PGD, and input-gradient visualization.
+
+Tasks / implementation steps:
+- Numerical gradient check for linear layer 3h
+- Numerical gradient check for Conv2D 5h
+- Numerical gradient check for loss function 3h
+- Implement gradient w.r.t. input image 4h
+- Debug and document gradient correctness 3h
+
+Expected deliverables:
+- Selected gradient check results
+- Input gradient computation support
+- PS:This work is important because the later FGSM, PGD, and Grad-CAM methods all depend on gradients
+
+Relevant files or folders:
+TBD — not specified in source spreadsheet.
+
+Validation / acceptance criteria:
+TBD — not specified in source spreadsheet.
+
+Dependencies:
+TBD — not specified in source spreadsheet.
+
+Status:
+TBD — not specified in source spreadsheet.
+
+Notes:
+- Estimated duration: 18h（9+9）
+
+----------------------------------------------------------------------------------------
+
+WP number: WP5
+Title: Baseline training and clean evaluation
+
+Goal:
+Implement the training loop, optimizer updates, clean test evaluation, and result logging. Train the compact CNN on CIFAR-10 and generate baseline loss and accuracy curves. This model will serve as the target model for adversarial attacks and Grad-CAM analysis.
+
+Tasks / implementation steps:
+- Optimizer and parameter update 5h
+- Training loop 7h
+- Clean test evaluation 4h
+- Loss and accuracy plots 4h
+- Baseline debugging and stabilization 6h
+
+Expected deliverables:
+- Trained baseline CNN
+- Clean accuracy
+- Loss and accuracy curves
+
+Relevant files or folders:
+TBD — not specified in source spreadsheet.
+
+Validation / acceptance criteria:
+TBD — not specified in source spreadsheet.
+
+Dependencies:
+TBD — not specified in source spreadsheet.
+
+Status:
+TBD — not specified in source spreadsheet.
+
+Notes:
+- Estimated duration: 26h(13+13)
+
+----------------------------------------------------------------------------------------
+
+WP number: WP6
+Title: Focused Runtime Bottleneck Handling
+
+Goal:
+Identify the most expensive parts of the implementation, such as convolution forward or backward computation. Instead of comparing several frameworks, focus on one selected optimization or backend path, for example CuPy or a selected vectorized implementation. The goal is not extensive benchmarking, but understanding and improving the main computational bottleneck.
+
+Tasks / implementation steps:
+- Identify computational bottlenecks 3h
+- Choose one implementation path 2h
+- Optimize selected operation or backend path 8h
+- Basic runtime measurements 3h
+- Short bottleneck discussion 2h
+
+Expected deliverables:
+- We will not compare NumPy, CuPy, JAX, PyTorch...
+- We focus on one selected implementation path and use runtime measurements only to understand computational bottlenecks.
+
+Relevant files or folders:
+TBD — not specified in source spreadsheet.
+
+Validation / acceptance criteria:
+TBD — not specified in source spreadsheet.
+
+Dependencies:
+TBD — not specified in source spreadsheet.
+
+Status:
+TBD — not specified in source spreadsheet.
+
+Notes:
+- Estimated duration: 18h（9+9）
+
+----------------------------------------------------------------------------------------
+
+WP number: WP7
+Title: FGSM Attack and Input-Gradient Visualization
+
+Goal:
+Implement the first gradient-based adversarial attack using FGSM. Compute gradients of the loss with respect to input images, visualize these gradients, and use them to generate adversarial examples.（like Example 8）
+
+Tasks / implementation steps:
+- Compute gradients of loss w.r.t. input images 5h
+- Visualize input gradients 5h
+- Implement FGSM attack 8h
+- Generate adversarial examples for selected ε values 7h
+- Save adversarial examples and perturbation maps 5h
+- Debug and validate FGSM behavior 4h
+
+Expected deliverables:
+- Input-gradient maps
+- FGSM adversarial examples
+- Perturbation visualizations
+
+Relevant files or folders:
+TBD — not specified in source spreadsheet.
+
+Validation / acceptance criteria:
+TBD — not specified in source spreadsheet.
+
+Dependencies:
+TBD — not specified in source spreadsheet.
+
+Status:
+TBD — not specified in source spreadsheet.
+
+Notes:
+- Estimated duration: 34h(17+17)
+- We now move on to the core section of “Gradient-Based and Non-Gradient-Based Adversarial Analysis”
+
+----------------------------------------------------------------------------------------
+
+WP number: WP8
+Title: FGSM robustness evaluation
+
+Goal:
+Evaluate the performance of a trained convolutional neural network (CNN) under FGSM attacks with different noise intensities. Compare the accuracy under normal conditions with the adversarial accuracy, plot a graph showing the relationship between accuracy and ε values, and select representative examples of successful and failed attacks.
+
+Tasks / implementation steps:
+- Evaluate clean vs FGSM accuracy 5h
+- Test multiple ε values 5h
+- Plot accuracy vs ε 4h
+- Select representative successful and failed attacks 2h
+- Summarize FGSM findings 2h
+
+Expected deliverables:
+- Clean vs FGSM accuracy table
+- Accuracy-vs-epsilon plot
+- Representative FGSM examples
+
+Relevant files or folders:
+TBD — not specified in source spreadsheet.
+
+Validation / acceptance criteria:
+TBD — not specified in source spreadsheet.
+
+Dependencies:
+TBD — not specified in source spreadsheet.
+
+Status:
+TBD — not specified in source spreadsheet.
+
+Notes:
+- Estimated duration: 18h（9+9）
+
+----------------------------------------------------------------------------------------
+
+WP number: WP9
+Title: PGD Attack Implementation
+
+Goal:
+Implement PGD as a stronger iterative gradient-based attack. This includes the iterative attack loop, projection back to the allowed epsilon-ball, clipping to the valid image range, and parameter handling for step size and number of iterations. PGD is treated as a small-scale but stronger white-box attack.
+
+Tasks / implementation steps:
+- Implement iterative attack loop 8h
+- Implement projection to ε-ball 6h
+- Add clipping to valid image range 4h
+- Add parameter handling for step size and number of steps 4h
+- Debug PGD on selected examples 4h
+- Document differences from FGSM 2h
+
+Expected deliverables:
+- PGD attack implementation
+- Working adversarial examples from iterative attack
+
+Relevant files or folders:
+TBD — not specified in source spreadsheet.
+
+Validation / acceptance criteria:
+TBD — not specified in source spreadsheet.
+
+Dependencies:
+TBD — not specified in source spreadsheet.
+
+Status:
+TBD — not specified in source spreadsheet.
+
+Notes:
+- Estimated duration: 28h(14+14)
+- From the literature, We learned that PGD is a multi-step version of FGSM and represents a more powerful gradient-based white-box attack.
+
+----------------------------------------------------------------------------------------
+
+WP number: WP10
+Title: PGD Robustness Evaluation and Comparison
+
+Goal:
+Evaluate PGD on a selected test subset or the full test set, depending on runtime. Compare FGSM and PGD in terms of accuracy drop and attack strength. The goal is to obtain a quantitative comparison between one-step and iterative gradient-based attacks.
+
+Tasks / implementation steps:
+- Evaluate PGD on selected test subset or full test set 5h
+- Compare FGSM vs PGD accuracy drop 4h
+- Plot robustness curves 3h
+- Select representative PGD examples 2h
+- Summarize gradient-based attack comparison 2h
+
+Expected deliverables:
+- FGSM vs PGD comparison
+- Robustness curves
+- Short gradient-based attack discussion
+- PS:We are doing a small-scale PGD evaluation, not large-scale adversarial training.
+
+Relevant files or folders:
+TBD — not specified in source spreadsheet.
+
+Validation / acceptance criteria:
+TBD — not specified in source spreadsheet.
+
+Dependencies:
+TBD — not specified in source spreadsheet.
+
+Status:
+TBD — not specified in source spreadsheet.
+
+Notes:
+- Estimated duration: 16h（8+8）
+
+----------------------------------------------------------------------------------------
+
+WP number: WP11
+Title: Non-Gradient Black-Box Attack Implementation
+
+Goal:
+Implement one non-gradient-based black-box adversarial attack. A suitable option is a simplified square-based random search attack, where the method perturbs random image regions and keeps changes that reduce the model’s confidence or increase the loss. This satisfies the requirement to investigate non-gradient-based methods.
+
+Tasks / implementation steps:
+- Select final non-gradient method from literature 4h
+- Define black-box access setting 3h
+- Implement square-based random perturbation search 10h
+- Implement score-based accept/reject criterion 5h
+- Define query budget and stopping criteria 4h
+- Generate black-box adversarial examples 4h
+- Debug and validate attack behavior 2h
+
+Expected deliverables:
+- Non-gradient black-box attack implementation
+- Black-box adversarial examples
+
+Relevant files or folders:
+TBD — not specified in source spreadsheet.
+
+Validation / acceptance criteria:
+TBD — not specified in source spreadsheet.
+
+Dependencies:
+TBD — not specified in source spreadsheet.
+
+Status:
+TBD — not specified in source spreadsheet.
+
+Notes:
+- Estimated duration: 32h(16+16)
+- Based on our review of the literature, we believe that the simplified square-based black-box attack—which is essentially a simplified version of the Square Attack or square random search—is the most suitable approach for this project.
+
+----------------------------------------------------------------------------------------
+
+WP number: WP12
+Title: Black-Box Attack Evaluation
+
+Goal:
+Evaluate the non-gradient-based attack using quantitative metrics such as attack success rate and average number of model queries. Compare its behavior qualitatively with FGSM and PGD, while noting that the black-box method does not use internal gradients. Optionally, a small one-pixel-style experiment can be tested if time permits(We'll give it a try as best we can).
+
+Tasks / implementation steps:
+- Measure attack success rate 5h
+- Measure average number of queries 4h
+- Compare black-box attack with FGSM / PGD qualitatively 4h
+- Select representative black-box examples 3h
+- Summarize limitations of non-gradient attack 2h---4h
+- Optional: small one-pixel attack test if time permits 2h
+
+Expected deliverables:
+- Attack success rate
+- Average query count
+- Black-box attack examples
+- Short comparison with gradient-based attacks
+
+Relevant files or folders:
+TBD — not specified in source spreadsheet.
+
+Validation / acceptance criteria:
+TBD — not specified in source spreadsheet.
+
+Dependencies:
+TBD — not specified in source spreadsheet.
+
+Status:
+TBD — not specified in source spreadsheet.
+
+Notes:
+- Estimated duration: 20h（10+10）
+
+----------------------------------------------------------------------------------------
+
+WP number: WP13
+Title: Grad-CAM Implementation
+
+Goal:
+Implement Grad-CAM as a qualitative explainability tool. Store the last convolutional feature maps, compute target-class gradients with respect to these feature maps, calculate channel weights using global average pooling, and generate normalized heatmaps. The heatmaps are then resized and overlaid on CIFAR-10 images.
+
+Tasks / implementation steps:
+- Store last convolutional feature maps 4h
+- Compute target-class gradients w.r.t. feature maps 6h
+- Compute channel weights using global average pooling 4h
+- Generate and normalize Grad-CAM heatmaps 5h
+- Resize and overlay heatmaps on CIFAR-10 images 5h
+- Test Grad-CAM on selected examples 4h
+
+Expected deliverables:
+- Grad-CAM heatmaps
+- Grad-CAM overlays for selected images
+
+Relevant files or folders:
+TBD — not specified in source spreadsheet.
+
+Validation / acceptance criteria:
+TBD — not specified in source spreadsheet.
+
+Dependencies:
+TBD — not specified in source spreadsheet.
+
+Status:
+TBD — not specified in source spreadsheet.
+
+Notes:
+- Estimated duration: 28h(14+14)
+
+----------------------------------------------------------------------------------------
+
+WP number: WP14
+Title: Grad-CAM Analysis Before and After Attacks
+
+Goal:
+Use Grad-CAM to inspect how the model’s focus changes before and after adversarial perturbations. Analyze clean correctly classified examples, clean misclassified examples, and adversarial examples produced by FGSM, PGD, and the black-box attack. Grad-CAM is used qualitatively, not as a quantitative model comparison metric.
+
+Tasks / implementation steps:
+- Generate Grad-CAM for clean correctly classified examples 5h
+- Generate Grad-CAM for clean misclassified examples 4h
+- Generate Grad-CAM after FGSM / PGD attacks 6h
+- Generate Grad-CAM after black-box attack 5h
+- Compare focus regions before and after attacks 4h
+- Prepare qualitative visualization figures 4h
+
+Expected deliverables:
+- Clean vs adversarial Grad-CAM comparison
+- Qualitative case studies
+- Visualization figures for final report / poster
+- We will not compare models using Grad-CAM.
+- We use Grad-CAM qualitatively to inspect how the model’s focus changes before and after adversarial perturbations
+
+Relevant files or folders:
+TBD — not specified in source spreadsheet.
+
+Validation / acceptance criteria:
+TBD — not specified in source spreadsheet.
+
+Dependencies:
+TBD — not specified in source spreadsheet.
+
+Status:
+TBD — not specified in source spreadsheet.
+
+Notes:
+- Estimated duration: 28h(14+14)
+
+----------------------------------------------------------------------------------------
+
+WP number: WP15
+Title: Final integration, reproducibility and result organization
+
+Goal:
+Fuse all components into a reproducible project package. (We prefer to use our Git repository.) Organize the final plots, analysis results, accuracy tables, success rate summaries, query count summaries, Grad-CAM visualizations, and README instructions. Perform final reproducibility checks and document the limitations of the implemented methods.
+
+Tasks / implementation steps:
+- Final clean / attacked accuracy tables 5h
+- Attack success rate summary 4h
+- Query-efficiency summary for black-box attack 4h
+- Final plots and visualizations 5h
+- Code cleanup and module integration 4h
+- README and run instructions 3h
+- Reproducibility checks 3h
+- Final limitation discussion 2h
+
+Expected deliverables:
+- Complete reproducible codebase
+- Final evaluation tables
+- Final visualizations
+- Robustness and explainability summary
+
+Relevant files or folders:
+TBD — not specified in source spreadsheet.
+
+Validation / acceptance criteria:
+TBD — not specified in source spreadsheet.
+
+Dependencies:
+TBD — not specified in source spreadsheet.
+
+Status:
+TBD — not specified in source spreadsheet.
+
+Notes:
+- Estimated duration: 30h(15+15)
+
+----------------------------------------------------------------------------------------
+
+Spreadsheet summary row:
+Summary: The time estimates for each WP and subtask listed above are our projections. Actual durations may vary slightly during project implementation, but the total time will definitely adhere to the rule of 180 hours per FP.
+Technical workload only, excluding final report and poster.
+Total estimated duration: 360h(180+180)
