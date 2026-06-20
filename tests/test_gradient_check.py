@@ -2,7 +2,7 @@ from collections.abc import Callable
 
 import numpy as np
 
-from src.layers import Linear
+from src.layers import Conv2D, Linear
 
 
 def _centered_finite_difference(
@@ -59,6 +59,49 @@ def test_linear_backward_matches_numerical_gradients() -> None:
         objective,
     )
     numerical_grad_bias = _centered_finite_difference(layer.bias, objective)
+
+    assert _relative_error(analytical_grad_input, numerical_grad_input) < 1e-4
+    assert _relative_error(analytical_grad_weight, numerical_grad_weight) < 1e-4
+    assert _relative_error(analytical_grad_bias, numerical_grad_bias) < 1e-4
+
+
+def test_conv2d_backward_matches_numerical_gradients() -> None:
+    rng = np.random.default_rng(7)
+    layer = Conv2D(
+        in_channels=1,
+        out_channels=1,
+        kernel_size=2,
+        rng=rng,
+    )
+    layer.weights = rng.uniform(0.5, 1.5, size=(1, 1, 2, 2))
+    layer.bias = rng.uniform(0.5, 1.5, size=1)
+    inputs = rng.uniform(0.5, 1.5, size=(1, 1, 3, 3))
+    grad_out = rng.uniform(0.5, 1.5, size=(1, 1, 2, 2))
+
+    layer.forward(inputs)
+    analytical_grad_input = layer.backward(grad_out).copy()
+    analytical_grad_weight = layer.grad_weight.copy()
+    analytical_grad_bias = layer.grad_bias.copy()
+
+    def objective() -> float:
+        return float(np.sum(layer.forward(inputs) * grad_out))
+
+    epsilon = 1e-3
+    numerical_grad_input = _centered_finite_difference(
+        inputs,
+        objective,
+        epsilon,
+    )
+    numerical_grad_weight = _centered_finite_difference(
+        layer.weights,
+        objective,
+        epsilon,
+    )
+    numerical_grad_bias = _centered_finite_difference(
+        layer.bias,
+        objective,
+        epsilon,
+    )
 
     assert _relative_error(analytical_grad_input, numerical_grad_input) < 1e-4
     assert _relative_error(analytical_grad_weight, numerical_grad_weight) < 1e-4
