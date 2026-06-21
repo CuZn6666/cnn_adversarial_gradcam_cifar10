@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
+
 import numpy as np
 
 from src.losses import SoftmaxCrossEntropyLoss
@@ -36,3 +38,33 @@ def evaluate_batch(
     predictions = np.argmax(logits, axis=1)
     accuracy = float(np.mean(predictions == labels))
     return loss, accuracy
+
+
+def evaluate_batches(
+    model: CompactCNN,
+    loss_function: SoftmaxCrossEntropyLoss,
+    batches: Iterable[tuple[np.ndarray, np.ndarray]],
+) -> tuple[float, float]:
+    """Evaluate multiple batches with sample-weighted aggregation."""
+    total_weighted_loss = 0.0
+    total_correct = 0.0
+    total_samples = 0
+
+    for images, labels in batches:
+        batch_loss, batch_accuracy = evaluate_batch(
+            model,
+            loss_function,
+            images,
+            labels,
+        )
+        batch_size = labels.shape[0]
+        total_weighted_loss += batch_loss * batch_size
+        total_correct += batch_accuracy * batch_size
+        total_samples += batch_size
+
+    if total_samples == 0:
+        raise ValueError("evaluate_batches requires at least one sample.")
+
+    mean_loss = total_weighted_loss / total_samples
+    accuracy = total_correct / total_samples
+    return float(mean_loss), float(accuracy)

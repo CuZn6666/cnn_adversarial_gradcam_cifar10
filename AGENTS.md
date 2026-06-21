@@ -97,9 +97,13 @@ Before starting a new Work Package or larger task:
 git status
 ```
 
-After completing any implementation, test, documentation update, or refactor
-task, do not automatically run `git add`, `git commit`, or `git push` unless
-the user explicitly requests those operations.
+After completing a stable implementation, test, documentation update, or
+refactor task, automatically run the relevant tests and `git diff --check`.
+If validation passes and the working tree contains only expected changes,
+stage only the explicit task files, create a clear commit, and push the current
+upstream branch. Do not perform these Git operations when the user explicitly
+asks not to commit or push, when validation fails, or when unrelated changes
+cannot be separated safely.
 
 At the end of each task, report:
 
@@ -110,10 +114,8 @@ At the end of each task, report:
 5. scope confirmation,
 6. current Git status.
 
-If the working tree contains only the expected changes and the relevant tests
-pass, ask whether the user wants to proceed with Git operations. Provide the
-exact recommended commands and prefer explicit file paths instead of
-`git add .`.
+Prefer explicit file paths and never use `git add .`. Always report the exact
+files committed, commit hash, push result, and final Git status.
 
 Suggested Git workflow:
 
@@ -126,9 +128,8 @@ git push
 git status -sb
 ```
 
-After a stable Work Package step is completed and validated, suggest a Git
-commit, but do not stage, commit, or push automatically unless explicitly
-instructed.
+After a stable Work Package step is completed and validated, use the automatic
+Git workflow above unless the user has opted out for that task.
 
 Suggested commit style:
 

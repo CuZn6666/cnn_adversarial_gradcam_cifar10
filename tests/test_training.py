@@ -3,7 +3,7 @@ import numpy as np
 from src.losses import SoftmaxCrossEntropyLoss
 from src.models import CompactCNN
 from src.optimizers import SGD
-from src.training import evaluate_batch, train_step
+from src.training import evaluate_batch, evaluate_batches, train_step
 
 
 def _synthetic_batch() -> tuple[np.ndarray, np.ndarray]:
@@ -183,6 +183,78 @@ def test_evaluate_batch_is_deterministic() -> None:
         SoftmaxCrossEntropyLoss(),
         images,
         labels,
+    )
+
+    assert first_result == second_result
+
+
+def test_evaluate_batches_uses_sample_weighted_aggregation_without_updates() -> None:
+    model = CompactCNN(seed=42)
+    for parameter in _model_parameters(model):
+        parameter.fill(0.0)
+    model.classifier.bias[3] = 1.0
+    batches = (
+        (
+            np.zeros((1, 3, 32, 32), dtype=np.float32),
+            np.array([3], dtype=np.int64),
+        ),
+        (
+            np.zeros((3, 3, 32, 32), dtype=np.float32),
+            np.array([1, 1, 3], dtype=np.int64),
+        ),
+    )
+    parameters_before = tuple(
+        parameter.copy() for parameter in _model_parameters(model)
+    )
+    reference_loss_function = SoftmaxCrossEntropyLoss()
+    first_loss, _ = evaluate_batch(
+        model,
+        reference_loss_function,
+        *batches[0],
+    )
+    second_loss, _ = evaluate_batch(
+        model,
+        reference_loss_function,
+        *batches[1],
+    )
+    expected_weighted_loss = (first_loss + 3.0 * second_loss) / 4.0
+    simple_batch_mean = (first_loss + second_loss) / 2.0
+
+    mean_loss, accuracy = evaluate_batches(
+        model,
+        SoftmaxCrossEntropyLoss(),
+        batches,
+    )
+
+    assert np.isfinite(mean_loss)
+    assert 0.0 <= accuracy <= 1.0
+    np.testing.assert_allclose(mean_loss, expected_weighted_loss)
+    assert not np.isclose(mean_loss, simple_batch_mean)
+    assert accuracy == 0.5
+    for before, parameter in zip(
+        parameters_before,
+        _model_parameters(model),
+    ):
+        np.testing.assert_array_equal(parameter, before)
+
+
+def test_evaluate_batches_is_deterministic() -> None:
+    images, labels = _synthetic_batch()
+    batches = (
+        (images[:1], labels[:1]),
+        (images[1:], labels[1:]),
+    )
+    model = CompactCNN(seed=42)
+
+    first_result = evaluate_batches(
+        model,
+        SoftmaxCrossEntropyLoss(),
+        batches,
+    )
+    second_result = evaluate_batches(
+        model,
+        SoftmaxCrossEntropyLoss(),
+        batches,
     )
 
     assert first_result == second_result
