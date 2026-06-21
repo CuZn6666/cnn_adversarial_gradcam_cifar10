@@ -86,3 +86,37 @@ def test_train_step_is_deterministic_for_same_seed_and_input() -> None:
     ):
         assert first_item[0] == second_item[0]
         np.testing.assert_array_equal(first_item[1], second_item[1])
+
+
+def test_repeated_batch_training_reduces_loss() -> None:
+    images, labels = _synthetic_batch()
+    model = CompactCNN(seed=42)
+    loss_function = SoftmaxCrossEntropyLoss()
+    optimizer = SGD(learning_rate=5e-4)
+
+    initial_loss = loss_function.forward(model.forward(images), labels)
+    step_losses = [
+        train_step(
+            model,
+            loss_function,
+            optimizer,
+            images,
+            labels,
+        )
+        for _ in range(3)
+    ]
+    final_loss = loss_function.forward(model.forward(images), labels)
+
+    assert np.isfinite([initial_loss, *step_losses, final_loss]).all()
+    assert final_loss < initial_loss
+    assert all(
+        np.isfinite(parameter).all()
+        for parameter in (
+            model.conv1.weights,
+            model.conv1.bias,
+            model.conv2.weights,
+            model.conv2.bias,
+            model.classifier.weights,
+            model.classifier.bias,
+        )
+    )
