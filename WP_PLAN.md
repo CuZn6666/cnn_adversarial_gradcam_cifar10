@@ -37,7 +37,7 @@ Individual estimates are planning values and may vary during implementation.
 | WP4  | Gradient Checks and Input-Gradient Support               | completed        |
 | WP5  | Baseline training and clean evaluation                   | completed        |
 | WP6  | Focused Runtime Bottleneck Handling                      | completed        |
-| WP7  | FGSM Attack and Input-Gradient Visualization             | in progress      |
+| WP7  | FGSM Attack and Input-Gradient Visualization             | completed        |
 | WP8  | FGSM robustness evaluation                               | planned          |
 | WP9  | PGD Attack Implementation                                | planned          |
 | WP10 | PGD Robustness Evaluation and Comparison                 | planned          |
@@ -74,10 +74,17 @@ Under the fixed local profiling setup, `Conv2D.backward` improved from
 `train_step` improved from `0.070350708` to `0.001886028` seconds per iteration
 (`37.30x`). Correctness checks passed.
 
-WP7 is now in progress at the documentation and scope-preparation stage.
-FGSM source code, tests, and example generation have not started. The next
-small step is a deterministic input-gradient helper and tests; WP8 remains
-planned.
+WP7 is completed. It provides deterministic loss-to-input gradients,
+normalized input-gradient maps, minimal untargeted FGSM with clipping and
+`L_inf` validation, four-part qualitative visualization saving, and a
+controlled runner that defaults to one CIFAR-10 test example with
+`epsilon=8/255`.
+
+WP8 remains planned and has not started. Before any epsilon sweep, many-image
+evaluation, repeated-seed run, or larger robustness experiment, ask whether to
+use the university-provided ZITI cluster. WP8 preparation must define the
+evaluation subset, epsilon values, metrics, and runtime plan before code or
+experiments begin.
 
 ## Work Package Details
 
@@ -554,7 +561,8 @@ Completed for the controlled NumPy baseline pipeline. Synthetic orchestration
 and a controlled real CIFAR-10 64/32 subset run are implemented, tested, and
 executed. Full CIFAR-10 multi-epoch training is deferred because the current
 manual NumPy convolution runtime is not practical for that run. WP6 is now
-completed. Attacks and Grad-CAM have not started.
+completed. WP7 FGSM implementation is completed; PGD, black-box attacks, and
+Grad-CAM have not started.
 
 ---
 
@@ -647,8 +655,7 @@ Status:
 
 Completed. Initial profiling identified `Conv2D.backward` as the single
 bottleneck target. The focused NumPy optimization and fixed before/after
-measurements are complete, and the scoped correctness tests pass. WP7
-implementation has not started.
+measurements are complete, and the scoped correctness tests pass.
 
 ---
 
@@ -672,15 +679,21 @@ Relevant folders/files:
 ```text
 src/models/compact_cnn.py
 src/losses/cross_entropy.py
-src/attacks/                    # planned; do not create before implementation
-src/visualization.py            # planned if a shared helper is needed
-experiments/fgsm/               # planned small-example runner
+src/input_gradients.py
+src/attacks/__init__.py
+src/attacks/fgsm.py
+src/visualization.py
+src/checkpointing.py
+experiments/fgsm/__init__.py
+experiments/fgsm/generate_examples.py
 tests/test_backward.py
 tests/test_gradient_check.py
-tests/test_fgsm.py              # planned
-tests/test_input_gradients.py   # planned if separate coverage is needed
+tests/test_fgsm.py
+tests/test_input_gradients.py
+tests/test_visualization.py
+tests/test_fgsm_examples.py
 results/figures/
-deliverables/WP7/
+deliverables/WP7/wp7_summary.md
 ```
 
 Suggested implementation order:
@@ -688,7 +701,8 @@ Suggested implementation order:
 1. Compute loss gradients with respect to input images — 5h.
 2. Visualize input gradients — 5h.
 3. Implement the FGSM attack — 8h.
-4. Generate adversarial examples for selected epsilon values — 7h.
+4. Generate controlled qualitative adversarial examples with a fixed
+   demonstration epsilon — 7h.
 5. Save adversarial examples and perturbation maps — 5h.
 6. Debug and validate FGSM behavior — 4h.
 
@@ -717,8 +731,8 @@ Dependencies:
 * WP4 validates finite, nonzero input gradients.
 * WP5 provides model checkpoint and clean evaluation infrastructure.
 * WP6 improves backward runtime and is completed.
-* The attack-label convention and initial small demonstration epsilon values
-  must be documented before generating real examples.
+* The controlled runner uses the ground-truth class label and defaults to one
+  example with `epsilon=8/255`.
 
 Explicit non-goals:
 
@@ -734,8 +748,11 @@ Estimated duration:
 
 Status:
 
-In progress at the documentation and scope-preparation stage. FGSM source code,
-tests, and example generation have not started.
+Completed. Input-gradient computation and maps, minimal FGSM, qualitative
+visualization saving, and the controlled one-example runner are implemented
+and validated. The runner requires an existing local CIFAR-10 test batch and
+checkpoint and never downloads data or trains a model. Quantitative
+robustness evaluation remains deferred to WP8.
 
 ---
 

@@ -403,8 +403,9 @@ qualitative visualizations without performing the WP8 robustness evaluation.
 
 Status:
 
-In progress at the documentation stage. FGSM implementation and tests have not
-started.
+Completed. Input-gradient computation and maps, minimal FGSM, qualitative
+visualization saving, and the controlled one-example runner are implemented
+and validated.
 
 Expected results:
 
@@ -420,8 +421,49 @@ Expected results:
   visualizations can be saved for a small number of examples.
 * Model parameters are not updated during attack generation.
 
-Initial lightweight commands remain `TBD` until the WP7 test files and
-small-example runner are created.
+Final lightweight commands:
+
+```bash
+MPLCONFIGDIR=/tmp/cnn-wp7-matplotlib .venv/bin/python -m pytest tests/test_input_gradients.py -v
+.venv/bin/python -m pytest tests/test_fgsm.py -v
+MPLCONFIGDIR=/tmp/cnn-wp7-matplotlib .venv/bin/python -m pytest tests/test_visualization.py -v
+MPLCONFIGDIR=/tmp/cnn-wp7-matplotlib .venv/bin/python -m pytest tests/test_fgsm_examples.py -v
+.venv/bin/python -m pytest tests/test_backward.py tests/test_integration.py tests/test_losses.py -v
+```
+
+Controlled local example command:
+
+```bash
+MPLCONFIGDIR=/tmp/cnn-wp7-matplotlib .venv/bin/python -m experiments.fgsm.generate_examples
+```
+
+The command defaults to one deterministic CIFAR-10 test example,
+`epsilon=8/255`, the checkpoint
+`results/checkpoints/cifar10_subset_baseline.npz`, and the output directory
+`results/figures/fgsm/`. It requires an existing local CIFAR-10
+`test_batch` and checkpoint, does not download data, and does not train or
+update the model.
+
+Expected qualitative artifact names:
+
+```text
+results/figures/fgsm/fgsm_example_000_clean.png
+results/figures/fgsm/fgsm_example_000_adversarial.png
+results/figures/fgsm/fgsm_example_000_input_gradient.png
+results/figures/fgsm/fgsm_example_000_perturbation.png
+```
+
+The automated runner smoke test uses synthetic arrays and a temporary
+directory, so the test suite does not depend on CIFAR-10 data, an external
+checkpoint, or committed generated images.
+
+Latest WP7 final validation:
+
+```text
+WP7 input-gradient, FGSM, visualization, and runner tests: 25 passed
+Backward, loss integration, and loss tests: 21 passed
+Controlled local CIFAR-10 example: 1 example generated successfully in /tmp
+```
 
 WP7 boundary:
 

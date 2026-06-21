@@ -36,32 +36,40 @@ The project is organized by Work Packages. Codex must follow `WP_PLAN.md` before
   focused NumPy implementation.
 * Fixed profiling reports a `207.72x` `Conv2D.backward` speedup and a `37.30x`
   `train_step` speedup while scoped correctness tests pass.
-* WP7 is in progress at the documentation and scope-preparation stage.
-* FGSM source code and tests have not started.
-* The next technical target is a deterministic input-gradient helper and tests.
-* Adversarial attacks, Grad-CAM, and final analysis have not been started.
+* WP7 is completed.
+* Deterministic input-gradient computation, input-gradient maps, minimal FGSM,
+  qualitative visualization saving, and a controlled one-example runner are
+  implemented and tested.
+* WP8 has not started. Epsilon sweeps, accuracy-versus-epsilon evaluation,
+  attack success-rate aggregation, and larger robustness evaluation remain
+  WP8 work.
+* PGD, black-box attacks, Grad-CAM, and final analysis have not been started.
 
 ## Current Development Priority
 
-WP6 is closed. WP7 documentation preparation is complete, but implementation
-has not started.
+WP7 is closed. WP8 is the next planned Work Package, but implementation has not
+started.
 
-Before starting WP7, Codex must:
+Before starting WP8, Codex must:
 
 1. Read `WP_PLAN.md`.
 2. Read `TESTING.md`.
 3. Inspect the current repository structure.
-4. Review the WP7 goal, dependencies, validation criteria, and selected attack
-   configuration.
+4. Review the WP8 goal, dependencies, validation criteria, evaluation subset,
+   epsilon values, metrics, and output artifacts.
 5. Make a small implementation plan before editing code.
+6. Ask whether to use the university-provided ZITI cluster before implementing
+   or running any many-image evaluation, epsilon sweep, repeated-seed
+   experiment, or large-batch evaluation.
 
 Do not start PGD, black-box attacks, Grad-CAM, or later Work Packages while
-beginning WP7.
+beginning WP8.
 
-WP7 is limited to FGSM implementation, input-gradient visualization, and a
-small number of qualitative clean/adversarial/perturbation examples. Epsilon
-sweeps, attack success-rate aggregation, accuracy-versus-epsilon experiments,
-and larger robustness evaluation belong to WP8.
+WP7 remains limited to the completed FGSM implementation, input-gradient
+visualization, and a small number of qualitative
+clean/adversarial/perturbation examples. WP8 owns epsilon sweeps, attack
+success-rate aggregation, accuracy-versus-epsilon experiments, and larger
+robustness evaluation.
 
 ## General Working Rules
 
