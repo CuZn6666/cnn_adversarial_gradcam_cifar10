@@ -3,7 +3,7 @@ import numpy as np
 from src.losses import SoftmaxCrossEntropyLoss
 from src.models import CompactCNN
 from src.optimizers import SGD
-from src.training import train_step
+from src.training import evaluate_batch, train_step
 
 
 def _synthetic_batch() -> tuple[np.ndarray, np.ndarray]:
@@ -13,6 +13,17 @@ def _synthetic_batch() -> tuple[np.ndarray, np.ndarray]:
     )
     labels = np.array([1, 4], dtype=np.int64)
     return images, labels
+
+
+def _model_parameters(model: CompactCNN) -> tuple[np.ndarray, ...]:
+    return (
+        model.conv1.weights,
+        model.conv1.bias,
+        model.conv2.weights,
+        model.conv2.bias,
+        model.classifier.weights,
+        model.classifier.bias,
+    )
 
 
 def test_train_step_returns_finite_loss_and_updates_parameters() -> None:
@@ -111,12 +122,67 @@ def test_repeated_batch_training_reduces_loss() -> None:
     assert final_loss < initial_loss
     assert all(
         np.isfinite(parameter).all()
-        for parameter in (
-            model.conv1.weights,
-            model.conv1.bias,
-            model.conv2.weights,
-            model.conv2.bias,
-            model.classifier.weights,
-            model.classifier.bias,
-        )
+        for parameter in _model_parameters(model)
     )
+
+
+def test_evaluate_batch_returns_finite_loss_and_valid_accuracy() -> None:
+    images, labels = _synthetic_batch()
+
+    loss, accuracy = evaluate_batch(
+        CompactCNN(seed=42),
+        SoftmaxCrossEntropyLoss(),
+        images,
+        labels,
+    )
+
+    assert np.ndim(loss) == 0
+    assert np.isfinite(loss)
+    assert 0.0 <= accuracy <= 1.0
+
+
+def test_evaluate_batch_computes_controlled_accuracy_without_updates() -> None:
+    images = np.zeros((2, 3, 32, 32), dtype=np.float32)
+    labels = np.array([3, 1], dtype=np.int64)
+    model = CompactCNN(seed=42)
+    for parameter in _model_parameters(model):
+        parameter.fill(0.0)
+    model.classifier.bias[3] = 1.0
+    parameters_before = tuple(
+        parameter.copy() for parameter in _model_parameters(model)
+    )
+
+    loss, accuracy = evaluate_batch(
+        model,
+        SoftmaxCrossEntropyLoss(),
+        images,
+        labels,
+    )
+
+    assert np.isfinite(loss)
+    assert accuracy == 0.5
+    for before, parameter in zip(
+        parameters_before,
+        _model_parameters(model),
+    ):
+        np.testing.assert_array_equal(parameter, before)
+
+
+def test_evaluate_batch_is_deterministic() -> None:
+    images, labels = _synthetic_batch()
+    model = CompactCNN(seed=42)
+
+    first_result = evaluate_batch(
+        model,
+        SoftmaxCrossEntropyLoss(),
+        images,
+        labels,
+    )
+    second_result = evaluate_batch(
+        model,
+        SoftmaxCrossEntropyLoss(),
+        images,
+        labels,
+    )
+
+    assert first_result == second_result

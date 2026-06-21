@@ -22,3 +22,17 @@ def train_step(
     parameter_gradient_pairs = model.named_parameters_and_gradients()
     optimizer.step(parameter_gradient_pairs)
     return loss
+
+
+def evaluate_batch(
+    model: CompactCNN,
+    loss_function: SoftmaxCrossEntropyLoss,
+    images: np.ndarray,
+    labels: np.ndarray,
+) -> tuple[float, float]:
+    """Evaluate one batch without updating model parameters."""
+    logits = model.forward(images)
+    loss = loss_function.forward(logits, labels)
+    predictions = np.argmax(logits, axis=1)
+    accuracy = float(np.mean(predictions == labels))
+    return loss, accuracy
