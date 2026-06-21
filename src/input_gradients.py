@@ -8,6 +8,33 @@ from src.losses import SoftmaxCrossEntropyLoss
 from src.models import CompactCNN
 
 
+def input_gradient_map(
+    grad_input: np.ndarray,
+    normalize: bool = True,
+) -> np.ndarray:
+    """Convert NCHW input gradients to per-image spatial maps."""
+    if grad_input.ndim != 4 or any(size == 0 for size in grad_input.shape):
+        raise ValueError(
+            "input_gradient_map expects a non-empty NCHW gradient tensor."
+        )
+    if not np.isfinite(grad_input).all():
+        raise ValueError("Input gradients must contain only finite values.")
+
+    gradient_map = np.mean(np.abs(grad_input), axis=1)
+    if not normalize:
+        return gradient_map
+
+    maxima = gradient_map.max(axis=(1, 2), keepdims=True)
+    normalized_map = np.zeros_like(gradient_map)
+    np.divide(
+        gradient_map,
+        maxima,
+        out=normalized_map,
+        where=maxima > 0,
+    )
+    return normalized_map
+
+
 def compute_input_gradient(
     model: CompactCNN,
     loss_function: SoftmaxCrossEntropyLoss,
