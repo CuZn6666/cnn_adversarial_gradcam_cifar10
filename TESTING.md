@@ -205,40 +205,83 @@ difference epsilon to account for its `float32` forward output.
 
 Status:
 
-Planned. This is the next target. No optimizer or training implementation has
-started.
+In progress. The NumPy optimizer, training/evaluation helpers, checkpointing,
+metrics persistence, plotting, baseline configuration, and deterministic
+synthetic baseline runner are implemented and validated. Real CIFAR-10
+subset/full baseline training has not been run.
 
 Goal:
 
 Check that the model can train and that metrics are saved.
 
-Initial validation order:
+Validation order:
 
-1. Add a deterministic optimizer parameter-update unit test.
-2. Add a short training smoke test on a small subset or repeated mini-batch.
-3. Add clean evaluation checks.
-4. Validate checkpoint, metric, and plot outputs.
-5. Run the full test suite.
+1. Validate deterministic optimizer parameter updates.
+2. Validate single- and multi-batch training and clean evaluation.
+3. Validate checkpoint, metric, plot, and baseline configuration helpers.
+4. Validate the deterministic synthetic baseline runner.
+5. Execute the tiny synthetic smoke run and verify its artifacts.
+6. Run the full test suite.
 
-Planned commands:
+Relevant test commands:
 
 ```bash
 .venv/bin/python -m pytest tests/test_optimizer.py -v
 .venv/bin/python -m pytest tests/test_training.py -v
+.venv/bin/python -m pytest tests/test_checkpointing.py -v
+.venv/bin/python -m pytest tests/test_metrics.py -v
+.venv/bin/python -m pytest tests/test_plotting.py -v
+.venv/bin/python -m pytest tests/test_config.py -v
+.venv/bin/python -m pytest tests/test_baseline_runner.py -v
 .venv/bin/python -m pytest tests/ -v
 ```
 
-The baseline training entry point and configuration command remain `TBD` until
-their files are created.
+Tiny deterministic synthetic baseline command:
+
+```bash
+.venv/bin/python -c 'from experiments.baseline.train_baseline import run_synthetic_baseline; result = run_synthetic_baseline(); print(result["final_metrics"]); print(result["checkpoint_path"]); print(result["metrics_path"]); print(result["loss_curve_path"]); print(result["accuracy_curve_path"])'
+```
+
+This command uses `BASELINE_CONFIG` and synthetic arrays generated inside the
+runner. It does not load CIFAR-10.
+
+Expected local artifact paths:
+
+```text
+results/checkpoints/synthetic_baseline.npz
+results/logs/synthetic_metrics.json
+results/figures/loss_curve.png
+results/figures/accuracy_curve.png
+```
+
+The checkpoint is ignored by the repository's `*.npz` rule. Generated smoke-run
+artifacts should not be force-added. Regenerate them with the command above.
 
 Expected results:
 
-* Training starts without runtime errors.
-* Loss decreases at least on a small subset or short run.
-* Accuracy is above random chance after training.
+* Synthetic training orchestration starts without runtime errors.
+* Loss decreases in the repeated-batch smoke test.
 * Clean loss is finite and accuracy is in `[0, 1]`.
 * Checkpoints, metrics, and loss/accuracy curves are saved under `results/`.
 * Existing WP1–WP4 tests continue to pass.
+* The full suite reports 107 passed.
+
+Latest synthetic artifact-validation run:
+
+```text
+seed: 42
+batch_size: 8
+epochs: 1
+train_samples: 64
+eval_samples: 32
+train_loss: 2.3956282436847687
+train_accuracy: 0.09375
+eval_loss: 2.396390974521637
+eval_accuracy: 0.15625
+```
+
+These metrics are only a deterministic synthetic smoke-run result. They are
+not a CIFAR-10 accuracy result and must not be presented as the full baseline.
 
 For quick local testing, prefer a small number of batches or epochs.
 

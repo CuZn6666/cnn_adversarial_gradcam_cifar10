@@ -35,7 +35,7 @@ Individual estimates are planning values and may vary during implementation.
 | WP2  | Compact CNN forward implementation                       | completed        |
 | WP3  | Manual Backward Implementation                           | completed        |
 | WP4  | Gradient Checks and Input-Gradient Support               | completed        |
-| WP5  | Baseline training and clean evaluation                   | planned          |
+| WP5  | Baseline training and clean evaluation                   | in progress      |
 | WP6  | Focused Runtime Bottleneck Handling                      | planned          |
 | WP7  | FGSM Attack and Input-Gradient Visualization             | planned          |
 | WP8  | FGSM robustness evaluation                               | planned          |
@@ -50,17 +50,20 @@ Individual estimates are planning values and may vary during implementation.
 ## Immediate Next Step
 
 WP2 forward implementation, WP3 manual backward implementation, and WP4
-gradient validation are completed.
+gradient validation are completed. WP5 is in progress.
 
-WP4 numerical gradient checks pass for `Linear`, `Conv2D`, and
-`SoftmaxCrossEntropyLoss` with `relative_error < 1e-4`. The full
-loss-to-`CompactCNN` input-gradient pipeline also produces finite, nonzero input
-gradients. The latest full validation result is 53 passed.
+WP5 now includes the SGD optimizer, model parameter access, single- and
+multi-batch training and clean evaluation helpers, checkpointing, JSON metrics
+persistence, metric plotting, baseline configuration, and a deterministic
+synthetic baseline runner. The synthetic smoke run has been executed with
+`seed=42`, `batch_size=8`, `epochs=1`, 64 training samples, and 32 evaluation
+samples. It generated a checkpoint, metrics JSON, and loss/accuracy curves
+under `results/`.
 
-The next target is WP5. Its first small step should define and test the
-optimizer and parameter-update API. WP6–WP15 remain planned. Adversarial
-attacks, Grad-CAM, and final integration must not start before their
-prerequisite Work Packages are completed and validated.
+This synthetic run validates orchestration and artifact generation only. It is
+not a real or full CIFAR-10 baseline. The next controlled WP5 step is a small
+real CIFAR-10 subset baseline, followed later by the full baseline only after
+the subset run is validated. WP6–WP15 remain planned.
 
 ## Work Package Details
 
@@ -464,14 +467,24 @@ src/data/
 src/layers/forward.py
 src/losses/cross_entropy.py
 src/models/compact_cnn.py
-src/optimizers/                 # planned; optimizer choice is TBD
-experiments/baseline/           # training and evaluation scripts planned
-tests/test_optimizer.py         # planned
-tests/test_training.py          # planned
+src/optimizers/
+src/training.py
+src/checkpointing.py
+src/metrics.py
+src/plotting.py
+experiments/baseline/train_baseline.py
+tests/test_optimizer.py
+tests/test_training.py
+tests/test_checkpointing.py
+tests/test_metrics.py
+tests/test_plotting.py
+tests/test_config.py
+tests/test_baseline_runner.py
 results/checkpoints/
 results/logs/
 results/figures/
 results/tables/
+deliverables/WP5/baseline_smoke_run.md
 ```
 
 Suggested implementation order:
@@ -487,13 +500,17 @@ Validation:
 * Optimizer updates match a deterministic hand-computed parameter-update
   example.
 * A short deterministic training run completes without runtime errors and
-  decreases loss on a small subset or repeated mini-batch.
+  decreases loss on a repeated mini-batch.
 * Clean evaluation returns finite loss and accuracy in the valid range
   `[0, 1]`.
 * Fixed seeds reproduce the intended short-run data order and initialization.
-* Checkpoints, metrics, and loss/accuracy curves are written to documented
-  locations under `results/`.
-* Existing WP1–WP4 tests continue to pass.
+* The synthetic baseline runner produces a checkpoint, JSON metrics, and
+  loss/accuracy curves at documented locations under `results/`.
+* `tests/test_baseline_runner.py` validates deterministic orchestration without
+  loading CIFAR-10.
+* The full test suite reports 107 passed after the synthetic smoke-run
+  orchestration was added.
+* Real CIFAR-10 subset and full-baseline accuracy remain unvalidated.
 
 Dependencies:
 
@@ -501,8 +518,8 @@ Dependencies:
 * WP2 model and loss forward passes are completed.
 * WP3 parameter gradients and full backward integration are completed.
 * WP4 numerical gradient checks and input-gradient validation are completed.
-* The optimizer type and baseline hyperparameters remain `TBD` and must be
-  selected before implementation.
+* The current optimizer is NumPy SGD and the local smoke-run hyperparameters
+  are defined by `BaselineConfig`.
 * Local development should use short smoke runs; longer training should use
   the configured compute environment.
 
@@ -512,7 +529,10 @@ Estimated duration:
 
 Status:
 
-Planned. This is the next target; training has not started.
+In progress. The NumPy training/evaluation infrastructure and deterministic
+synthetic baseline smoke run are implemented and validated. The synthetic run
+is not a real or full CIFAR-10 baseline. A controlled real CIFAR-10 subset run
+and the eventual full clean baseline remain pending.
 
 ---
 
