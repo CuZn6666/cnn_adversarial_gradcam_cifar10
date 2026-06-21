@@ -35,6 +35,7 @@ class CompactCNN:
             rng=rng,
         )
         self._logits_shape: tuple[int, ...] | None = None
+        self._backward_completed = False
 
     def forward(self, inputs: np.ndarray) -> np.ndarray:
         expected_shape = (IMAGE_CHANNELS, IMAGE_HEIGHT, IMAGE_WIDTH)
@@ -49,6 +50,7 @@ class CompactCNN:
         features = self.flatten(features)
         logits = self.classifier(features)
         self._logits_shape = logits.shape
+        self._backward_completed = False
         return logits
 
     def backward(self, grad_logits: np.ndarray) -> np.ndarray:
@@ -68,6 +70,34 @@ class CompactCNN:
         gradients = self.conv2.backward(gradients)
         gradients = self.pool1.backward(gradients)
         gradients = self.relu1.backward(gradients)
-        return self.conv1.backward(gradients)
+        grad_input = self.conv1.backward(gradients)
+        self._backward_completed = True
+        return grad_input
+
+    def named_parameters_and_gradients(
+        self,
+    ) -> tuple[tuple[str, np.ndarray, np.ndarray], ...]:
+        if not self._backward_completed:
+            raise RuntimeError(
+                "CompactCNN.named_parameters_and_gradients requires "
+                "a completed backward call."
+            )
+
+        return (
+            ("conv1.weights", self.conv1.weights, self.conv1.grad_weight),
+            ("conv1.bias", self.conv1.bias, self.conv1.grad_bias),
+            ("conv2.weights", self.conv2.weights, self.conv2.grad_weight),
+            ("conv2.bias", self.conv2.bias, self.conv2.grad_bias),
+            (
+                "classifier.weights",
+                self.classifier.weights,
+                self.classifier.grad_weight,
+            ),
+            (
+                "classifier.bias",
+                self.classifier.bias,
+                self.classifier.grad_bias,
+            ),
+        )
 
     __call__ = forward

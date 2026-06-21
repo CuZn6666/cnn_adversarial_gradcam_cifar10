@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from configs.default_config import IMAGE_CHANNELS, IMAGE_HEIGHT, IMAGE_WIDTH
+from src.losses import SoftmaxCrossEntropyLoss
 from src.models import CompactCNN
 
 
@@ -85,3 +86,70 @@ def test_compact_cnn_backward_rejects_wrong_grad_logits_shape(
         match="Logits gradient shape does not match CompactCNN output.",
     ):
         model.backward(wrong_grad_logits)
+
+
+def test_compact_cnn_named_parameters_and_gradients_requires_backward() -> None:
+    model = CompactCNN(seed=42)
+
+    with pytest.raises(
+        RuntimeError,
+        match=(
+            r"CompactCNN\.named_parameters_and_gradients requires "
+            r"a completed backward call\."
+        ),
+    ):
+        model.named_parameters_and_gradients()
+
+
+def test_compact_cnn_named_parameters_and_gradients_returns_expected_items() -> None:
+    inputs = np.random.default_rng(7).random(
+        (2, IMAGE_CHANNELS, IMAGE_HEIGHT, IMAGE_WIDTH),
+        dtype=np.float32,
+    )
+    labels = np.array([1, 4], dtype=np.int64)
+    model = CompactCNN(seed=42)
+    loss_function = SoftmaxCrossEntropyLoss()
+
+    logits = model.forward(inputs)
+    loss_function.forward(logits, labels)
+    model.backward(loss_function.backward())
+    named_pairs = model.named_parameters_and_gradients()
+
+    assert len(named_pairs) == 6
+    assert [name for name, _, _ in named_pairs] == [
+        "conv1.weights",
+        "conv1.bias",
+        "conv2.weights",
+        "conv2.bias",
+        "classifier.weights",
+        "classifier.bias",
+    ]
+    for _, parameter, gradient in named_pairs:
+        assert parameter.shape == gradient.shape
+        assert np.isfinite(parameter).all()
+        assert np.isfinite(gradient).all()
+
+
+def test_compact_cnn_named_parameters_and_gradients_uses_latest_gradients() -> None:
+    inputs = np.random.default_rng(7).random(
+        (1, IMAGE_CHANNELS, IMAGE_HEIGHT, IMAGE_WIDTH),
+        dtype=np.float32,
+    )
+    model = CompactCNN(seed=42)
+    loss_function = SoftmaxCrossEntropyLoss()
+
+    logits = model.forward(inputs)
+    loss_function.forward(logits, np.array([1], dtype=np.int64))
+    model.backward(loss_function.backward())
+    first_pairs = model.named_parameters_and_gradients()
+    first_conv1_gradient = first_pairs[0][2]
+
+    logits = model.forward(inputs)
+    loss_function.forward(logits, np.array([7], dtype=np.int64))
+    model.backward(loss_function.backward())
+    second_pairs = model.named_parameters_and_gradients()
+    second_conv1_gradient = second_pairs[0][2]
+
+    assert first_conv1_gradient is not second_conv1_gradient
+    assert second_conv1_gradient is model.conv1.grad_weight
+    assert not np.array_equal(first_conv1_gradient, second_conv1_gradient)
