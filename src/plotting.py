@@ -70,6 +70,7 @@ def _save_curve(
 def plot_metrics(
     metrics_history: list[dict[str, Any]],
     output_dir: str | Path,
+    filename_prefix: str = "",
 ) -> tuple[Path, Path]:
     """Save loss and accuracy curves from an existing metrics history."""
     if not metrics_history:
@@ -91,8 +92,8 @@ def plot_metrics(
 
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
-    loss_path = output_path / "loss_curve.png"
-    accuracy_path = output_path / "accuracy_curve.png"
+    loss_path = output_path / f"{filename_prefix}loss_curve.png"
+    accuracy_path = output_path / f"{filename_prefix}accuracy_curve.png"
 
     _save_curve(epochs, train_loss, eval_loss, "Loss", loss_path)
     _save_curve(

@@ -60,3 +60,14 @@ def test_plot_metrics_rejects_empty_history(tmp_path) -> None:
         match="Metrics history must not be empty",
     ):
         plot_metrics([], tmp_path)
+
+
+def test_plot_metrics_supports_filename_prefix(tmp_path) -> None:
+    loss_path, accuracy_path = plot_metrics(
+        _metrics_history(),
+        tmp_path,
+        filename_prefix="cifar10_subset_",
+    )
+
+    assert loss_path.name == "cifar10_subset_loss_curve.png"
+    assert accuracy_path.name == "cifar10_subset_accuracy_curve.png"
