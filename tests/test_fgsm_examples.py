@@ -2,7 +2,11 @@ from pathlib import Path
 
 import numpy as np
 
-from experiments.fgsm.generate_examples import generate_fgsm_examples
+from configs.default_config import PROJECT_ROOT
+from experiments.fgsm.generate_examples import (
+    DEFAULT_OUTPUT_DIR,
+    generate_fgsm_examples,
+)
 from src.losses import SoftmaxCrossEntropyLoss
 from src.models import CompactCNN
 
@@ -74,3 +78,9 @@ def test_generate_fgsm_examples_creates_deterministic_artifacts(
         strict=True,
     ):
         np.testing.assert_array_equal(parameter, parameter_before)
+
+
+def test_default_output_directory_is_wp7_qualitative_results() -> None:
+    assert DEFAULT_OUTPUT_DIR == (
+        PROJECT_ROOT / "results" / "WP7" / "qualitative"
+    )

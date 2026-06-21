@@ -11,8 +11,8 @@ from configs.default_config import (
     CHECKPOINT_DIR,
     CIFAR10_EXTRACTED_DIR,
     DATA_DIR,
-    FIGURE_DIR,
     NUM_CLASSES,
+    PROJECT_ROOT,
     SEED,
 )
 from src.attacks import fgsm_attack
@@ -26,7 +26,7 @@ from src.visualization import save_fgsm_visualizations
 DEFAULT_EPSILON = 8.0 / 255.0
 DEFAULT_EXAMPLE_COUNT = 1
 DEFAULT_CHECKPOINT_PATH = CHECKPOINT_DIR / "cifar10_subset_baseline.npz"
-DEFAULT_OUTPUT_DIR = FIGURE_DIR / "fgsm"
+DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "results" / "WP7" / "qualitative"
 
 
 def _validate_examples(
