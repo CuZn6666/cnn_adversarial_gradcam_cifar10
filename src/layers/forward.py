@@ -95,37 +95,42 @@ class Conv2D:
             self._padded_inputs,
             dtype=grad_out.dtype,
         )
-        self.grad_weight = np.zeros_like(self.weights, dtype=grad_out.dtype)
         self.grad_bias = grad_out.sum(axis=(0, 2, 3))
 
-        for batch_index in range(self._input_shape[0]):
-            for output_channel in range(self.weights.shape[0]):
-                for output_row in range(self._output_shape[2]):
-                    input_row = output_row * self.stride
-                    for output_column in range(self._output_shape[3]):
-                        input_column = output_column * self.stride
-                        gradient = grad_out[
-                            batch_index,
-                            output_channel,
-                            output_row,
-                            output_column,
-                        ]
-                        input_window = self._padded_inputs[
-                            batch_index,
-                            :,
-                            input_row : input_row + kernel_height,
-                            input_column : input_column + kernel_width,
-                        ]
+        input_windows = sliding_window_view(
+            self._padded_inputs,
+            (kernel_height, kernel_width),
+            axis=(2, 3),
+        )
+        input_windows = input_windows[
+            :, :, :: self.stride, :: self.stride, :, :
+        ]
+        self.grad_weight = np.einsum(
+            "nohw,nchwkl->ockl",
+            grad_out,
+            input_windows,
+            optimize=True,
+        ).astype(grad_out.dtype, copy=False)
 
-                        self.grad_weight[output_channel] += (
-                            gradient * input_window
-                        )
-                        grad_padded_input[
-                            batch_index,
-                            :,
-                            input_row : input_row + kernel_height,
-                            input_column : input_column + kernel_width,
-                        ] += gradient * self.weights[output_channel]
+        output_height, output_width = self._output_shape[2:]
+        for kernel_row in range(kernel_height):
+            row_stop = kernel_row + output_height * self.stride
+            for kernel_column in range(kernel_width):
+                column_stop = (
+                    kernel_column + output_width * self.stride
+                )
+                contribution = np.einsum(
+                    "nohw,oc->nchw",
+                    grad_out,
+                    self.weights[:, :, kernel_row, kernel_column],
+                    optimize=True,
+                ).astype(grad_out.dtype, copy=False)
+                grad_padded_input[
+                    :,
+                    :,
+                    kernel_row:row_stop:self.stride,
+                    kernel_column:column_stop:self.stride,
+                ] += contribution
 
         if self.padding == 0:
             return grad_padded_input

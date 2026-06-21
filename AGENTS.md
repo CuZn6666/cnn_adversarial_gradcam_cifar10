@@ -31,27 +31,30 @@ The project is organized by Work Packages. Codex must follow `WP_PLAN.md` before
   implemented, tested, and executed.
 * Full CIFAR-10 multi-epoch training remains deferred because the current
   manual NumPy `Conv2D` implementation is slow.
-* WP6 has not started.
-* The next target is WP6: Focused Runtime Bottleneck Handling.
+* WP6 is completed.
+* `Conv2D.backward` was selected as the single bottleneck and optimized with a
+  focused NumPy implementation.
+* Fixed profiling reports a `207.72x` `Conv2D.backward` speedup and a `37.30x`
+  `train_step` speedup while scoped correctness tests pass.
+* WP7 has not started.
+* The next planned target is WP7: FGSM Attack and Input-Gradient Visualization.
 * Adversarial attacks, Grad-CAM, and final analysis have not been started.
 
 ## Current Development Priority
 
-The immediate priority is planning WP6 focused runtime bottleneck handling.
+WP6 is closed. WP7 is the next planned Work Package, but it has not started.
 
-Before starting WP6, Codex must:
+Before starting WP7, Codex must:
 
 1. Read `WP_PLAN.md`.
 2. Read `TESTING.md`.
 3. Inspect the current repository structure.
-4. Inspect the completed NumPy forward, backward, training, and controlled
-   baseline paths.
-5. Measure first and identify the actual main bottleneck.
-6. Select one optimization path supported by `WorkPackagePlan.txt`.
-7. Make a small implementation plan before editing code.
+4. Review the WP7 goal, dependencies, validation criteria, and selected attack
+   configuration.
+5. Make a small implementation plan before editing code.
 
-Do not compare multiple frameworks broadly. Do not start adversarial attacks,
-Grad-CAM, or final analysis during WP6.
+Do not start PGD, black-box attacks, Grad-CAM, or later Work Packages while
+beginning WP7.
 
 ## General Working Rules
 

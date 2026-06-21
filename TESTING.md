@@ -333,15 +333,66 @@ optimization path without broad framework benchmarking.
 
 Status:
 
-Planned. WP6 has not started.
+Completed. Initial profiling, single-bottleneck selection, focused
+`Conv2D.backward` optimization, before/after measurement, and scoped
+correctness validation are complete.
+
+Initial profiling protocol:
+
+* Profile before choosing or implementing an optimization.
+* Measure `Conv2D.forward`, `Conv2D.backward`, and one `train_step`.
+* Use a fixed random seed.
+* Use documented fixed input and gradient shapes.
+* Use a fixed warm-up count and fixed measured iteration count.
+* Use identical inputs and timing procedure for later before/after
+  comparisons.
+* Keep the profiling workload small and independent of full CIFAR-10 training.
+
+Profiling command:
+
+```bash
+.venv/bin/python -m experiments.runtime.profile_wp6
+```
+
+Final WP6 correctness checks:
+
+```bash
+.venv/bin/python -m pytest tests/test_layers.py -v -k conv2d_backward
+.venv/bin/python -m pytest tests/test_gradient_check.py -v -k 'conv2d or compact_cnn_input_gradient'
+.venv/bin/python -m pytest tests/test_backward.py -v
+.venv/bin/python -m pytest tests/test_integration.py -v
+```
 
 Expected results:
 
-* The main computational bottleneck is identified with focused measurements.
-* One optimization or backend path is selected.
-* Existing numerical correctness and model tests continue to pass.
+* `Conv2D.backward` is identified as the single computational bottleneck.
+* One focused NumPy optimization path is implemented.
+* Conv2D, numerical-gradient, model-backward, and integration tests pass.
 * Runtime measurements are used to understand the bottleneck, not to compare
   NumPy, CuPy, JAX, and PyTorch broadly.
+* The measurement record includes seed, shapes, warm-up count, iteration
+  count, timing summary, selected path, and limitations.
+
+Recorded fixed benchmark:
+
+```text
+Conv2D.forward: 0.000068569 -> 0.000066375 seconds
+Conv2D.backward: 0.043458736 -> 0.000209222 seconds
+Conv2D.backward speedup: 207.72x
+train_step: 0.070350708 -> 0.001886028 seconds
+train_step speedup: 37.30x
+```
+
+The small `Conv2D.forward` difference is treated as local timing noise because
+that operation was not optimized.
+
+Out of scope for the initial WP6 profiling step:
+
+* CIFAR-10 loading or full training,
+* attacks or Grad-CAM,
+* GPU, CuPy, CUDA, cluster, or SLURM support,
+* adding dependencies,
+* further optimization beyond the selected `Conv2D.backward` target.
 
 ## WP7: Grad-CAM Validation
 

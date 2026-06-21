@@ -36,7 +36,7 @@ Individual estimates are planning values and may vary during implementation.
 | WP3  | Manual Backward Implementation                           | completed        |
 | WP4  | Gradient Checks and Input-Gradient Support               | completed        |
 | WP5  | Baseline training and clean evaluation                   | completed        |
-| WP6  | Focused Runtime Bottleneck Handling                      | planned          |
+| WP6  | Focused Runtime Bottleneck Handling                      | completed        |
 | WP7  | FGSM Attack and Input-Gradient Visualization             | planned          |
 | WP8  | FGSM robustness evaluation                               | planned          |
 | WP9  | PGD Attack Implementation                                | planned          |
@@ -62,7 +62,17 @@ documented checkpoint, metrics JSON, and curves.
 WP5 is complete for the controlled NumPy baseline scope. The 64/32 subset run
 is not full CIFAR-10 multi-epoch training. A full baseline remains deferred
 because the current manual NumPy `Conv2D` implementation is too slow for a
-practical full run. WP6 is the next planned target and has not started.
+practical full run.
+
+WP6 is completed. Inspection-only profiling identified `Conv2D.backward` as
+the single bottleneck target. A focused NumPy optimization replaced the
+batch/channel/spatial Python loops with `einsum`-based gradient accumulation
+and kernel-position loops.
+
+Under the fixed local profiling setup, `Conv2D.backward` improved from
+`0.043458736` to `0.000209222` seconds per iteration (`207.72x`), and one
+`train_step` improved from `0.070350708` to `0.001886028` seconds per iteration
+(`37.30x`). Correctness checks passed. WP7 remains planned and has not started.
 
 ## Work Package Details
 
@@ -538,8 +548,8 @@ Status:
 Completed for the controlled NumPy baseline pipeline. Synthetic orchestration
 and a controlled real CIFAR-10 64/32 subset run are implemented, tested, and
 executed. Full CIFAR-10 multi-epoch training is deferred because the current
-manual NumPy convolution runtime is not practical for that run. WP6, attacks,
-and Grad-CAM have not started.
+manual NumPy convolution runtime is not practical for that run. WP6 is now
+completed. Attacks and Grad-CAM have not started.
 
 ---
 
@@ -562,24 +572,67 @@ Expected deliverables:
 Relevant folders/files:
 
 ```text
-TBD — not specified in source spreadsheet.
+src/layers/forward.py
+src/models/compact_cnn.py
+src/training.py
+experiments/runtime/profile_wp6.py
+tests/test_forward.py
+tests/test_layers.py
+tests/test_gradient_check.py
+tests/test_backward.py
+tests/test_integration.py
+deliverables/WP6/runtime_profile_initial.md
+deliverables/WP6/bottleneck_decision.md
+deliverables/WP6/runtime_benchmark_after.md
+deliverables/WP6/wp6_summary.md
 ```
 
 Suggested implementation order:
 
-1. Identify computational bottlenecks — 3h.
-2. Choose one implementation path — 2h.
+1. Profile `Conv2D.forward`, `Conv2D.backward`, and one `train_step` with a
+   fixed seed, fixed input shapes, and fixed iteration counts — 3h.
+2. Use the measurements to choose one implementation path — 2h.
 3. Optimize the selected operation or backend path — 8h.
 4. Perform basic runtime measurements — 3h.
 5. Write a short bottleneck discussion — 2h.
 
 Validation:
 
-TBD — not specified in source spreadsheet.
+* Initial profiling uses documented fixed seeds, input shapes, warm-up policy,
+  and iteration counts.
+* `Conv2D.forward`, `Conv2D.backward`, and one `train_step` are measured before
+  an optimization path is selected.
+* Only one optimization path is selected after the initial measurements.
+* Before/after measurements use the same inputs and measurement procedure.
+* The focused optimization preserves numerical behavior and passes:
+
+```bash
+.venv/bin/python -m pytest tests/test_layers.py -v -k conv2d_backward
+.venv/bin/python -m pytest tests/test_gradient_check.py -v -k 'conv2d or compact_cnn_input_gradient'
+.venv/bin/python -m pytest tests/test_backward.py -v
+.venv/bin/python -m pytest tests/test_integration.py -v
+```
+
+* The final WP6 note records the identified bottleneck, selected path,
+  before/after measurements, correctness checks, and limitations.
 
 Dependencies:
 
-TBD — not specified in source spreadsheet.
+* WP2 forward implementation is completed and validated.
+* WP3 backward implementation is completed and validated.
+* WP4 numerical gradient checks are completed and provide correctness
+  protection for later optimization.
+* WP5 provides a deterministic `train_step` and controlled baseline shapes for
+  profiling.
+* Full CIFAR-10 training is not required for WP6 profiling or validation.
+
+Explicit non-goals:
+
+* no adversarial attacks or Grad-CAM,
+* no full CIFAR-10 training,
+* no broad comparison of NumPy, CuPy, JAX, and PyTorch,
+* no GPU, CuPy, CUDA, cluster, or SLURM work in the initial profiling step,
+* no optimization before the initial profiling evidence is recorded.
 
 Estimated duration:
 
@@ -587,7 +640,10 @@ Estimated duration:
 
 Status:
 
-Planned.
+Completed. Initial profiling identified `Conv2D.backward` as the single
+bottleneck target. The focused NumPy optimization and fixed before/after
+measurements are complete, and the scoped correctness tests pass. WP7 has not
+started.
 
 ---
 
