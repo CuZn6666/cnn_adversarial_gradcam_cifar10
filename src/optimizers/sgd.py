@@ -4,6 +4,9 @@ from collections.abc import Iterable
 
 import numpy as np
 
+ParameterGradientPair = tuple[np.ndarray, np.ndarray]
+NamedParameterGradientPair = tuple[str, np.ndarray, np.ndarray]
+
 
 class SGD:
     """Minimal stochastic gradient descent optimizer."""
@@ -26,12 +29,21 @@ class SGD:
     def step(
         self,
         parameter_gradient_pairs: Iterable[
-            tuple[np.ndarray, np.ndarray]
+            ParameterGradientPair | NamedParameterGradientPair
         ],
     ) -> None:
         updates: list[tuple[np.ndarray, np.ndarray]] = []
 
-        for parameter, gradient in parameter_gradient_pairs:
+        for item in parameter_gradient_pairs:
+            if len(item) == 2:
+                parameter, gradient = item
+            elif len(item) == 3:
+                _, parameter, gradient = item
+            else:
+                raise ValueError(
+                    "SGD expects parameter-gradient pairs or named triples."
+                )
+
             if parameter.shape != gradient.shape:
                 raise ValueError("Parameter and gradient shapes must match.")
             if not np.isfinite(parameter).all():

@@ -37,6 +37,20 @@ def test_sgd_updates_multiple_parameter_arrays() -> None:
     )
 
 
+def test_sgd_accepts_named_parameter_gradient_triples() -> None:
+    parameter = np.array([1.0, -2.0], dtype=np.float32)
+    gradient = np.array([0.5, -1.5], dtype=np.float32)
+
+    SGD(learning_rate=0.1).step(
+        [("layer.weights", parameter, gradient)]
+    )
+
+    np.testing.assert_allclose(
+        parameter,
+        np.array([0.95, -1.85], dtype=np.float32),
+    )
+
+
 def test_sgd_preserves_parameter_shapes() -> None:
     parameter = np.arange(6, dtype=np.float32).reshape(2, 3)
     gradient = np.ones_like(parameter)
