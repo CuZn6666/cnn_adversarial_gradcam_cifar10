@@ -65,6 +65,7 @@ This run does not:
 * use CuPy, CUDA, GPU, cluster, or SLURM support,
 * start WP6, adversarial attacks, or Grad-CAM.
 
-WP5 remains in progress. The next controlled follow-up is a small real
-CIFAR-10 subset baseline. A full CIFAR-10 baseline should only run after that
-subset workflow is validated.
+The controlled real CIFAR-10 subset follow-up is now completed and documented
+in `deliverables/WP5/cifar10_subset_baseline.md`. WP5 is complete for the
+controlled NumPy baseline scope. Full CIFAR-10 multi-epoch training remains
+deferred because the current manual NumPy convolution runtime is slow.

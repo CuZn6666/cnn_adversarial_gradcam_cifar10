@@ -35,7 +35,7 @@ Individual estimates are planning values and may vary during implementation.
 | WP2  | Compact CNN forward implementation                       | completed        |
 | WP3  | Manual Backward Implementation                           | completed        |
 | WP4  | Gradient Checks and Input-Gradient Support               | completed        |
-| WP5  | Baseline training and clean evaluation                   | in progress      |
+| WP5  | Baseline training and clean evaluation                   | completed        |
 | WP6  | Focused Runtime Bottleneck Handling                      | planned          |
 | WP7  | FGSM Attack and Input-Gradient Visualization             | planned          |
 | WP8  | FGSM robustness evaluation                               | planned          |
@@ -49,21 +49,20 @@ Individual estimates are planning values and may vary during implementation.
 
 ## Immediate Next Step
 
-WP2 forward implementation, WP3 manual backward implementation, and WP4
-gradient validation are completed. WP5 is in progress.
+WP2 forward implementation, WP3 manual backward implementation, WP4 gradient
+validation, and the controlled WP5 NumPy baseline pipeline are completed.
 
-WP5 now includes the SGD optimizer, model parameter access, single- and
-multi-batch training and clean evaluation helpers, checkpointing, JSON metrics
-persistence, metric plotting, baseline configuration, and a deterministic
-synthetic baseline runner. The synthetic smoke run has been executed with
-`seed=42`, `batch_size=8`, `epochs=1`, 64 training samples, and 32 evaluation
-samples. It generated a checkpoint, metrics JSON, and loss/accuracy curves
-under `results/`.
+WP5 includes SGD, model parameter access, deterministic single- and multi-batch
+training and clean evaluation, checkpointing, JSON metrics persistence,
+plotting, baseline configuration, a synthetic runner, and a controlled real
+CIFAR-10 subset runner. The real subset run used 64 training samples, 32
+evaluation samples, one epoch, `batch_size=8`, and `seed=42`. It produced the
+documented checkpoint, metrics JSON, and curves.
 
-This synthetic run validates orchestration and artifact generation only. It is
-not a real or full CIFAR-10 baseline. The next controlled WP5 step is a small
-real CIFAR-10 subset baseline, followed later by the full baseline only after
-the subset run is validated. WP6–WP15 remain planned.
+WP5 is complete for the controlled NumPy baseline scope. The 64/32 subset run
+is not full CIFAR-10 multi-epoch training. A full baseline remains deferred
+because the current manual NumPy `Conv2D` implementation is too slow for a
+practical full run. WP6 is the next planned target and has not started.
 
 ## Work Package Details
 
@@ -480,11 +479,13 @@ tests/test_metrics.py
 tests/test_plotting.py
 tests/test_config.py
 tests/test_baseline_runner.py
+tests/test_cifar10_baseline_runner.py
 results/checkpoints/
 results/logs/
 results/figures/
 results/tables/
 deliverables/WP5/baseline_smoke_run.md
+deliverables/WP5/cifar10_subset_baseline.md
 ```
 
 Suggested implementation order:
@@ -508,9 +509,14 @@ Validation:
   loss/accuracy curves at documented locations under `results/`.
 * `tests/test_baseline_runner.py` validates deterministic orchestration without
   loading CIFAR-10.
-* The full test suite reports 107 passed after the synthetic smoke-run
-  orchestration was added.
-* Real CIFAR-10 subset and full-baseline accuracy remain unvalidated.
+* `tests/test_cifar10_baseline_runner.py` validates deterministic real-data
+  subset orchestration and confirms that missing local data does not trigger an
+  automatic download.
+* A controlled real CIFAR-10 subset run completes with 64 training samples and
+  32 evaluation samples and writes the documented artifacts.
+* The full test suite reports 110 passed.
+* Full CIFAR-10 multi-epoch baseline performance remains deferred and is not
+  represented by the subset metrics.
 
 Dependencies:
 
@@ -529,10 +535,11 @@ Estimated duration:
 
 Status:
 
-In progress. The NumPy training/evaluation infrastructure and deterministic
-synthetic baseline smoke run are implemented and validated. The synthetic run
-is not a real or full CIFAR-10 baseline. A controlled real CIFAR-10 subset run
-and the eventual full clean baseline remain pending.
+Completed for the controlled NumPy baseline pipeline. Synthetic orchestration
+and a controlled real CIFAR-10 64/32 subset run are implemented, tested, and
+executed. Full CIFAR-10 multi-epoch training is deferred because the current
+manual NumPy convolution runtime is not practical for that run. WP6, attacks,
+and Grad-CAM have not started.
 
 ---
 

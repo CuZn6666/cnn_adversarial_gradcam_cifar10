@@ -205,10 +205,10 @@ difference epsilon to account for its `float32` forward output.
 
 Status:
 
-In progress. The NumPy optimizer, training/evaluation helpers, checkpointing,
-metrics persistence, plotting, baseline configuration, and deterministic
-synthetic baseline runner are implemented and validated. Real CIFAR-10
-subset/full baseline training has not been run.
+Completed for the controlled NumPy baseline pipeline. The optimizer,
+training/evaluation helpers, checkpointing, metrics persistence, plotting,
+configuration, synthetic runner, and controlled real CIFAR-10 subset runner
+are implemented and validated.
 
 Goal:
 
@@ -233,6 +233,7 @@ Relevant test commands:
 .venv/bin/python -m pytest tests/test_plotting.py -v
 .venv/bin/python -m pytest tests/test_config.py -v
 .venv/bin/python -m pytest tests/test_baseline_runner.py -v
+.venv/bin/python -m pytest tests/test_cifar10_baseline_runner.py -v
 .venv/bin/python -m pytest tests/ -v
 ```
 
@@ -264,7 +265,7 @@ Expected results:
 * Clean loss is finite and accuracy is in `[0, 1]`.
 * Checkpoints, metrics, and loss/accuracy curves are saved under `results/`.
 * Existing WP1–WP4 tests continue to pass.
-* The full suite reports 107 passed.
+* The full suite reports 110 passed.
 
 Latest synthetic artifact-validation run:
 
@@ -283,26 +284,64 @@ eval_accuracy: 0.15625
 These metrics are only a deterministic synthetic smoke-run result. They are
 not a CIFAR-10 accuracy result and must not be presented as the full baseline.
 
+Controlled real CIFAR-10 subset command:
+
+```bash
+MPLCONFIGDIR=/tmp/cnn-wp5-matplotlib .venv/bin/python -c 'from experiments.baseline.train_baseline import run_cifar10_subset_baseline; result = run_cifar10_subset_baseline(); print(result["final_metrics"])'
+```
+
+The command requires an existing extracted CIFAR-10 dataset under
+`data/raw/cifar-10-batches-py/`. The subset runner checks for this directory
+before calling the existing loader and does not automatically download data.
+
+Controlled subset configuration and result:
+
+```text
+seed: 42
+learning_rate: 0.0005
+batch_size: 8
+epochs: 1
+train_samples: 64
+eval_samples: 32
+train_loss: 2.4283203780651093
+train_accuracy: 0.171875
+eval_loss: 2.434686303138733
+eval_accuracy: 0.15625
+```
+
+Expected local subset artifact paths:
+
+```text
+results/checkpoints/cifar10_subset_baseline.npz
+results/logs/cifar10_subset_metrics.json
+results/figures/cifar10_subset_loss_curve.png
+results/figures/cifar10_subset_accuracy_curve.png
+```
+
+The controlled subset run validates real-data pipeline integration only. It is
+not full CIFAR-10 multi-epoch baseline training. Full training is deferred
+because the current manual NumPy `Conv2D` runtime is slow.
+
 For quick local testing, prefer a small number of batches or epochs.
 
-## WP6: Adversarial Attack Validation
+## WP6: Focused Runtime Bottleneck Validation
 
 Goal:
 
-Check that adversarial examples can be generated and evaluated.
+Identify and measure the main runtime bottleneck, then validate one selected
+optimization path without broad framework benchmarking.
 
-Suggested commands:
+Status:
 
-```bash
-python experiments/evaluate_fgsm.py --config configs/fgsm.yaml
-```
+Planned. WP6 has not started.
 
 Expected results:
 
-* FGSM creates perturbed images with the same shape as original inputs.
-* Perturbations are bounded by epsilon.
-* Pixel values remain in the valid range.
-* Accuracy decreases as epsilon increases.
+* The main computational bottleneck is identified with focused measurements.
+* One optimization or backend path is selected.
+* Existing numerical correctness and model tests continue to pass.
+* Runtime measurements are used to understand the bottleneck, not to compare
+  NumPy, CuPy, JAX, and PyTorch broadly.
 
 ## WP7: Grad-CAM Validation
 
