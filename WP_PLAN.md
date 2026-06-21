@@ -1094,3 +1094,8 @@ Before moving from one Work Package to the next:
 6. Make a Git commit when the repository is in a stable state.
 7. Do not start later training, attack, explainability, or integration Work
    Packages before their prerequisites are implemented and validated.
+8. Before large-scale data processing, full-dataset runs, many-image
+   evaluation, epsilon sweeps, repeated seeds, PGD-style multi-step
+   evaluation, or large-batch evaluation, ask the user whether to use the
+   university-provided ZITI cluster. Do not introduce GPU, Slurm, CUDA, or
+   ZITI workflows without explicit approval.

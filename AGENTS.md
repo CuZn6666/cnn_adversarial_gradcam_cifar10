@@ -167,6 +167,14 @@ gpu04
 
 Do not store or ask for the password.
 
+Before any task that may involve large-scale data processing, full-dataset
+runs, many images, epsilon sweeps, repeated seeds, PGD-style multi-step
+evaluation, or large-batch evaluation, pause and ask the user whether to use
+the university-provided ZITI cluster.
+
+Do not introduce GPU, Slurm, CUDA, or ZITI cluster workflows automatically.
+Use them only after explicit user approval.
+
 For cluster work:
 
 1. Local macOS development is used for small tests, code editing, and debugging.

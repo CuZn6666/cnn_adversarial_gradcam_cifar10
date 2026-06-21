@@ -462,6 +462,14 @@ Expected results:
 
 The cluster should be used for longer training or GPU experiments, not for basic local debugging.
 
+Before implementing or running large-scale data processing, full-dataset runs,
+many-image evaluation, epsilon sweeps, repeated-seed experiments, PGD-style
+multi-step evaluation, or large-batch evaluation, pause and ask the user
+whether to use the university-provided ZITI cluster.
+
+Do not introduce GPU, Slurm, CUDA, or ZITI cluster validation workflows
+automatically. Use them only after explicit user approval.
+
 Before using the cluster:
 
 1. Ensure the project runs locally on a small test.
