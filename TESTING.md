@@ -394,45 +394,64 @@ Out of scope for the initial WP6 profiling step:
 * adding dependencies,
 * further optimization beyond the selected `Conv2D.backward` target.
 
-## WP7: Grad-CAM Validation
+## WP7: FGSM Attack and Input-Gradient Validation
 
 Goal:
 
-Check that Grad-CAM heatmaps can be generated and saved.
+Validate input gradients, minimal FGSM behavior, and a small number of
+qualitative visualizations without performing the WP8 robustness evaluation.
 
-Suggested commands:
+Status:
 
-```bash
-python experiments/run_gradcam.py --config configs/gradcam.yaml
-```
+In progress at the documentation stage. FGSM implementation and tests have not
+started.
 
 Expected results:
 
-* Heatmaps are generated.
-* Heatmaps have valid spatial dimensions.
-* Visualizations are saved under `results/` or `deliverables/`.
-* The script works for at least one clean image and one adversarial image.
+* Loss gradients with respect to inputs match the input shape.
+* Input gradients and adversarial images contain only finite values.
+* FGSM preserves input shape.
+* `epsilon=0` leaves inputs unchanged.
+* The `L_inf` perturbation does not exceed epsilon within tolerance.
+* Adversarial images remain in `[0, 1]`.
+* Fixed inputs, labels, model parameters, and epsilon produce deterministic
+  outputs.
+* Input-gradient, clean-image, adversarial-image, and perturbation
+  visualizations can be saved for a small number of examples.
+* Model parameters are not updated during attack generation.
 
-## WP8: Analysis Validation
+Initial lightweight commands remain `TBD` until the WP7 test files and
+small-example runner are created.
+
+WP7 boundary:
+
+* WP7 implements FGSM and creates small qualitative examples.
+* WP7 does not run an epsilon sweep, aggregate attack success rate, evaluate
+  large batches, or produce accuracy-versus-epsilon results.
+* PGD, black-box attacks, and Grad-CAM are out of scope.
+
+## WP8: FGSM Robustness Evaluation Validation
 
 Goal:
 
-Check that robustness and explanation results are summarized correctly.
-
-Suggested checks:
-
-```bash
-ls results/
-ls deliverables/
-```
+Evaluate FGSM quantitatively over selected epsilon values and a larger
+evaluation subset after WP7 is completed.
 
 Expected results:
 
-* Clean accuracy results exist.
-* Adversarial accuracy results exist.
-* Grad-CAM visualizations exist.
-* Plots or tables are saved.
-* Written analysis explains what was expected and what was observed.
+* Clean and adversarial accuracy are measured consistently.
+* Multiple epsilon values are evaluated.
+* Accuracy-versus-epsilon results are produced.
+* Attack success rate is aggregated where defined.
+* Representative successful and failed attacks are selected.
+
+Before any many-image evaluation, epsilon sweep, repeated-seed run, large-batch
+evaluation, or other large-scale processing, pause and ask the user whether to
+use the university-provided ZITI cluster. Do not introduce cluster, GPU, Slurm,
+or CUDA workflows without explicit approval.
+
+WP8 must not begin before WP7 FGSM implementation and its lightweight
+validation are complete.
 
 ## WP9: Final Reproducibility Validation
 

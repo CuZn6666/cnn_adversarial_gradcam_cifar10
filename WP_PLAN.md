@@ -37,7 +37,7 @@ Individual estimates are planning values and may vary during implementation.
 | WP4  | Gradient Checks and Input-Gradient Support               | completed        |
 | WP5  | Baseline training and clean evaluation                   | completed        |
 | WP6  | Focused Runtime Bottleneck Handling                      | completed        |
-| WP7  | FGSM Attack and Input-Gradient Visualization             | planned          |
+| WP7  | FGSM Attack and Input-Gradient Visualization             | in progress      |
 | WP8  | FGSM robustness evaluation                               | planned          |
 | WP9  | PGD Attack Implementation                                | planned          |
 | WP10 | PGD Robustness Evaluation and Comparison                 | planned          |
@@ -72,7 +72,12 @@ and kernel-position loops.
 Under the fixed local profiling setup, `Conv2D.backward` improved from
 `0.043458736` to `0.000209222` seconds per iteration (`207.72x`), and one
 `train_step` improved from `0.070350708` to `0.001886028` seconds per iteration
-(`37.30x`). Correctness checks passed. WP7 remains planned and has not started.
+(`37.30x`). Correctness checks passed.
+
+WP7 is now in progress at the documentation and scope-preparation stage.
+FGSM source code, tests, and example generation have not started. The next
+small step is a deterministic input-gradient helper and tests; WP8 remains
+planned.
 
 ## Work Package Details
 
@@ -642,8 +647,8 @@ Status:
 
 Completed. Initial profiling identified `Conv2D.backward` as the single
 bottleneck target. The focused NumPy optimization and fixed before/after
-measurements are complete, and the scoped correctness tests pass. WP7 has not
-started.
+measurements are complete, and the scoped correctness tests pass. WP7
+implementation has not started.
 
 ---
 
@@ -665,7 +670,17 @@ Expected deliverables:
 Relevant folders/files:
 
 ```text
-TBD — not specified in source spreadsheet.
+src/models/compact_cnn.py
+src/losses/cross_entropy.py
+src/attacks/                    # planned; do not create before implementation
+src/visualization.py            # planned if a shared helper is needed
+experiments/fgsm/               # planned small-example runner
+tests/test_backward.py
+tests/test_gradient_check.py
+tests/test_fgsm.py              # planned
+tests/test_input_gradients.py   # planned if separate coverage is needed
+results/figures/
+deliverables/WP7/
 ```
 
 Suggested implementation order:
@@ -679,11 +694,39 @@ Suggested implementation order:
 
 Validation:
 
-TBD — not specified in source spreadsheet.
+* Loss gradients with respect to input images have the same shape as the
+  inputs and contain only finite values.
+* Input-gradient computation does not update model parameters.
+* Minimal FGSM preserves the input shape and returns finite values.
+* Perturbations satisfy the configured `L_inf` bound within floating-point
+  tolerance.
+* Adversarial images are clipped to the project image range `[0, 1]`.
+* `epsilon=0` leaves the input unchanged.
+* A fixed input, label, model, and epsilon produce deterministic output.
+* A small number of clean images, adversarial images, input-gradient maps, and
+  perturbation maps can be saved for qualitative inspection.
+* Existing backward and input-gradient tests continue to pass.
+* Full robustness evaluation, epsilon sweeps, accuracy-versus-epsilon plots,
+  attack success-rate aggregation, and large batch evaluation are deferred to
+  WP8.
 
 Dependencies:
 
-TBD — not specified in source spreadsheet.
+* WP3 provides `SoftmaxCrossEntropyLoss.backward` and
+  `CompactCNN.backward`.
+* WP4 validates finite, nonzero input gradients.
+* WP5 provides model checkpoint and clean evaluation infrastructure.
+* WP6 improves backward runtime and is completed.
+* The attack-label convention and initial small demonstration epsilon values
+  must be documented before generating real examples.
+
+Explicit non-goals:
+
+* no full-dataset or large-scale FGSM robustness evaluation,
+* no accuracy-versus-epsilon sweep or attack success-rate aggregation,
+* no PGD, black-box attack, or Grad-CAM implementation,
+* no adversarial training,
+* no automatic GPU, CUDA, CuPy, JAX, PyTorch, Slurm, or cluster workflow.
 
 Estimated duration:
 
@@ -691,7 +734,8 @@ Estimated duration:
 
 Status:
 
-Planned.
+In progress at the documentation and scope-preparation stage. FGSM source code,
+tests, and example generation have not started.
 
 ---
 
@@ -702,6 +746,14 @@ Goal:
 Evaluate the trained CNN under FGSM attacks with different perturbation
 strengths. Compare clean and adversarial accuracy, plot accuracy against epsilon
 values, and select representative successful and failed attacks.
+
+Scope boundary:
+
+WP8 owns quantitative and larger-scale FGSM evaluation, including epsilon
+sweeps, accuracy-versus-epsilon plots, attack success-rate aggregation,
+representative success/failure selection, and evaluation over larger batches or
+subsets. WP7 only implements FGSM and produces a small number of qualitative
+examples and visualizations.
 
 Expected deliverables:
 

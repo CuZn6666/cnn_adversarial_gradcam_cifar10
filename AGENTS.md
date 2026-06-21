@@ -36,13 +36,15 @@ The project is organized by Work Packages. Codex must follow `WP_PLAN.md` before
   focused NumPy implementation.
 * Fixed profiling reports a `207.72x` `Conv2D.backward` speedup and a `37.30x`
   `train_step` speedup while scoped correctness tests pass.
-* WP7 has not started.
-* The next planned target is WP7: FGSM Attack and Input-Gradient Visualization.
+* WP7 is in progress at the documentation and scope-preparation stage.
+* FGSM source code and tests have not started.
+* The next technical target is a deterministic input-gradient helper and tests.
 * Adversarial attacks, Grad-CAM, and final analysis have not been started.
 
 ## Current Development Priority
 
-WP6 is closed. WP7 is the next planned Work Package, but it has not started.
+WP6 is closed. WP7 documentation preparation is complete, but implementation
+has not started.
 
 Before starting WP7, Codex must:
 
@@ -55,6 +57,11 @@ Before starting WP7, Codex must:
 
 Do not start PGD, black-box attacks, Grad-CAM, or later Work Packages while
 beginning WP7.
+
+WP7 is limited to FGSM implementation, input-gradient visualization, and a
+small number of qualitative clean/adversarial/perturbation examples. Epsilon
+sweeps, attack success-rate aggregation, accuracy-versus-epsilon experiments,
+and larger robustness evaluation belong to WP8.
 
 ## General Working Rules
 
