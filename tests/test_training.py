@@ -3,7 +3,12 @@ import numpy as np
 from src.losses import SoftmaxCrossEntropyLoss
 from src.models import CompactCNN
 from src.optimizers import SGD
-from src.training import evaluate_batch, evaluate_batches, train_step
+from src.training import (
+    evaluate_batch,
+    evaluate_batches,
+    train_batches,
+    train_step,
+)
 
 
 def _synthetic_batch() -> tuple[np.ndarray, np.ndarray]:
@@ -23,6 +28,21 @@ def _model_parameters(model: CompactCNN) -> tuple[np.ndarray, ...]:
         model.conv2.bias,
         model.classifier.weights,
         model.classifier.bias,
+    )
+
+
+def _synthetic_batches() -> tuple[
+    tuple[np.ndarray, np.ndarray],
+    tuple[np.ndarray, np.ndarray],
+]:
+    images = np.random.default_rng(11).random(
+        (4, 3, 32, 32),
+        dtype=np.float32,
+    )
+    labels = np.array([1, 4, 7, 2], dtype=np.int64)
+    return (
+        (images[:1], labels[:1]),
+        (images[1:], labels[1:]),
     )
 
 
@@ -258,3 +278,94 @@ def test_evaluate_batches_is_deterministic() -> None:
     )
 
     assert first_result == second_result
+
+
+def test_train_batches_aggregates_metrics_and_updates_parameters() -> None:
+    batches = _synthetic_batches()
+    model = CompactCNN(seed=42)
+    parameters_before = tuple(
+        parameter.copy() for parameter in _model_parameters(model)
+    )
+
+    metrics = train_batches(
+        model,
+        SoftmaxCrossEntropyLoss(),
+        SGD(learning_rate=5e-4),
+        batches,
+    )
+
+    assert metrics["total_samples"] == 4
+    assert np.isfinite(metrics["mean_loss"])
+    assert 0.0 <= metrics["accuracy"] <= 1.0
+    assert any(
+        not np.array_equal(before, parameter)
+        for before, parameter in zip(
+            parameters_before,
+            _model_parameters(model),
+        )
+    )
+    assert all(
+        np.isfinite(parameter).all()
+        for parameter in _model_parameters(model)
+    )
+
+
+def test_train_batches_uses_sample_weighted_metrics_and_is_deterministic() -> None:
+    batches = _synthetic_batches()
+    reference_model = CompactCNN(seed=42)
+    reference_loss_function = SoftmaxCrossEntropyLoss()
+    reference_optimizer = SGD(learning_rate=5e-4)
+    batch_losses = []
+    total_correct = 0
+    total_samples = 0
+
+    for images, labels in batches:
+        logits = reference_model.forward(images)
+        batch_losses.append(
+            reference_loss_function.forward(logits, labels)
+        )
+        total_correct += int(
+            np.sum(np.argmax(logits, axis=1) == labels)
+        )
+        total_samples += labels.shape[0]
+        train_step(
+            reference_model,
+            reference_loss_function,
+            reference_optimizer,
+            images,
+            labels,
+        )
+
+    expected_mean_loss = (
+        batch_losses[0] + 3.0 * batch_losses[1]
+    ) / total_samples
+    simple_batch_mean = float(np.mean(batch_losses))
+    expected_accuracy = total_correct / total_samples
+
+    first_model = CompactCNN(seed=42)
+    second_model = CompactCNN(seed=42)
+    first_metrics = train_batches(
+        first_model,
+        SoftmaxCrossEntropyLoss(),
+        SGD(learning_rate=5e-4),
+        batches,
+    )
+    second_metrics = train_batches(
+        second_model,
+        SoftmaxCrossEntropyLoss(),
+        SGD(learning_rate=5e-4),
+        batches,
+    )
+
+    np.testing.assert_allclose(
+        first_metrics["mean_loss"],
+        expected_mean_loss,
+    )
+    assert not np.isclose(first_metrics["mean_loss"], simple_batch_mean)
+    assert first_metrics["accuracy"] == expected_accuracy
+    assert first_metrics == second_metrics
+    for first_parameter, second_parameter in zip(
+        _model_parameters(first_model),
+        _model_parameters(second_model),
+    ):
+        np.testing.assert_array_equal(first_parameter, second_parameter)
