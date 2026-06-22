@@ -2,7 +2,7 @@ import numpy as np
 
 from src.losses import SoftmaxCrossEntropyLoss
 from src.models import CompactCNN
-from src.robustness import evaluate_fgsm_batch
+from src.robustness import evaluate_fgsm_batch, evaluate_fgsm_batches
 
 
 class _ControlledModel:
@@ -26,6 +26,38 @@ class _ControlledModel:
         if np.any(inputs != 0.0):
             return self.adversarial_logits
         return self.clean_logits
+
+    def backward(self, grad_logits: np.ndarray) -> np.ndarray:
+        if self._input_shape is None:
+            raise RuntimeError("forward must be called before backward.")
+        return np.ones(self._input_shape, dtype=np.float32)
+
+
+class _VariableBatchControlledModel:
+    def __init__(
+        self,
+        predictions_by_batch_size: dict[int, tuple[list[int], list[int]]],
+    ) -> None:
+        self.predictions_by_batch_size = predictions_by_batch_size
+        self._input_shape: tuple[int, ...] | None = None
+
+    @staticmethod
+    def _logits(predictions: list[int]) -> np.ndarray:
+        logits = np.zeros((len(predictions), 10), dtype=np.float32)
+        logits[np.arange(len(predictions)), predictions] = 1.0
+        return logits
+
+    def forward(self, inputs: np.ndarray) -> np.ndarray:
+        self._input_shape = inputs.shape
+        clean_predictions, adversarial_predictions = (
+            self.predictions_by_batch_size[inputs.shape[0]]
+        )
+        predictions = (
+            adversarial_predictions
+            if np.any(inputs != 0.0)
+            else clean_predictions
+        )
+        return self._logits(predictions)
 
     def backward(self, grad_logits: np.ndarray) -> np.ndarray:
         if self._input_shape is None:
@@ -149,6 +181,97 @@ def test_evaluate_fgsm_batch_does_not_update_model_parameters() -> None:
     )
 
     assert result["total_samples"] == images.shape[0]
+    for parameter, parameter_before in zip(
+        _model_parameters(model),
+        parameters_before,
+        strict=True,
+    ):
+        np.testing.assert_array_equal(parameter, parameter_before)
+
+
+def test_evaluate_fgsm_batches_aggregates_raw_counts_across_batch_sizes(
+) -> None:
+    batches = (
+        (
+            np.zeros((1, 3, 32, 32), dtype=np.float32),
+            np.array([0], dtype=np.int64),
+        ),
+        (
+            np.zeros((3, 3, 32, 32), dtype=np.float32),
+            np.array([1, 2, 3], dtype=np.int64),
+        ),
+    )
+    model = _VariableBatchControlledModel(
+        {
+            1: ([0], [9]),
+            3: ([1, 8, 3], [1, 8, 7]),
+        }
+    )
+
+    result = evaluate_fgsm_batches(
+        model,  # type: ignore[arg-type]
+        SoftmaxCrossEntropyLoss(),
+        batches,
+        epsilon=0.1,
+    )
+
+    assert set(result) == {
+        "total_samples",
+        "clean_correct",
+        "adversarial_correct",
+        "clean_correct_samples",
+        "successful_attacks",
+        "clean_accuracy",
+        "adversarial_accuracy",
+        "accuracy_drop",
+        "attack_success_rate",
+    }
+    assert result == {
+        "total_samples": 4,
+        "clean_correct": 3,
+        "adversarial_correct": 1,
+        "clean_correct_samples": 3,
+        "successful_attacks": 2,
+        "clean_accuracy": 0.75,
+        "adversarial_accuracy": 0.25,
+        "accuracy_drop": 0.5,
+        "attack_success_rate": 2.0 / 3.0,
+    }
+
+    naive_clean_accuracy = (1.0 + 2.0 / 3.0) / 2.0
+    naive_adversarial_accuracy = (0.0 + 1.0 / 3.0) / 2.0
+    assert not np.isclose(result["clean_accuracy"], naive_clean_accuracy)
+    assert not np.isclose(
+        result["adversarial_accuracy"],
+        naive_adversarial_accuracy,
+    )
+
+
+def test_evaluate_fgsm_batches_does_not_update_model_parameters() -> None:
+    model = CompactCNN(seed=42)
+    rng = np.random.default_rng(29)
+    batches = (
+        (
+            rng.random((1, 3, 32, 32), dtype=np.float32),
+            np.array([2], dtype=np.int64),
+        ),
+        (
+            rng.random((2, 3, 32, 32), dtype=np.float32),
+            np.array([4, 5], dtype=np.int64),
+        ),
+    )
+    parameters_before = [
+        parameter.copy() for parameter in _model_parameters(model)
+    ]
+
+    result = evaluate_fgsm_batches(
+        model,
+        SoftmaxCrossEntropyLoss(),
+        batches,
+        epsilon=0.05,
+    )
+
+    assert result["total_samples"] == 3
     for parameter, parameter_before in zip(
         _model_parameters(model),
         parameters_before,
