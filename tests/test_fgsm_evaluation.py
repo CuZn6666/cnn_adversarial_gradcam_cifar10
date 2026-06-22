@@ -1,8 +1,13 @@
 import numpy as np
+import pytest
 
 from src.losses import SoftmaxCrossEntropyLoss
 from src.models import CompactCNN
-from src.robustness import evaluate_fgsm_batch, evaluate_fgsm_batches
+from src.robustness import (
+    evaluate_fgsm_batch,
+    evaluate_fgsm_batches,
+    evaluate_fgsm_epsilon_sweep,
+)
 
 
 class _ControlledModel:
@@ -272,6 +277,108 @@ def test_evaluate_fgsm_batches_does_not_update_model_parameters() -> None:
     )
 
     assert result["total_samples"] == 3
+    for parameter, parameter_before in zip(
+        _model_parameters(model),
+        parameters_before,
+        strict=True,
+    ):
+        np.testing.assert_array_equal(parameter, parameter_before)
+
+
+def test_evaluate_fgsm_epsilon_sweep_preserves_order_and_metrics() -> None:
+    batches = (
+        (
+            np.zeros((1, 3, 32, 32), dtype=np.float32),
+            np.array([0], dtype=np.int64),
+        ),
+        (
+            np.zeros((3, 3, 32, 32), dtype=np.float32),
+            np.array([1, 2, 3], dtype=np.int64),
+        ),
+    )
+    model = _VariableBatchControlledModel(
+        {
+            1: ([0], [9]),
+            3: ([1, 8, 3], [1, 8, 7]),
+        }
+    )
+    epsilons = [0.1, 0.0, 0.05]
+
+    results = evaluate_fgsm_epsilon_sweep(
+        model,  # type: ignore[arg-type]
+        SoftmaxCrossEntropyLoss(),
+        iter(batches),
+        epsilons,
+    )
+
+    assert [result["epsilon"] for result in results] == epsilons
+    assert len(results) == len(epsilons)
+    required_metrics = {
+        "epsilon",
+        "total_samples",
+        "clean_correct",
+        "adversarial_correct",
+        "clean_correct_samples",
+        "successful_attacks",
+        "clean_accuracy",
+        "adversarial_accuracy",
+        "accuracy_drop",
+        "attack_success_rate",
+    }
+    assert all(set(result) == required_metrics for result in results)
+
+    expected_zero_result = evaluate_fgsm_batches(
+        model,  # type: ignore[arg-type]
+        SoftmaxCrossEntropyLoss(),
+        batches,
+        epsilon=0.0,
+    )
+    zero_result = results[1].copy()
+    zero_result.pop("epsilon")
+    assert zero_result == expected_zero_result
+    assert zero_result["clean_accuracy"] == zero_result["adversarial_accuracy"]
+    assert zero_result["accuracy_drop"] == 0.0
+    assert zero_result["attack_success_rate"] == 0.0
+
+
+def test_evaluate_fgsm_epsilon_sweep_rejects_empty_epsilons() -> None:
+    with pytest.raises(
+        ValueError,
+        match="requires at least one epsilon",
+    ):
+        evaluate_fgsm_epsilon_sweep(
+            CompactCNN(seed=42),
+            SoftmaxCrossEntropyLoss(),
+            (),
+            (),
+        )
+
+
+def test_evaluate_fgsm_epsilon_sweep_does_not_update_model_parameters() -> None:
+    model = CompactCNN(seed=42)
+    rng = np.random.default_rng(31)
+    batches = (
+        (
+            rng.random((1, 3, 32, 32), dtype=np.float32),
+            np.array([1], dtype=np.int64),
+        ),
+        (
+            rng.random((2, 3, 32, 32), dtype=np.float32),
+            np.array([3, 6], dtype=np.int64),
+        ),
+    )
+    parameters_before = [
+        parameter.copy() for parameter in _model_parameters(model)
+    ]
+
+    results = evaluate_fgsm_epsilon_sweep(
+        model,
+        SoftmaxCrossEntropyLoss(),
+        batches,
+        [0.0, 0.05],
+    )
+
+    assert len(results) == 2
     for parameter, parameter_before in zip(
         _model_parameters(model),
         parameters_before,

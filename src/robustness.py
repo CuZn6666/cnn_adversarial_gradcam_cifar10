@@ -27,6 +27,12 @@ class FGSMBatchResult(TypedDict):
     attack_success_rate: float
 
 
+class FGSMSweepResult(FGSMBatchResult):
+    """Metrics for one epsilon in an FGSM robustness sweep."""
+
+    epsilon: float
+
+
 def evaluate_fgsm_batch(
     model: CompactCNN,
     loss_function: SoftmaxCrossEntropyLoss,
@@ -76,6 +82,37 @@ def evaluate_fgsm_batch(
         "accuracy_drop": float(clean_accuracy - adversarial_accuracy),
         "attack_success_rate": float(attack_success_rate),
     }
+
+
+def evaluate_fgsm_epsilon_sweep(
+    model: CompactCNN,
+    loss_function: SoftmaxCrossEntropyLoss,
+    batches: Iterable[tuple[np.ndarray, np.ndarray]],
+    epsilons: Iterable[float],
+) -> list[FGSMSweepResult]:
+    """Evaluate multiple FGSM epsilon values in the provided order."""
+    epsilon_values = list(epsilons)
+    if not epsilon_values:
+        raise ValueError(
+            "evaluate_fgsm_epsilon_sweep requires at least one epsilon."
+        )
+
+    batch_values = tuple(batches)
+    results: list[FGSMSweepResult] = []
+    for epsilon in epsilon_values:
+        batch_result = evaluate_fgsm_batches(
+            model,
+            loss_function,
+            batch_values,
+            epsilon,
+        )
+        results.append(
+            {
+                "epsilon": float(epsilon),
+                **batch_result,
+            }
+        )
+    return results
 
 
 def evaluate_fgsm_batches(
