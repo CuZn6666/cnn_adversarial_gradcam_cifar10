@@ -104,3 +104,55 @@ def plot_metrics(
         accuracy_path,
     )
     return loss_path, accuracy_path
+
+
+def plot_fgsm_accuracy_vs_epsilon(
+    sweep_results: list[dict[str, Any]],
+    output_path: str | Path,
+) -> Path:
+    """Save clean and adversarial accuracy across FGSM epsilon values."""
+    if not sweep_results:
+        raise ValueError("FGSM sweep results must not be empty.")
+
+    epsilons = _required_series(
+        sweep_results,
+        ("epsilon",),
+        "epsilon",
+    )
+    clean_accuracy = _required_series(
+        sweep_results,
+        ("clean_accuracy",),
+        "clean accuracy",
+    )
+    adversarial_accuracy = _required_series(
+        sweep_results,
+        ("adversarial_accuracy",),
+        "adversarial accuracy",
+    )
+
+    figure_path = Path(output_path)
+    figure_path.parent.mkdir(parents=True, exist_ok=True)
+
+    figure, axes = plt.subplots(figsize=(6, 4))
+    axes.plot(
+        epsilons,
+        clean_accuracy,
+        marker="o",
+        label="Clean Accuracy",
+    )
+    axes.plot(
+        epsilons,
+        adversarial_accuracy,
+        marker="o",
+        label="FGSM Accuracy",
+    )
+    axes.set_xlabel("Epsilon")
+    axes.set_ylabel("Accuracy")
+    axes.set_title("FGSM Accuracy vs Epsilon")
+    axes.set_ylim(0.0, 1.0)
+    axes.grid(True, alpha=0.3)
+    axes.legend()
+    figure.tight_layout()
+    figure.savefig(figure_path, dpi=150)
+    plt.close(figure)
+    return figure_path
