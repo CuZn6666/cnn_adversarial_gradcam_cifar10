@@ -1,0 +1,81 @@
+{
+  "config": {
+    "batch_size": 8,
+    "epsilon_values": [
+      0.0,
+      0.00784313725490196,
+      0.01568627450980392,
+      0.03137254901960784,
+      0.06274509803921569
+    ],
+    "eval_samples": 32,
+    "representative_epsilon": 0.03137254901960784,
+    "seed": 42
+  },
+  "representative_examples": {
+    "failed": [],
+    "successful": []
+  },
+  "sweep_results": [
+    {
+      "accuracy_drop": 0.0,
+      "adversarial_accuracy": 0.0,
+      "adversarial_correct": 0,
+      "attack_success_rate": 0.0,
+      "clean_accuracy": 0.0,
+      "clean_correct": 0,
+      "clean_correct_samples": 0,
+      "epsilon": 0.0,
+      "successful_attacks": 0,
+      "total_samples": 32
+    },
+    {
+      "accuracy_drop": 0.0,
+      "adversarial_accuracy": 0.0,
+      "adversarial_correct": 0,
+      "attack_success_rate": 0.0,
+      "clean_accuracy": 0.0,
+      "clean_correct": 0,
+      "clean_correct_samples": 0,
+      "epsilon": 0.00784313725490196,
+      "successful_attacks": 0,
+      "total_samples": 32
+    },
+    {
+      "accuracy_drop": 0.0,
+      "adversarial_accuracy": 0.0,
+      "adversarial_correct": 0,
+      "attack_success_rate": 0.0,
+      "clean_accuracy": 0.0,
+      "clean_correct": 0,
+      "clean_correct_samples": 0,
+      "epsilon": 0.01568627450980392,
+      "successful_attacks": 0,
+      "total_samples": 32
+    },
+    {
+      "accuracy_drop": 0.0,
+      "adversarial_accuracy": 0.0,
+      "adversarial_correct": 0,
+      "attack_success_rate": 0.0,
+      "clean_accuracy": 0.0,
+      "clean_correct": 0,
+      "clean_correct_samples": 0,
+      "epsilon": 0.03137254901960784,
+      "successful_attacks": 0,
+      "total_samples": 32
+    },
+    {
+      "accuracy_drop": 0.0,
+      "adversarial_accuracy": 0.0,
+      "adversarial_correct": 0,
+      "attack_success_rate": 0.0,
+      "clean_accuracy": 0.0,
+      "clean_correct": 0,
+      "clean_correct_samples": 0,
+      "epsilon": 0.06274509803921569,
+      "successful_attacks": 0,
+      "total_samples": 32
+    }
+  ]
+}
