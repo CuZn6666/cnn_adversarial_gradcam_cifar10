@@ -40,38 +40,31 @@ The project is organized by Work Packages. Codex must follow `WP_PLAN.md` before
 * Deterministic input-gradient computation, input-gradient maps, minimal FGSM,
   qualitative visualization saving, and a controlled one-example runner are
   implemented and tested.
-* WP8 is in progress at the documentation-preparation stage.
-* No WP8 evaluation helper, epsilon-sweep runner, or robustness experiment has
-  been implemented or run yet.
+* WP8 is completed for the controlled FGSM pipeline-validation scope.
+* Single- and multi-batch evaluation, epsilon sweeps, plotting,
+  representative-example metadata, persistence, and a controlled 32-sample
+  local smoke runner are implemented and tested.
+* The committed smoke run produced zero clean-correct samples, so it validates
+  pipeline execution only and is not a meaningful robustness conclusion.
 * PGD, black-box attacks, Grad-CAM, and final analysis have not been started.
 
 ## Current Development Priority
 
-WP7 is closed. WP8 documentation preparation is in progress; implementation
-has not started.
+WP7 and WP8 are closed for their documented controlled scopes. No later Work
+Package has started.
 
-Before starting WP8, Codex must:
-
-1. Read `WP_PLAN.md`.
-2. Read `TESTING.md`.
-3. Inspect the current repository structure.
-4. Review the WP8 goal, dependencies, validation criteria, evaluation subset,
-   epsilon values, metrics, and output artifacts.
-5. Make a small implementation plan before editing code.
-6. Use local execution only for documentation, unit tests, helper
-   implementation, and the controlled tiny smoke evaluation.
-7. Ask the user whether to use the university-provided ZITI cluster before any
-   larger formal evaluation, repeated-seed experiment, or expanded evaluation
-   subset.
-
-Do not start PGD, black-box attacks, Grad-CAM, or later Work Packages while
-beginning WP8.
+WP8 remains a pipeline-validation result. ZITI is not needed for the completed
+32-sample smoke validation. Before any larger formal evaluation,
+repeated-seed experiment, or expanded evaluation subset, ask the user whether
+to use the university-provided ZITI cluster. Defer that evaluation until a
+stronger baseline checkpoint is available and the user gives explicit
+approval.
 
 WP7 remains limited to the completed FGSM implementation, input-gradient
 visualization, and a small number of qualitative
 clean/adversarial/perturbation examples. WP8 owns epsilon sweeps, attack
-success-rate aggregation, accuracy-versus-epsilon experiments, and larger
-robustness evaluation.
+success-rate aggregation, accuracy-versus-epsilon experiments, and the
+completed controlled robustness pipeline validation.
 
 ## General Working Rules
 

@@ -477,13 +477,14 @@ WP7 boundary:
 
 Goal:
 
-Evaluate FGSM quantitatively over selected epsilon values and a larger
+Evaluate FGSM quantitatively over selected epsilon values and a controlled
 evaluation subset after WP7 is completed.
 
-Preparation status:
+Status:
 
-Documentation preparation is in progress. No WP8 helper, runner, or robustness
-experiment has been implemented or run.
+Completed for the controlled FGSM pipeline-validation scope. Single-batch,
+multi-batch, epsilon-sweep, plotting, representative-selection, persistence,
+and controlled-runner paths are implemented and tested.
 
 Controlled local smoke configuration:
 
@@ -514,32 +515,71 @@ Expected results:
 * Multiple epsilon values are evaluated.
 * Accuracy-versus-epsilon results are produced.
 * Attack success rate is aggregated where defined.
-* Representative successful and failed attacks are selected.
+* Representative successful and failed attacks are selected when eligible
+  clean-correct samples exist.
 
-Planned validation order:
+Validation commands:
 
-1. Add focused unit tests for a single-batch FGSM evaluation helper.
-2. Add focused unit tests for sample-weighted multi-batch aggregation.
-3. Add an `epsilon=0` sanity test.
-4. Validate all four metrics with controlled synthetic predictions.
-5. Verify evaluation does not update model parameters.
-6. Run the controlled local 32-sample smoke evaluation.
+```bash
+MPLCONFIGDIR=/tmp/cnn-wp8-matplotlib .venv/bin/python -m pytest tests/test_fgsm_evaluation.py tests/test_fgsm_robustness_runner.py tests/test_plotting.py -v
+MPLCONFIGDIR=/tmp/cnn-wp8-matplotlib .venv/bin/python -m pytest tests/ -q
+```
+
+Latest validation result:
+
+```text
+Focused WP8 evaluation, runner, and plotting tests: 27 passed
+Full suite: 159 passed
+```
+
+The focused tests cover:
+
+1. single-batch metric formulas and `epsilon=0`,
+2. sample-weighted multi-batch aggregation with different batch sizes,
+3. epsilon-order-preserving sweeps and empty-sweep rejection,
+4. unchanged model parameters,
+5. representative successful/failed selection and clean-wrong exclusion,
+6. accuracy-versus-epsilon plotting,
+7. runner configuration, JSON persistence, and plot generation without
+   external data or checkpoint dependencies in tests.
+
+Controlled local smoke command:
+
+```bash
+MPLCONFIGDIR=/tmp/cnn-wp8-matplotlib .venv/bin/python -m experiments.fgsm.evaluate_robustness
+```
+
+The command requires the existing local checkpoint and extracted CIFAR-10
+data. It does not auto-download data or train the model.
+
+Committed smoke artifacts:
+
+```text
+results/WP8/fgsm_robustness_metrics.json
+results/WP8/fgsm_accuracy_vs_epsilon.png
+deliverables/WP8/wp8_smoke_review.md
+```
 
 Reuse the existing FGSM, input-gradient, batching, checkpointing, metrics,
 plotting, and CIFAR-10 loader code. Do not reimplement FGSM.
 
-The current checkpoint has approximately `0.15625` controlled-subset
-evaluation accuracy. WP8 results from this checkpoint validate the pipeline
-only and are not a strong CIFAR-10 robustness conclusion.
+The controlled 32-sample run produced zero clean-correct samples for every
+epsilon. Therefore clean accuracy, adversarial accuracy, accuracy drop, and
+attack success rate are all `0.0`, and the successful/failed representative
+lists are empty. This validates pipeline execution only and is not a
+meaningful CIFAR-10 robustness conclusion.
 
 Local execution is allowed for documentation, unit tests, helper
-implementation, and the tiny smoke evaluation. Before any larger formal
+implementation, and the completed tiny smoke evaluation. ZITI is not needed
+for the current WP8 validation or closeout. Before any larger formal
 evaluation, expanded subset, or repeated-seed run, pause and ask the user
-whether to use the university-provided ZITI cluster. Do not introduce cluster,
-GPU, Slurm, or CUDA workflows without explicit approval.
+whether to use the university-provided ZITI cluster. Such evaluation remains
+deferred until a stronger baseline checkpoint exists and the user gives
+explicit approval. Do not introduce cluster, GPU, Slurm, or CUDA workflows
+without explicit approval.
 
-WP8 must not begin before WP7 FGSM implementation and its lightweight
-validation are complete.
+No larger evaluation, denser epsilon sweep, model retraining, ZITI run, PGD,
+black-box attack, Grad-CAM, or later Work Package was included in WP8.
 
 ## WP9: Final Reproducibility Validation
 

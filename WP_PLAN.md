@@ -38,7 +38,7 @@ Individual estimates are planning values and may vary during implementation.
 | WP5  | Baseline training and clean evaluation                   | completed        |
 | WP6  | Focused Runtime Bottleneck Handling                      | completed        |
 | WP7  | FGSM Attack and Input-Gradient Visualization             | completed        |
-| WP8  | FGSM robustness evaluation                               | in progress      |
+| WP8  | FGSM robustness evaluation                               | completed        |
 | WP9  | PGD Attack Implementation                                | planned          |
 | WP10 | PGD Robustness Evaluation and Comparison                 | planned          |
 | WP11 | Non-Gradient Black-Box Attack Implementation             | planned          |
@@ -80,13 +80,22 @@ normalized input-gradient maps, minimal untargeted FGSM with clipping and
 controlled runner that defaults to one CIFAR-10 test example with
 `epsilon=8/255`.
 
-WP8 documentation preparation is in progress; implementation has not started.
-The controlled local smoke plan uses 32 evaluation samples, `batch_size=8`,
-`seed=42`, and epsilon values `0`, `2/255`, `4/255`, `8/255`, and `16/255`.
-Local execution is limited to documentation, unit tests, helper
-implementation, and the tiny smoke evaluation. Before a larger formal
-evaluation, repeated-seed run, or expanded subset, ask whether to use the
-university-provided ZITI cluster.
+WP8 is completed for the controlled FGSM pipeline-validation scope. It
+provides single- and multi-batch FGSM evaluation, sample-weighted metrics,
+epsilon sweeps, accuracy-versus-epsilon plotting, representative-example
+metadata selection, JSON persistence, and a controlled local runner.
+
+The committed smoke run used 32 evaluation samples, `batch_size=8`, `seed=42`,
+epsilon values `0`, `2/255`, `4/255`, `8/255`, and `16/255`, and
+`representative_epsilon=8/255`. The checkpoint produced zero clean-correct
+samples on this fixed subset, so all reported accuracies and attack metrics
+were `0.0`, and no representative examples were eligible. This validates
+pipeline execution only and is not a meaningful CIFAR-10 robustness
+conclusion.
+
+ZITI is not needed for this smoke validation. A larger formal evaluation is
+deferred until a stronger baseline checkpoint is available and the user
+explicitly confirms whether to use ZITI. No later Work Package has started.
 
 ## Work Package Details
 
@@ -778,7 +787,8 @@ Expected deliverables:
 
 * clean-versus-FGSM accuracy table,
 * accuracy-versus-epsilon plot,
-* representative FGSM examples.
+* representative FGSM example metadata when eligible clean-correct samples
+  exist.
 
 Relevant folders/files:
 
@@ -789,10 +799,12 @@ src/data/cifar10_loader.py             # reuse local CIFAR-10 loading
 src/data/batching.py                   # reuse deterministic mini-batches
 src/checkpointing.py                   # reuse model checkpoint loading
 src/metrics.py                         # reuse JSON persistence
-src/plotting.py                        # reuse or minimally extend plotting
-src/robustness.py                      # planned evaluation helpers
-experiments/fgsm/evaluate_robustness.py  # planned controlled runner
-tests/test_fgsm_evaluation.py          # planned focused tests
+src/plotting.py                        # accuracy-versus-epsilon plotting
+src/robustness.py                      # batch, sweep, and selection helpers
+experiments/fgsm/evaluate_robustness.py  # controlled runner
+tests/test_fgsm_evaluation.py          # focused evaluation tests
+tests/test_fgsm_robustness_runner.py   # controlled runner tests
+tests/test_plotting.py                 # FGSM plotting tests
 results/WP8/
 deliverables/WP8/
 ```
@@ -858,10 +870,10 @@ Dependencies:
 * Before any larger formal evaluation, expanded subset, or repeated-seed run,
   ask the user whether to use the university-provided ZITI cluster.
 
-Explicit non-goals for the preparation step:
+Explicit non-goals and deferred work:
 
-* no WP8 evaluation helper or runner implementation,
-* no robustness experiment,
+* no larger or repeated-seed robustness evaluation,
+* no model retraining or stronger checkpoint production,
 * no PGD, black-box attack, or Grad-CAM work,
 * no automatic GPU, CUDA, CuPy, JAX, PyTorch, Slurm, or cluster workflow.
 
@@ -871,8 +883,25 @@ Estimated duration:
 
 Status:
 
-In progress at the documentation-preparation stage. No WP8 implementation or
-evaluation run has started.
+Completed for the controlled pipeline-validation scope. The implementation
+includes `evaluate_fgsm_batch`, `evaluate_fgsm_batches`,
+`evaluate_fgsm_epsilon_sweep`, `plot_fgsm_accuracy_vs_epsilon`,
+`select_fgsm_representative_examples`, `WP8FGSMRobustnessConfig`,
+`run_fgsm_robustness_pipeline`, and `run_cifar10_fgsm_robustness`.
+
+The committed smoke artifacts are:
+
+```text
+results/WP8/fgsm_robustness_metrics.json
+results/WP8/fgsm_accuracy_vs_epsilon.png
+deliverables/WP8/wp8_smoke_review.md
+```
+
+Focused WP8 tests and the full suite pass. The smoke run used existing local
+CIFAR-10 data and an existing checkpoint; it did not download data, train the
+model, modify the checkpoint, or use ZITI. A larger formal evaluation remains
+deferred until a stronger checkpoint exists and the user gives explicit
+approval.
 
 ---
 
