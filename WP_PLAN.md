@@ -38,7 +38,7 @@ Individual estimates are planning values and may vary during implementation.
 | WP5  | Baseline training and clean evaluation                   | completed        |
 | WP6  | Focused Runtime Bottleneck Handling                      | completed        |
 | WP7  | FGSM Attack and Input-Gradient Visualization             | completed        |
-| WP8  | FGSM robustness evaluation                               | planned          |
+| WP8  | FGSM robustness evaluation                               | in progress      |
 | WP9  | PGD Attack Implementation                                | planned          |
 | WP10 | PGD Robustness Evaluation and Comparison                 | planned          |
 | WP11 | Non-Gradient Black-Box Attack Implementation             | planned          |
@@ -80,11 +80,13 @@ normalized input-gradient maps, minimal untargeted FGSM with clipping and
 controlled runner that defaults to one CIFAR-10 test example with
 `epsilon=8/255`.
 
-WP8 remains planned and has not started. Before any epsilon sweep, many-image
-evaluation, repeated-seed run, or larger robustness experiment, ask whether to
-use the university-provided ZITI cluster. WP8 preparation must define the
-evaluation subset, epsilon values, metrics, and runtime plan before code or
-experiments begin.
+WP8 documentation preparation is in progress; implementation has not started.
+The controlled local smoke plan uses 32 evaluation samples, `batch_size=8`,
+`seed=42`, and epsilon values `0`, `2/255`, `4/255`, `8/255`, and `16/255`.
+Local execution is limited to documentation, unit tests, helper
+implementation, and the tiny smoke evaluation. Before a larger formal
+evaluation, repeated-seed run, or expanded subset, ask whether to use the
+university-provided ZITI cluster.
 
 ## Work Package Details
 
@@ -692,7 +694,7 @@ tests/test_fgsm.py
 tests/test_input_gradients.py
 tests/test_visualization.py
 tests/test_fgsm_examples.py
-results/figures/
+results/WP7/qualitative/
 deliverables/WP7/wp7_summary.md
 ```
 
@@ -781,8 +783,41 @@ Expected deliverables:
 Relevant folders/files:
 
 ```text
-TBD — not specified in source spreadsheet.
+src/attacks/fgsm.py                    # reuse; do not reimplement FGSM
+src/input_gradients.py                 # reuse batch input gradients
+src/data/cifar10_loader.py             # reuse local CIFAR-10 loading
+src/data/batching.py                   # reuse deterministic mini-batches
+src/checkpointing.py                   # reuse model checkpoint loading
+src/metrics.py                         # reuse JSON persistence
+src/plotting.py                        # reuse or minimally extend plotting
+src/robustness.py                      # planned evaluation helpers
+experiments/fgsm/evaluate_robustness.py  # planned controlled runner
+tests/test_fgsm_evaluation.py          # planned focused tests
+results/WP8/
+deliverables/WP8/
 ```
+
+Controlled local smoke configuration:
+
+```text
+eval_samples: 32
+batch_size: 8
+seed: 42
+epsilon_values: [0, 2/255, 4/255, 8/255, 16/255]
+```
+
+Metrics:
+
+```text
+clean_accuracy = clean_correct / total_samples
+adversarial_accuracy = adversarial_correct / total_samples
+accuracy_drop = clean_accuracy - adversarial_accuracy
+attack_success_rate = successful_attacks / clean_correct_samples
+```
+
+A successful attack is a sample whose clean prediction is correct and whose
+adversarial prediction is incorrect. The attack-success-rate denominator is
+therefore limited to clean-correct samples.
 
 Suggested implementation order:
 
@@ -794,11 +829,41 @@ Suggested implementation order:
 
 Validation:
 
-TBD — not specified in source spreadsheet.
+* Add deterministic unit tests for a single-batch FGSM evaluation helper.
+* Add deterministic unit tests for sample-weighted multi-batch aggregation,
+  including batches with different sizes.
+* Verify the `epsilon=0` sanity case: adversarial inputs and predictions match
+  the clean case, and adversarial accuracy equals clean accuracy.
+* Verify clean accuracy, adversarial accuracy, accuracy drop, and attack
+  success rate against hand-checkable synthetic predictions.
+* Verify evaluation does not update model parameters.
+* Run a controlled local smoke evaluation with 32 CIFAR-10 evaluation samples,
+  `batch_size=8`, `seed=42`, and the fixed epsilon list.
+* Save metrics and plots under `results/WP8/` and document the controlled
+  result under `deliverables/WP8/`.
+* Do not interpret the controlled subset result as a strong CIFAR-10
+  robustness conclusion.
 
 Dependencies:
 
-TBD — not specified in source spreadsheet.
+* WP7 minimal FGSM, input-gradient computation, and qualitative validation are
+  completed.
+* Reuse the existing FGSM, input-gradient, batching, checkpointing, metrics,
+  plotting, and CIFAR-10 loader code; do not reimplement FGSM.
+* The existing checkpoint was produced by a weak 64/32 controlled baseline
+  with approximately `0.15625` evaluation accuracy. It is suitable for
+  pipeline validation, not for a strong robustness claim.
+* Local execution is approved only for documentation, unit tests, helper
+  implementation, and the 32-sample tiny smoke evaluation.
+* Before any larger formal evaluation, expanded subset, or repeated-seed run,
+  ask the user whether to use the university-provided ZITI cluster.
+
+Explicit non-goals for the preparation step:
+
+* no WP8 evaluation helper or runner implementation,
+* no robustness experiment,
+* no PGD, black-box attack, or Grad-CAM work,
+* no automatic GPU, CUDA, CuPy, JAX, PyTorch, Slurm, or cluster workflow.
 
 Estimated duration:
 
@@ -806,7 +871,8 @@ Estimated duration:
 
 Status:
 
-Planned.
+In progress at the documentation-preparation stage. No WP8 implementation or
+evaluation run has started.
 
 ---
 

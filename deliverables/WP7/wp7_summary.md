@@ -49,10 +49,10 @@ parameters.
 Default qualitative outputs:
 
 ```text
-results/figures/fgsm/fgsm_example_000_clean.png
-results/figures/fgsm/fgsm_example_000_adversarial.png
-results/figures/fgsm/fgsm_example_000_input_gradient.png
-results/figures/fgsm/fgsm_example_000_perturbation.png
+results/WP7/qualitative/fgsm_example_000_clean.png
+results/WP7/qualitative/fgsm_example_000_adversarial.png
+results/WP7/qualitative/fgsm_example_000_input_gradient.png
+results/WP7/qualitative/fgsm_example_000_perturbation.png
 ```
 
 Generated images are local experiment artifacts and are not required for the
@@ -80,15 +80,14 @@ The tests verify:
 Final validation result:
 
 ```text
-WP7 input-gradient, FGSM, visualization, and runner tests: 25 passed
+WP7 input-gradient, FGSM, visualization, and runner tests: 26 passed
 Backward, loss integration, and loss tests: 21 passed
 ```
 
 A controlled local CIFAR-10 validation was also run with the existing
 checkpoint, the existing test batch, one example, `seed=42`, and
 `epsilon=8/255`. It selected label `7` and generated all four expected PNG
-files under `/tmp/cnn-wp7-fgsm-final/`. The temporary path was used to avoid
-adding generated experiment images to the repository.
+files under `results/WP7/qualitative/`.
 
 ## Scope Boundary
 

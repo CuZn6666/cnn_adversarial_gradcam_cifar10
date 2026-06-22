@@ -440,17 +440,17 @@ MPLCONFIGDIR=/tmp/cnn-wp7-matplotlib .venv/bin/python -m experiments.fgsm.genera
 The command defaults to one deterministic CIFAR-10 test example,
 `epsilon=8/255`, the checkpoint
 `results/checkpoints/cifar10_subset_baseline.npz`, and the output directory
-`results/figures/fgsm/`. It requires an existing local CIFAR-10
+`results/WP7/qualitative/`. It requires an existing local CIFAR-10
 `test_batch` and checkpoint, does not download data, and does not train or
 update the model.
 
 Expected qualitative artifact names:
 
 ```text
-results/figures/fgsm/fgsm_example_000_clean.png
-results/figures/fgsm/fgsm_example_000_adversarial.png
-results/figures/fgsm/fgsm_example_000_input_gradient.png
-results/figures/fgsm/fgsm_example_000_perturbation.png
+results/WP7/qualitative/fgsm_example_000_clean.png
+results/WP7/qualitative/fgsm_example_000_adversarial.png
+results/WP7/qualitative/fgsm_example_000_input_gradient.png
+results/WP7/qualitative/fgsm_example_000_perturbation.png
 ```
 
 The automated runner smoke test uses synthetic arrays and a temporary
@@ -460,9 +460,10 @@ checkpoint, or committed generated images.
 Latest WP7 final validation:
 
 ```text
-WP7 input-gradient, FGSM, visualization, and runner tests: 25 passed
+WP7 input-gradient, FGSM, visualization, and runner tests: 26 passed
 Backward, loss integration, and loss tests: 21 passed
-Controlled local CIFAR-10 example: 1 example generated successfully in /tmp
+Controlled local CIFAR-10 example: 1 example generated successfully under
+results/WP7/qualitative/
 ```
 
 WP7 boundary:
@@ -479,6 +480,34 @@ Goal:
 Evaluate FGSM quantitatively over selected epsilon values and a larger
 evaluation subset after WP7 is completed.
 
+Preparation status:
+
+Documentation preparation is in progress. No WP8 helper, runner, or robustness
+experiment has been implemented or run.
+
+Controlled local smoke configuration:
+
+```text
+eval_samples: 32
+batch_size: 8
+seed: 42
+epsilon_values: [0, 2/255, 4/255, 8/255, 16/255]
+output_directory: results/WP8/
+deliverable_directory: deliverables/WP8/
+```
+
+Metric definitions:
+
+```text
+clean_accuracy = clean_correct / total_samples
+adversarial_accuracy = adversarial_correct / total_samples
+accuracy_drop = clean_accuracy - adversarial_accuracy
+attack_success_rate = successful_attacks / clean_correct_samples
+```
+
+A successful attack requires a correct clean prediction and an incorrect
+adversarial prediction.
+
 Expected results:
 
 * Clean and adversarial accuracy are measured consistently.
@@ -487,10 +516,27 @@ Expected results:
 * Attack success rate is aggregated where defined.
 * Representative successful and failed attacks are selected.
 
-Before any many-image evaluation, epsilon sweep, repeated-seed run, large-batch
-evaluation, or other large-scale processing, pause and ask the user whether to
-use the university-provided ZITI cluster. Do not introduce cluster, GPU, Slurm,
-or CUDA workflows without explicit approval.
+Planned validation order:
+
+1. Add focused unit tests for a single-batch FGSM evaluation helper.
+2. Add focused unit tests for sample-weighted multi-batch aggregation.
+3. Add an `epsilon=0` sanity test.
+4. Validate all four metrics with controlled synthetic predictions.
+5. Verify evaluation does not update model parameters.
+6. Run the controlled local 32-sample smoke evaluation.
+
+Reuse the existing FGSM, input-gradient, batching, checkpointing, metrics,
+plotting, and CIFAR-10 loader code. Do not reimplement FGSM.
+
+The current checkpoint has approximately `0.15625` controlled-subset
+evaluation accuracy. WP8 results from this checkpoint validate the pipeline
+only and are not a strong CIFAR-10 robustness conclusion.
+
+Local execution is allowed for documentation, unit tests, helper
+implementation, and the tiny smoke evaluation. Before any larger formal
+evaluation, expanded subset, or repeated-seed run, pause and ask the user
+whether to use the university-provided ZITI cluster. Do not introduce cluster,
+GPU, Slurm, or CUDA workflows without explicit approval.
 
 WP8 must not begin before WP7 FGSM implementation and its lightweight
 validation are complete.

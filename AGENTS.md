@@ -40,15 +40,15 @@ The project is organized by Work Packages. Codex must follow `WP_PLAN.md` before
 * Deterministic input-gradient computation, input-gradient maps, minimal FGSM,
   qualitative visualization saving, and a controlled one-example runner are
   implemented and tested.
-* WP8 has not started. Epsilon sweeps, accuracy-versus-epsilon evaluation,
-  attack success-rate aggregation, and larger robustness evaluation remain
-  WP8 work.
+* WP8 is in progress at the documentation-preparation stage.
+* No WP8 evaluation helper, epsilon-sweep runner, or robustness experiment has
+  been implemented or run yet.
 * PGD, black-box attacks, Grad-CAM, and final analysis have not been started.
 
 ## Current Development Priority
 
-WP7 is closed. WP8 is the next planned Work Package, but implementation has not
-started.
+WP7 is closed. WP8 documentation preparation is in progress; implementation
+has not started.
 
 Before starting WP8, Codex must:
 
@@ -58,9 +58,11 @@ Before starting WP8, Codex must:
 4. Review the WP8 goal, dependencies, validation criteria, evaluation subset,
    epsilon values, metrics, and output artifacts.
 5. Make a small implementation plan before editing code.
-6. Ask whether to use the university-provided ZITI cluster before implementing
-   or running any many-image evaluation, epsilon sweep, repeated-seed
-   experiment, or large-batch evaluation.
+6. Use local execution only for documentation, unit tests, helper
+   implementation, and the controlled tiny smoke evaluation.
+7. Ask the user whether to use the university-provided ZITI cluster before any
+   larger formal evaluation, repeated-seed experiment, or expanded evaluation
+   subset.
 
 Do not start PGD, black-box attacks, Grad-CAM, or later Work Packages while
 beginning WP8.
