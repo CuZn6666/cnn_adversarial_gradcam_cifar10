@@ -7,6 +7,7 @@ from src.robustness import (
     evaluate_fgsm_batch,
     evaluate_fgsm_batches,
     evaluate_fgsm_epsilon_sweep,
+    select_fgsm_representative_examples,
 )
 
 
@@ -379,6 +380,201 @@ def test_evaluate_fgsm_epsilon_sweep_does_not_update_model_parameters() -> None:
     )
 
     assert len(results) == 2
+    for parameter, parameter_before in zip(
+        _model_parameters(model),
+        parameters_before,
+        strict=True,
+    ):
+        np.testing.assert_array_equal(parameter, parameter_before)
+
+
+def test_select_fgsm_representative_examples_uses_expected_categories(
+) -> None:
+    batches = (
+        (
+            np.zeros((2, 3, 32, 32), dtype=np.float32),
+            np.array([0, 1], dtype=np.int64),
+        ),
+        (
+            np.zeros((3, 3, 32, 32), dtype=np.float32),
+            np.array([2, 3, 4], dtype=np.int64),
+        ),
+    )
+    model = _VariableBatchControlledModel(
+        {
+            2: ([0, 9], [8, 9]),
+            3: ([2, 3, 4], [2, 8, 4]),
+        }
+    )
+
+    selected = select_fgsm_representative_examples(
+        model,  # type: ignore[arg-type]
+        SoftmaxCrossEntropyLoss(),
+        batches,
+        epsilon=0.1,
+        max_successful=2,
+        max_failed=2,
+    )
+
+    assert selected == {
+        "successful": [
+            {
+                "global_sample_index": 0,
+                "batch_index": 0,
+                "index_in_batch": 0,
+                "true_label": 0,
+                "clean_prediction": 0,
+                "adversarial_prediction": 8,
+                "epsilon": 0.1,
+                "example_type": "successful",
+            },
+            {
+                "global_sample_index": 3,
+                "batch_index": 1,
+                "index_in_batch": 1,
+                "true_label": 3,
+                "clean_prediction": 3,
+                "adversarial_prediction": 8,
+                "epsilon": 0.1,
+                "example_type": "successful",
+            },
+        ],
+        "failed": [
+            {
+                "global_sample_index": 2,
+                "batch_index": 1,
+                "index_in_batch": 0,
+                "true_label": 2,
+                "clean_prediction": 2,
+                "adversarial_prediction": 2,
+                "epsilon": 0.1,
+                "example_type": "failed",
+            },
+            {
+                "global_sample_index": 4,
+                "batch_index": 1,
+                "index_in_batch": 2,
+                "true_label": 4,
+                "clean_prediction": 4,
+                "adversarial_prediction": 4,
+                "epsilon": 0.1,
+                "example_type": "failed",
+            },
+        ],
+    }
+
+
+def test_select_fgsm_representative_examples_respects_limits() -> None:
+    batches = (
+        (
+            np.zeros((2, 3, 32, 32), dtype=np.float32),
+            np.array([0, 1], dtype=np.int64),
+        ),
+        (
+            np.zeros((3, 3, 32, 32), dtype=np.float32),
+            np.array([2, 3, 4], dtype=np.int64),
+        ),
+    )
+    model = _VariableBatchControlledModel(
+        {
+            2: ([0, 9], [8, 9]),
+            3: ([2, 3, 4], [2, 8, 4]),
+        }
+    )
+
+    selected = select_fgsm_representative_examples(
+        model,  # type: ignore[arg-type]
+        SoftmaxCrossEntropyLoss(),
+        batches,
+        epsilon=0.1,
+        max_successful=1,
+        max_failed=1,
+    )
+
+    assert [
+        example["global_sample_index"]
+        for example in selected["successful"]
+    ] == [0]
+    assert [
+        example["global_sample_index"]
+        for example in selected["failed"]
+    ] == [2]
+
+
+def test_select_fgsm_representative_examples_handles_empty_categories(
+) -> None:
+    images = np.zeros((2, 3, 32, 32), dtype=np.float32)
+    labels = np.array([4, 5], dtype=np.int64)
+    model = _ControlledModel(
+        clean_predictions=[0, 0],
+        adversarial_predictions=[1, 1],
+    )
+
+    selected = select_fgsm_representative_examples(
+        model,  # type: ignore[arg-type]
+        SoftmaxCrossEntropyLoss(),
+        ((images, labels),),
+        epsilon=0.1,
+    )
+
+    assert selected == {"successful": [], "failed": []}
+
+
+@pytest.mark.parametrize(
+    ("max_successful", "max_failed", "message"),
+    [
+        (-1, 1, "max_successful"),
+        (1, -1, "max_failed"),
+        (True, 1, "max_successful"),
+    ],
+)
+def test_select_fgsm_representative_examples_rejects_invalid_limits(
+    max_successful: int,
+    max_failed: int,
+    message: str,
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        select_fgsm_representative_examples(
+            CompactCNN(seed=42),
+            SoftmaxCrossEntropyLoss(),
+            (),
+            epsilon=0.1,
+            max_successful=max_successful,
+            max_failed=max_failed,
+        )
+
+
+def test_select_fgsm_representative_examples_rejects_empty_batches() -> None:
+    with pytest.raises(
+        ValueError,
+        match="requires at least one sample",
+    ):
+        select_fgsm_representative_examples(
+            CompactCNN(seed=42),
+            SoftmaxCrossEntropyLoss(),
+            (),
+            epsilon=0.1,
+        )
+
+
+def test_select_fgsm_representative_examples_preserves_parameters() -> None:
+    model = CompactCNN(seed=42)
+    images = np.random.default_rng(37).random(
+        (2, 3, 32, 32),
+        dtype=np.float32,
+    )
+    labels = np.array([1, 7], dtype=np.int64)
+    parameters_before = [
+        parameter.copy() for parameter in _model_parameters(model)
+    ]
+
+    select_fgsm_representative_examples(
+        model,
+        SoftmaxCrossEntropyLoss(),
+        ((images, labels),),
+        epsilon=0.05,
+    )
+
     for parameter, parameter_before in zip(
         _model_parameters(model),
         parameters_before,
