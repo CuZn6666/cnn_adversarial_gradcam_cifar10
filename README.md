@@ -15,7 +15,7 @@ gradients, and FGSM attack pipeline are implemented directly with NumPy.
 | **From-scratch NumPy CNN** | `Conv2D`, `ReLU`, `MaxPool2D`, `Flatten`, `Linear`, and `CompactCNN` implemented manually. |
 | **Manual backward propagation** | Layer-level and full-model `backward(...)` pipeline implemented and tested. |
 | **Numerical gradient verification** | `Linear`, `Conv2D`, `SoftmaxCrossEntropyLoss`, and input-gradient sanity checks validated. |
-| **Automated tests** | `183 passed` in the current local full test suite. |
+| **Automated tests** | `191 passed` in the current local full test suite. |
 | **Clean CIFAR-10 portfolio baseline** | Deterministic NumPy baseline checkpoint reached `47.07%` validation accuracy and `44.73%` clean test-subset accuracy. |
 | **FGSM adversarial attack pipeline** | Input gradients, FGSM perturbations, clipping, and qualitative visualizations implemented. |
 | **FGSM quantitative robustness** | Portfolio baseline evaluated on `1024` CIFAR-10 test samples across `0`, `2/255`, `4/255`, `8/255`, and `16/255`. |
@@ -103,20 +103,34 @@ tiny subset checkpoint, which achieved `0.0` clean accuracy on the fixed
 final CIFAR-10 robustness. The Day 2 figures above are the portfolio-facing
 FGSM quantitative results using the stronger baseline checkpoint.
 
-### Qualitative FGSM example artifacts
+### Day 3 qualitative FGSM visualization with portfolio baseline
 
-[![FGSM Adversarial Example Analysis](results/WP7/qualitative/fgsm_example_000_combined.png)](results/WP7/qualitative/fgsm_example_000_combined.png)
+[![FGSM Qualitative Analysis](results/fgsm/fgsm_qualitative_comparison.png)](results/fgsm/fgsm_qualitative_comparison.png)
 
-This 2x2 figure combines the clean input, FGSM adversarial input, loss
-input-gradient map, and perturbation visualization from the WP7 qualitative
-pipeline.
+This figure uses `results/baseline/portfolio_baseline_best.npz` and a
+deterministic CIFAR-10 test-subset selection rule: the first clean-correct
+sample that becomes incorrect under FGSM at `epsilon = 8/255`. It shows the
+clean image, input-gradient map, visualized perturbation magnitude, and
+adversarial image.
 
-Source artifacts:
+[![FGSM Epsilon Progression](results/fgsm/epsilon_progression.png)](results/fgsm/epsilon_progression.png)
+
+The epsilon progression keeps the same clean source image and independently
+generates FGSM examples for `0`, `2/255`, `4/255`, `8/255`, and `16/255`.
+
+Day 3 qualitative artifacts:
+
+- [FGSM qualitative comparison](results/fgsm/fgsm_qualitative_comparison.png)
+- [FGSM epsilon progression](results/fgsm/epsilon_progression.png)
+- [FGSM qualitative metadata (JSON)](results/fgsm/fgsm_qualitative_metadata.json)
+
+Historical WP7 smoke qualitative artifacts remain available for traceability:
 
 - [Clean image](results/WP7/qualitative/fgsm_example_000_clean.png)
 - [FGSM adversarial image](results/WP7/qualitative/fgsm_example_000_adversarial.png)
 - [Input-gradient map](results/WP7/qualitative/fgsm_example_000_input_gradient.png)
 - [Perturbation map](results/WP7/qualitative/fgsm_example_000_perturbation.png)
+- [Historical combined WP7 figure](results/WP7/qualitative/fgsm_example_000_combined.png)
 
 ## Why This Project Is Technically Significant
 
@@ -181,7 +195,7 @@ The output shape is:
 Latest local validation:
 
 ```text
-183 passed
+191 passed
 ```
 
 The tests cover:
@@ -199,6 +213,7 @@ The tests cover:
 * FGSM behavior,
 * robustness evaluation and epsilon sweeps,
 * Day 2 FGSM quantitative runner and plots,
+* Day 3 FGSM qualitative runner and visualizations,
 * experiment runner smoke tests.
 
 Run the full suite:
@@ -381,6 +396,21 @@ Default outputs:
 - [Attack success rate vs epsilon](results/fgsm/attack_success_rate_vs_epsilon.png)
 - [Accuracy drop vs epsilon](results/fgsm/accuracy_drop_vs_epsilon.png)
 
+### Generate portfolio FGSM qualitative visualizations
+
+Uses `results/baseline/portfolio_baseline_best.npz`, the deterministic
+portfolio test-subset policy, and writes to `results/fgsm/`:
+
+```bash
+MPLCONFIGDIR=/tmp/cnn-day3-matplotlib .venv/bin/python -m experiments.fgsm.generate_day3_visualizations
+```
+
+Default outputs:
+
+- [FGSM qualitative comparison](results/fgsm/fgsm_qualitative_comparison.png)
+- [FGSM epsilon progression](results/fgsm/epsilon_progression.png)
+- [FGSM qualitative metadata (JSON)](results/fgsm/fgsm_qualitative_metadata.json)
+
 ## Repository Structure
 
 ```text
@@ -422,6 +452,7 @@ emphasized:
 * FGSM attack and qualitative visualizations.
 * Controlled FGSM robustness evaluation with epsilon sweep.
 * Portfolio FGSM quantitative robustness figures.
+* Portfolio FGSM qualitative comparison and epsilon progression figures.
 
 ### Planned
 

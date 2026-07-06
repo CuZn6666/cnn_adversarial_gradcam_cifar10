@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 
 from src.visualization import (
     save_combined_fgsm_figure,
+    save_fgsm_epsilon_progression,
+    save_fgsm_qualitative_comparison,
     save_fgsm_visualizations,
 )
 
@@ -174,4 +176,74 @@ def test_save_combined_fgsm_figure_rejects_missing_source_file(
             gradient_path,
             tmp_path / "missing_perturbation.png",
             tmp_path / "combined.png",
+        )
+
+
+def test_save_fgsm_qualitative_comparison_creates_portfolio_png(
+    tmp_path: Path,
+) -> None:
+    clean_images, adversarial_images, gradient_map = _synthetic_example()
+
+    output_path = save_fgsm_qualitative_comparison(
+        clean_images,
+        adversarial_images,
+        gradient_map,
+        tmp_path / "portfolio" / "fgsm_qualitative_comparison.png",
+        true_label="cat",
+        clean_prediction="cat",
+        adversarial_prediction="dog",
+        epsilon_label="8/255",
+    )
+
+    assert output_path == tmp_path / "portfolio" / "fgsm_qualitative_comparison.png"
+    assert output_path.is_file()
+    assert output_path.stat().st_size > 0
+    assert output_path.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
+
+
+def test_save_fgsm_epsilon_progression_creates_portfolio_png(
+    tmp_path: Path,
+) -> None:
+    clean_images, _, _ = _synthetic_example()
+    images_by_epsilon = [
+        clean_images,
+        np.clip(clean_images + 0.01, 0.0, 1.0),
+        np.clip(clean_images + 0.02, 0.0, 1.0),
+    ]
+
+    output_path = save_fgsm_epsilon_progression(
+        images_by_epsilon,
+        ("0", "2/255", "4/255"),
+        ("cat", "cat", "dog"),
+        tmp_path / "portfolio" / "epsilon_progression.png",
+        true_label="cat",
+    )
+
+    assert output_path == tmp_path / "portfolio" / "epsilon_progression.png"
+    assert output_path.is_file()
+    assert output_path.stat().st_size > 0
+    assert output_path.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
+
+
+def test_save_fgsm_epsilon_progression_rejects_invalid_inputs(
+    tmp_path: Path,
+) -> None:
+    clean_images, _, _ = _synthetic_example()
+
+    with pytest.raises(ValueError, match="must not be empty"):
+        save_fgsm_epsilon_progression(
+            [],
+            (),
+            (),
+            tmp_path / "empty.png",
+            true_label="cat",
+        )
+
+    with pytest.raises(ValueError, match="epsilon_labels length"):
+        save_fgsm_epsilon_progression(
+            [clean_images],
+            ("0", "2/255"),
+            ("cat",),
+            tmp_path / "mismatch.png",
+            true_label="cat",
         )

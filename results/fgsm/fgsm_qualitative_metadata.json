@@ -1,0 +1,62 @@
+{
+  "adversarial_prediction": 4,
+  "adversarial_prediction_class": "deer",
+  "checkpoint": "results/baseline/portfolio_baseline_best.npz",
+  "clean_prediction": 5,
+  "clean_prediction_class": "dog",
+  "comparison_epsilon": 0.03137254901960784,
+  "comparison_epsilon_label": "8/255",
+  "epsilon_labels": [
+    "0",
+    "2/255",
+    "4/255",
+    "8/255",
+    "16/255"
+  ],
+  "epsilon_values": [
+    0.0,
+    0.00784313725490196,
+    0.01568627450980392,
+    0.03137254901960784,
+    0.06274509803921569
+  ],
+  "eval_samples": 1024,
+  "original_test_index": 5163,
+  "predictions_by_epsilon": [
+    {
+      "epsilon": 0.0,
+      "epsilon_label": "0",
+      "prediction": 5,
+      "prediction_class": "dog"
+    },
+    {
+      "epsilon": 0.00784313725490196,
+      "epsilon_label": "2/255",
+      "prediction": 4,
+      "prediction_class": "deer"
+    },
+    {
+      "epsilon": 0.01568627450980392,
+      "epsilon_label": "4/255",
+      "prediction": 4,
+      "prediction_class": "deer"
+    },
+    {
+      "epsilon": 0.03137254901960784,
+      "epsilon_label": "8/255",
+      "prediction": 4,
+      "prediction_class": "deer"
+    },
+    {
+      "epsilon": 0.06274509803921569,
+      "epsilon_label": "16/255",
+      "prediction": 4,
+      "prediction_class": "deer"
+    }
+  ],
+  "sample_selection_rule": "first deterministic test-subset sample that is clean-correct and becomes incorrect under FGSM at epsilon 8/255",
+  "seed": 42,
+  "subset_position": 0,
+  "true_class": "dog",
+  "true_label": 5
+}

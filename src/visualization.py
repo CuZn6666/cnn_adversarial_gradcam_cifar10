@@ -151,3 +151,125 @@ def save_combined_fgsm_figure(
     figure.savefig(figure_path, dpi=170)
     plt.close(figure)
     return figure_path
+
+
+def _nchw_single_to_display_image(image: np.ndarray) -> np.ndarray:
+    if image.ndim != 4 or image.shape[0] != 1:
+        raise ValueError("image must have shape (1, C, H, W).")
+    if image.shape[1] not in (1, 3):
+        raise ValueError("image must have one or three channels.")
+    if not np.isfinite(image).all():
+        raise ValueError("image must contain only finite values.")
+
+    display_image = np.moveaxis(image[0], 0, -1)
+    if display_image.shape[-1] == 1:
+        display_image = display_image[..., 0]
+    return np.clip(display_image, 0.0, 1.0)
+
+
+def _normalized_perturbation_map(
+    clean_image: np.ndarray,
+    adversarial_image: np.ndarray,
+) -> np.ndarray:
+    if adversarial_image.shape != clean_image.shape:
+        raise ValueError("adversarial_image must match clean_image shape.")
+    perturbation = np.mean(
+        np.abs(adversarial_image[0] - clean_image[0]),
+        axis=0,
+    )
+    return _normalize_map(perturbation)
+
+
+def save_fgsm_qualitative_comparison(
+    clean_image: np.ndarray,
+    adversarial_image: np.ndarray,
+    gradient_map: np.ndarray,
+    output_path: str | Path,
+    true_label: str,
+    clean_prediction: str,
+    adversarial_prediction: str,
+    epsilon_label: str,
+) -> Path:
+    """Save a portfolio FGSM comparison: clean, gradient, perturbation, adv."""
+    clean_display = _nchw_single_to_display_image(clean_image)
+    adversarial_display = _nchw_single_to_display_image(adversarial_image)
+    height, width = clean_image.shape[2:]
+    normalized_gradient = _single_gradient_map(gradient_map, (height, width))
+    normalized_perturbation = _normalized_perturbation_map(
+        clean_image,
+        adversarial_image,
+    )
+
+    figure_path = Path(output_path)
+    figure_path.parent.mkdir(parents=True, exist_ok=True)
+
+    figure, axes = plt.subplots(1, 4, figsize=(12, 3.6))
+    figure.suptitle(
+        f"FGSM Qualitative Analysis | True: {true_label} | ε = {epsilon_label}",
+        fontsize=14,
+    )
+    panels = [
+        (clean_display, "Clean Image\nPred: " + clean_prediction, None),
+        (normalized_gradient, "Input Gradient", "magma"),
+        (normalized_perturbation, "Perturbation\nvisualized magnitude", "gray"),
+        (
+            adversarial_display,
+            "Adversarial Image\nPred: " + adversarial_prediction,
+            None,
+        ),
+    ]
+    for axis, (image, title, cmap) in zip(axes, panels):
+        axis.imshow(image, cmap=cmap, vmin=0.0, vmax=1.0)
+        axis.set_title(title, fontsize=10)
+        axis.axis("off")
+    figure.tight_layout(rect=(0.0, 0.0, 1.0, 0.88))
+    figure.savefig(figure_path, dpi=170)
+    plt.close(figure)
+    return figure_path
+
+
+def save_fgsm_epsilon_progression(
+    images_by_epsilon: list[np.ndarray],
+    epsilon_labels: list[str] | tuple[str, ...],
+    predictions: list[str] | tuple[str, ...],
+    output_path: str | Path,
+    true_label: str,
+) -> Path:
+    """Save one clean source image under independently generated epsilons."""
+    if not images_by_epsilon:
+        raise ValueError("images_by_epsilon must not be empty.")
+    if len(images_by_epsilon) != len(epsilon_labels):
+        raise ValueError("epsilon_labels length must match images_by_epsilon.")
+    if len(predictions) != len(images_by_epsilon):
+        raise ValueError("predictions length must match images_by_epsilon.")
+
+    display_images = [
+        _nchw_single_to_display_image(image)
+        for image in images_by_epsilon
+    ]
+
+    figure_path = Path(output_path)
+    figure_path.parent.mkdir(parents=True, exist_ok=True)
+
+    panel_count = len(display_images)
+    figure, axes = plt.subplots(1, panel_count, figsize=(2.4 * panel_count, 3.2))
+    if panel_count == 1:
+        axes = [axes]
+    figure.suptitle(
+        f"FGSM Epsilon Progression | True: {true_label}",
+        fontsize=14,
+    )
+    for axis, image, epsilon_label, prediction in zip(
+        axes,
+        display_images,
+        epsilon_labels,
+        predictions,
+    ):
+        axis.imshow(image)
+        axis.set_title(f"ε = {epsilon_label}\nPred: {prediction}", fontsize=10)
+        axis.axis("off")
+
+    figure.tight_layout(rect=(0.0, 0.0, 1.0, 0.86))
+    figure.savefig(figure_path, dpi=170)
+    plt.close(figure)
+    return figure_path
