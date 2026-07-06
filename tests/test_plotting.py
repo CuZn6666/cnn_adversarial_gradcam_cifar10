@@ -1,7 +1,12 @@
 import pytest
 from matplotlib.axes import Axes
 
-from src.plotting import plot_fgsm_accuracy_vs_epsilon, plot_metrics
+from src.plotting import (
+    plot_fgsm_accuracy_vs_epsilon,
+    plot_metrics,
+    plot_runtime_comparison,
+    runtime_speedup,
+)
 
 
 def _metrics_history() -> list[dict[str, float | int]]:
@@ -141,4 +146,48 @@ def test_plot_fgsm_accuracy_vs_epsilon_rejects_empty_results(
         plot_fgsm_accuracy_vs_epsilon(
             [],
             tmp_path / "accuracy_vs_epsilon.png",
+        )
+
+
+def test_runtime_speedup_calculates_before_after_ratio() -> None:
+    assert runtime_speedup(0.043458736, 0.000209222) == pytest.approx(
+        207.7159,
+    )
+
+
+def test_plot_runtime_comparison_creates_requested_file(tmp_path) -> None:
+    output_path = tmp_path / "runtime" / "conv2d_backward.png"
+
+    saved_path = plot_runtime_comparison(
+        0.043458736,
+        0.000209222,
+        output_path,
+    )
+
+    assert saved_path == output_path
+    assert output_path.is_file()
+    assert output_path.stat().st_size > 0
+    assert output_path.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
+
+
+@pytest.mark.parametrize(
+    ("before_seconds", "after_seconds", "message"),
+    [
+        (0.0, 0.1, "before_seconds must be"),
+        (-1.0, 0.1, "before_seconds must be"),
+        (0.1, 0.0, "after_seconds must be"),
+        (0.1, -1.0, "after_seconds must be"),
+    ],
+)
+def test_plot_runtime_comparison_rejects_invalid_timings(
+    tmp_path,
+    before_seconds,
+    after_seconds,
+    message,
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        plot_runtime_comparison(
+            before_seconds,
+            after_seconds,
+            tmp_path / "runtime.png",
         )

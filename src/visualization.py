@@ -9,6 +9,7 @@ import numpy as np
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
 
 
 def _normalize_map(values: np.ndarray) -> np.ndarray:
@@ -103,3 +104,50 @@ def save_fgsm_visualizations(
         vmax=1.0,
     )
     return paths
+
+
+def _load_image_file(path: str | Path, label: str) -> np.ndarray:
+    image_path = Path(path)
+    if not image_path.is_file():
+        raise FileNotFoundError(f"{label} image file does not exist: {image_path}")
+    image = mpimg.imread(image_path)
+    if not np.isfinite(image).all():
+        raise ValueError(f"{label} image must contain only finite values.")
+    return image
+
+
+def save_combined_fgsm_figure(
+    clean_path: str | Path,
+    adversarial_path: str | Path,
+    gradient_path: str | Path,
+    perturbation_path: str | Path,
+    output_path: str | Path,
+) -> Path:
+    """Combine existing qualitative FGSM artifact PNGs into a 2x2 figure."""
+    images = [
+        _load_image_file(clean_path, "clean"),
+        _load_image_file(adversarial_path, "adversarial"),
+        _load_image_file(gradient_path, "input-gradient"),
+        _load_image_file(perturbation_path, "perturbation"),
+    ]
+    titles = [
+        "(a) Clean Input",
+        "(b) Adversarial Input",
+        "(c) Input Gradient",
+        "(d) Perturbation",
+    ]
+
+    figure_path = Path(output_path)
+    figure_path.parent.mkdir(parents=True, exist_ok=True)
+
+    figure, axes = plt.subplots(2, 2, figsize=(7.2, 6.6))
+    figure.suptitle("FGSM Adversarial Example Analysis", fontsize=15)
+    for axis, image, title in zip(axes.flat, images, titles):
+        axis.imshow(image)
+        axis.set_title(title, fontsize=11)
+        axis.axis("off")
+
+    figure.tight_layout(rect=(0.0, 0.0, 1.0, 0.95))
+    figure.savefig(figure_path, dpi=170)
+    plt.close(figure)
+    return figure_path

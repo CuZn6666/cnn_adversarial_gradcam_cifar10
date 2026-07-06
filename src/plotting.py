@@ -188,3 +188,84 @@ def plot_fgsm_accuracy_vs_epsilon(
     figure.savefig(figure_path, dpi=150)
     plt.close(figure)
     return figure_path
+
+
+def runtime_speedup(before_seconds: float, after_seconds: float) -> float:
+    """Return before/after runtime speedup for positive finite timings."""
+    before = float(before_seconds)
+    after = float(after_seconds)
+    if not np.isfinite(before) or before <= 0.0:
+        raise ValueError("before_seconds must be a positive finite number.")
+    if not np.isfinite(after) or after <= 0.0:
+        raise ValueError("after_seconds must be a positive finite number.")
+    return before / after
+
+
+def plot_runtime_comparison(
+    before_seconds: float,
+    after_seconds: float,
+    output_path: str | Path,
+    operation: str = "Conv2D.backward",
+) -> Path:
+    """Save a before/after runtime comparison chart for one operation."""
+    speedup = runtime_speedup(before_seconds, after_seconds)
+    before_ms = float(before_seconds) * 1000.0
+    after_ms = float(after_seconds) * 1000.0
+
+    figure_path = Path(output_path)
+    figure_path.parent.mkdir(parents=True, exist_ok=True)
+
+    figure, axes = plt.subplots(figsize=(6.4, 4.4))
+    bars = axes.bar(
+        ["Before\nOptimization", "After\nOptimization"],
+        [before_ms, after_ms],
+        color=["#d62728", "#2ca02c"],
+        width=0.55,
+        zorder=3,
+    )
+    axes.set_yscale("log")
+    axes.set_ylabel("Runtime (ms, log scale)")
+    axes.set_title(f"{operation} Runtime Optimization")
+    axes.grid(True, axis="y", alpha=0.3, which="both", zorder=0)
+
+    for bar, value in zip(bars, (before_ms, after_ms)):
+        axes.annotate(
+            f"{value:.3f} ms",
+            xy=(bar.get_x() + bar.get_width() / 2.0, value),
+            xytext=(0, 8),
+            textcoords="offset points",
+            ha="center",
+            va="bottom",
+            fontsize=9,
+        )
+
+    axes.text(
+        0.5,
+        0.92,
+        f"{speedup:.2f}× faster",
+        transform=axes.transAxes,
+        ha="center",
+        va="center",
+        fontsize=12,
+        fontweight="bold",
+        bbox={
+            "boxstyle": "round,pad=0.3",
+            "facecolor": "white",
+            "edgecolor": "0.75",
+            "alpha": 0.95,
+        },
+    )
+    axes.text(
+        0.5,
+        -0.18,
+        "Profile → identify bottleneck → optimize → benchmark",
+        transform=axes.transAxes,
+        ha="center",
+        va="top",
+        fontsize=9,
+        color="0.25",
+    )
+    figure.tight_layout()
+    figure.savefig(figure_path, dpi=170)
+    plt.close(figure)
+    return figure_path

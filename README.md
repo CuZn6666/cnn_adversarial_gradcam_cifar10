@@ -37,13 +37,18 @@ pipeline rather than proving final CIFAR-10 robustness.
 
 ### Qualitative FGSM example artifacts
 
-| Clean image | FGSM adversarial image | Input-gradient map | Perturbation map |
-| ----------- | ---------------------- | ------------------ | ---------------- |
-| [<img src="results/WP7/qualitative/fgsm_example_000_clean.png" width="120"/>](results/WP7/qualitative/fgsm_example_000_clean.png) | [<img src="results/WP7/qualitative/fgsm_example_000_adversarial.png" width="120"/>](results/WP7/qualitative/fgsm_example_000_adversarial.png) | [<img src="results/WP7/qualitative/fgsm_example_000_input_gradient.png" width="120"/>](results/WP7/qualitative/fgsm_example_000_input_gradient.png) | [<img src="results/WP7/qualitative/fgsm_example_000_perturbation.png" width="120"/>](results/WP7/qualitative/fgsm_example_000_perturbation.png) |
+[![FGSM Adversarial Example Analysis](results/WP7/qualitative/fgsm_example_000_combined.png)](results/WP7/qualitative/fgsm_example_000_combined.png)
 
-These images are generated from the WP7 qualitative FGSM pipeline. They show
-the original sample, the FGSM-perturbed sample, the loss input-gradient map,
-and the perturbation visualization.
+This 2x2 figure combines the clean input, FGSM adversarial input, loss
+input-gradient map, and perturbation visualization from the WP7 qualitative
+pipeline.
+
+Source artifacts:
+
+- [Clean image](results/WP7/qualitative/fgsm_example_000_clean.png)
+- [FGSM adversarial image](results/WP7/qualitative/fgsm_example_000_adversarial.png)
+- [Input-gradient map](results/WP7/qualitative/fgsm_example_000_input_gradient.png)
+- [Perturbation map](results/WP7/qualitative/fgsm_example_000_perturbation.png)
 
 ## Why This Project Is Technically Significant
 
@@ -166,6 +171,11 @@ WP6 followed a focused performance-engineering workflow:
 `Conv2D.backward` was selected as the bottleneck. The optimization remained
 local to that method and uses `np.einsum`-based accumulation while preserving
 the public API, forward behavior, stride, padding, and gradient shapes.
+
+[![Conv2D.backward runtime comparison](results/WP6/conv2d_backward_runtime_comparison.png)](results/WP6/conv2d_backward_runtime_comparison.png)
+
+The runtime figure summarizes the engineering workflow:
+profile → identify `Conv2D.backward` as the bottleneck → optimize → benchmark.
 
 Documented local benchmark:
 

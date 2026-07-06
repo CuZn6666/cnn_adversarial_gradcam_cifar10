@@ -2,8 +2,12 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+import matplotlib.pyplot as plt
 
-from src.visualization import save_fgsm_visualizations
+from src.visualization import (
+    save_combined_fgsm_figure,
+    save_fgsm_visualizations,
+)
 
 
 def _synthetic_example() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -112,4 +116,62 @@ def test_save_fgsm_visualizations_rejects_invalid_shapes(
             adversarial_images,
             gradient_map,
             tmp_path,
+        )
+
+
+def _write_png(path: Path, value: float) -> None:
+    image = np.full((4, 5, 3), value, dtype=np.float32)
+    plt.imsave(path, image)
+
+
+def test_save_combined_fgsm_figure_creates_file_without_modifying_sources(
+    tmp_path: Path,
+) -> None:
+    source_paths = {
+        "clean": tmp_path / "clean.png",
+        "adversarial": tmp_path / "adversarial.png",
+        "gradient": tmp_path / "gradient.png",
+        "perturbation": tmp_path / "perturbation.png",
+    }
+    for index, path in enumerate(source_paths.values(), start=1):
+        _write_png(path, index / 5.0)
+    before_bytes = {
+        label: path.read_bytes()
+        for label, path in source_paths.items()
+    }
+
+    output_path = save_combined_fgsm_figure(
+        source_paths["clean"],
+        source_paths["adversarial"],
+        source_paths["gradient"],
+        source_paths["perturbation"],
+        tmp_path / "combined" / "fgsm_combined.png",
+    )
+
+    assert output_path == tmp_path / "combined" / "fgsm_combined.png"
+    assert output_path.is_file()
+    assert output_path.stat().st_size > 0
+    assert output_path.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
+    assert {
+        label: path.read_bytes()
+        for label, path in source_paths.items()
+    } == before_bytes
+
+
+def test_save_combined_fgsm_figure_rejects_missing_source_file(
+    tmp_path: Path,
+) -> None:
+    clean_path = tmp_path / "clean.png"
+    adversarial_path = tmp_path / "adversarial.png"
+    gradient_path = tmp_path / "gradient.png"
+    for path in (clean_path, adversarial_path, gradient_path):
+        _write_png(path, 0.25)
+
+    with pytest.raises(FileNotFoundError, match="perturbation image file"):
+        save_combined_fgsm_figure(
+            clean_path,
+            adversarial_path,
+            gradient_path,
+            tmp_path / "missing_perturbation.png",
+            tmp_path / "combined.png",
         )
