@@ -15,10 +15,10 @@ gradients, and FGSM attack pipeline are implemented directly with NumPy.
 | **From-scratch NumPy CNN** | `Conv2D`, `ReLU`, `MaxPool2D`, `Flatten`, `Linear`, and `CompactCNN` implemented manually. |
 | **Manual backward propagation** | Layer-level and full-model `backward(...)` pipeline implemented and tested. |
 | **Numerical gradient verification** | `Linear`, `Conv2D`, `SoftmaxCrossEntropyLoss`, and input-gradient sanity checks validated. |
-| **Automated tests** | `173 passed` in the current local full test suite. |
+| **Automated tests** | `183 passed` in the current local full test suite. |
 | **Clean CIFAR-10 portfolio baseline** | Deterministic NumPy baseline checkpoint reached `47.07%` validation accuracy and `44.73%` clean test-subset accuracy. |
 | **FGSM adversarial attack pipeline** | Input gradients, FGSM perturbations, clipping, and qualitative visualizations implemented. |
-| **Robustness evaluation** | Clean/adversarial metrics, epsilon sweep, accuracy drop, attack success rate, JSON output, and plot generation implemented. |
+| **FGSM quantitative robustness** | Portfolio baseline evaluated on `1024` CIFAR-10 test samples across `0`, `2/255`, `4/255`, `8/255`, and `16/255`. |
 | **Runtime engineering** | Profiling identified `Conv2D.backward` as the bottleneck; a focused NumPy optimization achieved a documented `207.72x` local speedup. |
 | **Structured workflow** | Work-package-based development with tests, deliverables, metrics, and result artifacts. |
 
@@ -56,7 +56,40 @@ Baseline artifacts:
 - [Training history JSON](results/baseline/portfolio_training_history.json)
 - [Final metrics JSON](results/baseline/portfolio_final_metrics.json)
 
-### FGSM robustness smoke evaluation
+### FGSM quantitative robustness with portfolio baseline
+
+| Accuracy vs epsilon | Attack success rate | Accuracy drop |
+| ------------------- | ------------------- | ------------- |
+| [![Accuracy vs Epsilon](results/fgsm/accuracy_vs_epsilon.png)](results/fgsm/accuracy_vs_epsilon.png) | [![Attack Success Rate vs Epsilon](results/fgsm/attack_success_rate_vs_epsilon.png)](results/fgsm/attack_success_rate_vs_epsilon.png) | [![Accuracy Drop vs Epsilon](results/fgsm/accuracy_drop_vs_epsilon.png)](results/fgsm/accuracy_drop_vs_epsilon.png) |
+
+This Day 2 evaluation uses the stronger portfolio checkpoint:
+
+```text
+checkpoint: results/baseline/portfolio_baseline_best.npz
+eval_samples: 1024
+batch_size: 32
+seed: 42
+epsilons: [0, 2/255, 4/255, 8/255, 16/255]
+```
+
+Measured FGSM robustness:
+
+| Epsilon | Clean accuracy | Adversarial accuracy | Accuracy drop | Attack success rate |
+| ------- | -------------: | -------------------: | ------------: | ------------------: |
+| `0` | `45.80%` | `45.80%` | `0.00 pp` | `0.00%` |
+| `2/255` | `45.80%` | `17.38%` | `28.42 pp` | `62.05%` |
+| `4/255` | `45.80%` | `7.23%` | `38.57 pp` | `84.22%` |
+| `8/255` | `45.80%` | `1.17%` | `44.63 pp` | `97.44%` |
+| `16/255` | `45.80%` | `0.00%` | `45.80 pp` | `100.00%` |
+
+Day 2 artifacts:
+
+- [FGSM quantitative metrics (JSON)](results/fgsm/fgsm_quantitative_metrics.json)
+- [Accuracy vs epsilon](results/fgsm/accuracy_vs_epsilon.png)
+- [Attack success rate vs epsilon](results/fgsm/attack_success_rate_vs_epsilon.png)
+- [Accuracy drop vs epsilon](results/fgsm/accuracy_drop_vs_epsilon.png)
+
+### Historical WP8 smoke evaluation
 
 [![FGSM accuracy vs epsilon](results/WP8/fgsm_accuracy_vs_epsilon.png)](results/WP8/fgsm_accuracy_vs_epsilon.png)
 
@@ -64,11 +97,11 @@ Controlled WP8 smoke run over epsilon values from `0/255` through `16/255`.
 The pipeline produces clean accuracy, adversarial accuracy, accuracy drop, and
 attack success rate metrics.
 
-Important limitation: this committed WP8 smoke plot was generated with the old
+Important limitation: this historical WP8 smoke plot was generated with the old
 tiny subset checkpoint, which achieved `0.0` clean accuracy on the fixed
 32-sample subset. It validates the evaluation pipeline rather than proving
-final CIFAR-10 robustness. The stronger portfolio baseline above is prepared
-for the next FGSM robustness rerun.
+final CIFAR-10 robustness. The Day 2 figures above are the portfolio-facing
+FGSM quantitative results using the stronger baseline checkpoint.
 
 ### Qualitative FGSM example artifacts
 
@@ -148,7 +181,7 @@ The output shape is:
 Latest local validation:
 
 ```text
-173 passed
+183 passed
 ```
 
 The tests cover:
@@ -165,6 +198,7 @@ The tests cover:
 * input-gradient computation,
 * FGSM behavior,
 * robustness evaluation and epsilon sweeps,
+* Day 2 FGSM quantitative runner and plots,
 * experiment runner smoke tests.
 
 Run the full suite:
@@ -331,6 +365,22 @@ Default outputs:
 The data loader checks for local CIFAR-10 data and does not silently fabricate
 large-scale benchmark results.
 
+### Run portfolio FGSM quantitative evaluation
+
+Uses `results/baseline/portfolio_baseline_best.npz` and writes to
+`results/fgsm/`:
+
+```bash
+MPLCONFIGDIR=/tmp/cnn-fgsm-matplotlib .venv/bin/python -m experiments.fgsm.evaluate_quantitative
+```
+
+Default outputs:
+
+- [FGSM quantitative metrics (JSON)](results/fgsm/fgsm_quantitative_metrics.json)
+- [Accuracy vs epsilon](results/fgsm/accuracy_vs_epsilon.png)
+- [Attack success rate vs epsilon](results/fgsm/attack_success_rate_vs_epsilon.png)
+- [Accuracy drop vs epsilon](results/fgsm/accuracy_drop_vs_epsilon.png)
+
 ## Repository Structure
 
 ```text
@@ -371,10 +421,10 @@ emphasized:
 * Input-gradient computation.
 * FGSM attack and qualitative visualizations.
 * Controlled FGSM robustness evaluation with epsilon sweep.
+* Portfolio FGSM quantitative robustness figures.
 
 ### Planned
 
-* Rerun FGSM robustness evaluation with the stronger portfolio baseline.
 * Grad-CAM implementation and clean/adversarial heatmap comparison.
 * PGD and additional attack evaluation if time and runtime allow.
 * Optional adversarial training.

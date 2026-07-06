@@ -190,6 +190,129 @@ def plot_fgsm_accuracy_vs_epsilon(
     return figure_path
 
 
+def _fgsm_x_values_and_labels(
+    sweep_results: list[dict[str, Any]],
+    epsilon_labels: list[str] | tuple[str, ...] | None,
+) -> tuple[list[int], list[str]]:
+    epsilons = _required_series(sweep_results, ("epsilon",), "epsilon")
+    if epsilon_labels is None:
+        labels = [f"{epsilon:g}" for epsilon in epsilons]
+    else:
+        labels = list(epsilon_labels)
+        if len(labels) != len(epsilons):
+            raise ValueError(
+                "epsilon_labels length must match FGSM sweep results length."
+            )
+    return list(range(len(epsilons))), labels
+
+
+def _save_fgsm_percentage_curve(
+    sweep_results: list[dict[str, Any]],
+    output_path: str | Path,
+    metric_key: str,
+    title: str,
+    ylabel: str,
+    epsilon_labels: list[str] | tuple[str, ...] | None = None,
+    clean_reference: bool = False,
+) -> Path:
+    if not sweep_results:
+        raise ValueError("FGSM sweep results must not be empty.")
+
+    x_values, labels = _fgsm_x_values_and_labels(sweep_results, epsilon_labels)
+    metric_values = [
+        value * 100.0
+        for value in _required_series(sweep_results, (metric_key,), metric_key)
+    ]
+
+    figure_path = Path(output_path)
+    figure_path.parent.mkdir(parents=True, exist_ok=True)
+
+    figure, axes = plt.subplots(figsize=(6, 4))
+    axes.plot(
+        x_values,
+        metric_values,
+        color="#d62728" if metric_key != "adversarial_accuracy" else "#ff7f0e",
+        marker="o",
+        linewidth=2.0,
+        markersize=5,
+        label=ylabel,
+    )
+    if clean_reference:
+        clean_accuracy = _required_series(
+            sweep_results,
+            ("clean_accuracy",),
+            "clean accuracy",
+        )[0] * 100.0
+        axes.axhline(
+            clean_accuracy,
+            color="#1f77b4",
+            linestyle="--",
+            linewidth=1.8,
+            label="Clean Accuracy",
+        )
+    axes.set_xticks(x_values)
+    axes.set_xticklabels(labels)
+    axes.set_xlabel("Perturbation Strength (ε)")
+    axes.set_ylabel(ylabel)
+    axes.set_title(title)
+    axes.set_ylim(0.0, 100.0)
+    axes.grid(True, alpha=0.3)
+    axes.legend()
+    figure.tight_layout()
+    figure.savefig(figure_path, dpi=160)
+    plt.close(figure)
+    return figure_path
+
+
+def plot_fgsm_portfolio_accuracy_vs_epsilon(
+    sweep_results: list[dict[str, Any]],
+    output_path: str | Path,
+    epsilon_labels: list[str] | tuple[str, ...] | None = None,
+) -> Path:
+    """Save portfolio-ready FGSM adversarial accuracy vs epsilon."""
+    return _save_fgsm_percentage_curve(
+        sweep_results,
+        output_path,
+        metric_key="adversarial_accuracy",
+        title="FGSM Robustness: Accuracy vs Perturbation Strength",
+        ylabel="Accuracy (%)",
+        epsilon_labels=epsilon_labels,
+        clean_reference=True,
+    )
+
+
+def plot_fgsm_attack_success_rate_vs_epsilon(
+    sweep_results: list[dict[str, Any]],
+    output_path: str | Path,
+    epsilon_labels: list[str] | tuple[str, ...] | None = None,
+) -> Path:
+    """Save portfolio-ready FGSM attack success rate vs epsilon."""
+    return _save_fgsm_percentage_curve(
+        sweep_results,
+        output_path,
+        metric_key="attack_success_rate",
+        title="FGSM Attack Success Rate vs Perturbation Strength",
+        ylabel="Attack Success Rate (%)",
+        epsilon_labels=epsilon_labels,
+    )
+
+
+def plot_fgsm_accuracy_drop_vs_epsilon(
+    sweep_results: list[dict[str, Any]],
+    output_path: str | Path,
+    epsilon_labels: list[str] | tuple[str, ...] | None = None,
+) -> Path:
+    """Save portfolio-ready FGSM accuracy drop in percentage points."""
+    return _save_fgsm_percentage_curve(
+        sweep_results,
+        output_path,
+        metric_key="accuracy_drop",
+        title="FGSM-Induced Accuracy Drop vs Perturbation Strength",
+        ylabel="Accuracy Drop (percentage points)",
+        epsilon_labels=epsilon_labels,
+    )
+
+
 def runtime_speedup(before_seconds: float, after_seconds: float) -> float:
     """Return before/after runtime speedup for positive finite timings."""
     before = float(before_seconds)

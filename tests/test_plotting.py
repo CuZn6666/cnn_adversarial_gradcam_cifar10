@@ -3,7 +3,10 @@ from matplotlib.axes import Axes
 
 from src.plotting import (
     plot_confusion_matrix,
+    plot_fgsm_accuracy_drop_vs_epsilon,
+    plot_fgsm_attack_success_rate_vs_epsilon,
     plot_fgsm_accuracy_vs_epsilon,
+    plot_fgsm_portfolio_accuracy_vs_epsilon,
     plot_metrics,
     plot_runtime_comparison,
     plot_train_validation_accuracy_curve,
@@ -64,6 +67,25 @@ def _fgsm_sweep_results() -> list[dict[str, float | int]]:
             "epsilon": 0.05,
             "clean_accuracy": 0.75,
             "adversarial_accuracy": 0.5,
+        },
+    ]
+
+
+def _portfolio_fgsm_sweep_results() -> list[dict[str, float | int]]:
+    return [
+        {
+            "epsilon": 0.0,
+            "clean_accuracy": 0.5,
+            "adversarial_accuracy": 0.5,
+            "accuracy_drop": 0.0,
+            "attack_success_rate": 0.0,
+        },
+        {
+            "epsilon": 8.0 / 255.0,
+            "clean_accuracy": 0.5,
+            "adversarial_accuracy": 0.25,
+            "accuracy_drop": 0.25,
+            "attack_success_rate": 0.5,
         },
     ]
 
@@ -261,4 +283,54 @@ def test_plot_confusion_matrix_rejects_invalid_values(tmp_path) -> None:
             confusion_matrix=[[1, -1], [0, 2]],
             class_names=["class_a", "class_b"],
             output_path=tmp_path / "confusion_matrix.png",
+        )
+
+
+@pytest.mark.parametrize(
+    ("plot_function", "filename"),
+    [
+        (plot_fgsm_portfolio_accuracy_vs_epsilon, "accuracy_vs_epsilon.png"),
+        (
+            plot_fgsm_attack_success_rate_vs_epsilon,
+            "attack_success_rate_vs_epsilon.png",
+        ),
+        (
+            plot_fgsm_accuracy_drop_vs_epsilon,
+            "accuracy_drop_vs_epsilon.png",
+        ),
+    ],
+)
+def test_portfolio_fgsm_plots_create_requested_files(
+    tmp_path,
+    plot_function,
+    filename,
+) -> None:
+    output_path = tmp_path / "fgsm" / filename
+
+    saved_path = plot_function(
+        _portfolio_fgsm_sweep_results(),
+        output_path,
+        epsilon_labels=("0", "8/255"),
+    )
+
+    assert saved_path == output_path
+    assert output_path.is_file()
+    assert output_path.stat().st_size > 0
+    assert output_path.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
+
+
+def test_portfolio_fgsm_plots_reject_empty_results(tmp_path) -> None:
+    with pytest.raises(ValueError, match="must not be empty"):
+        plot_fgsm_attack_success_rate_vs_epsilon(
+            [],
+            tmp_path / "attack_success_rate_vs_epsilon.png",
+        )
+
+
+def test_portfolio_fgsm_plots_reject_label_length_mismatch(tmp_path) -> None:
+    with pytest.raises(ValueError, match="epsilon_labels length"):
+        plot_fgsm_accuracy_drop_vs_epsilon(
+            _portfolio_fgsm_sweep_results(),
+            tmp_path / "accuracy_drop_vs_epsilon.png",
+            epsilon_labels=("0",),
         )
