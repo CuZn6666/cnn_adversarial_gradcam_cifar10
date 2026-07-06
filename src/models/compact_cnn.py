@@ -35,6 +35,7 @@ class CompactCNN:
             rng=rng,
         )
         self._logits_shape: tuple[int, ...] | None = None
+        self._gradcam_activation: np.ndarray | None = None
         self._backward_completed = False
 
     def forward(self, inputs: np.ndarray) -> np.ndarray:
@@ -46,12 +47,23 @@ class CompactCNN:
             )
 
         features = self.pool1(self.relu1(self.conv1(inputs)))
-        features = self.pool2(self.relu2(self.conv2(features)))
+        features = self.conv2(features)
+        features = self.relu2(features)
+        self._gradcam_activation = features
+        features = self.pool2(features)
         features = self.flatten(features)
         logits = self.classifier(features)
         self._logits_shape = logits.shape
         self._backward_completed = False
         return logits
+
+    @property
+    def gradcam_activation(self) -> np.ndarray:
+        if self._gradcam_activation is None:
+            raise RuntimeError(
+                "CompactCNN.gradcam_activation requires a preceding forward call."
+            )
+        return self._gradcam_activation.copy()
 
     def backward(self, grad_logits: np.ndarray) -> np.ndarray:
         if self._logits_shape is None:
