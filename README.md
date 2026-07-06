@@ -25,11 +25,11 @@ gradients, and FGSM attack pipeline are implemented directly with NumPy.
 
 ### FGSM robustness smoke evaluation
 
-![FGSM accuracy vs epsilon](results/WP8/fgsm_accuracy_vs_epsilon.png)
+[![FGSM accuracy vs epsilon](results/WP8/fgsm_accuracy_vs_epsilon.png)](results/WP8/fgsm_accuracy_vs_epsilon.png)
 
-Controlled WP8 smoke run over epsilon values `0`, `2/255`, `4/255`, `8/255`,
-and `16/255`. The pipeline produces clean accuracy, adversarial accuracy,
-accuracy drop, and attack success rate metrics.
+Controlled WP8 smoke run over epsilon values from `0/255` through `16/255`.
+The pipeline produces clean accuracy, adversarial accuracy, accuracy drop, and
+attack success rate metrics.
 
 Important limitation: the current controlled checkpoint achieved `0.0` clean
 accuracy on the fixed 32-sample subset, so this plot validates the evaluation
@@ -39,7 +39,7 @@ pipeline rather than proving final CIFAR-10 robustness.
 
 | Clean image | FGSM adversarial image | Input-gradient map | Perturbation map |
 | ----------- | ---------------------- | ------------------ | ---------------- |
-| <img src="results/WP7/qualitative/fgsm_example_000_clean.png" width="120"/> | <img src="results/WP7/qualitative/fgsm_example_000_adversarial.png" width="120"/> | <img src="results/WP7/qualitative/fgsm_example_000_input_gradient.png" width="120"/> | <img src="results/WP7/qualitative/fgsm_example_000_perturbation.png" width="120"/> |
+| [<img src="results/WP7/qualitative/fgsm_example_000_clean.png" width="120"/>](results/WP7/qualitative/fgsm_example_000_clean.png) | [<img src="results/WP7/qualitative/fgsm_example_000_adversarial.png" width="120"/>](results/WP7/qualitative/fgsm_example_000_adversarial.png) | [<img src="results/WP7/qualitative/fgsm_example_000_input_gradient.png" width="120"/>](results/WP7/qualitative/fgsm_example_000_input_gradient.png) | [<img src="results/WP7/qualitative/fgsm_example_000_perturbation.png" width="120"/>](results/WP7/qualitative/fgsm_example_000_perturbation.png) |
 
 These images are generated from the WP7 qualitative FGSM pipeline. They show
 the original sample, the FGSM-perturbed sample, the loss input-gradient map,
@@ -108,7 +108,7 @@ The output shape is:
 Latest local validation:
 
 ```text
-159 passed in 8.70s
+159 passed
 ```
 
 The tests cover:
@@ -202,16 +202,14 @@ The controlled WP8 run used:
 eval_samples: 32
 batch_size: 8
 seed: 42
-epsilon_values: [0, 2/255, 4/255, 8/255, 16/255]
+epsilon_values: [0/255, 1/255, 2/255, ..., 16/255]
 ```
 
-Committed artifacts:
+### Experiment artifacts
 
-```text
-results/WP8/fgsm_robustness_metrics.json
-results/WP8/fgsm_accuracy_vs_epsilon.png
-deliverables/WP8/wp8_smoke_review.md
-```
+- [FGSM robustness metrics (JSON)](results/WP8/fgsm_robustness_metrics.json)
+- [FGSM accuracy vs. epsilon plot (PNG)](results/WP8/fgsm_accuracy_vs_epsilon.png)
+- [WP8 controlled smoke review](deliverables/WP8/wp8_smoke_review.md)
 
 Current result caveat: all clean and adversarial accuracies are `0.0` on the
 fixed 32-sample subset because the checkpoint is weak. Treat WP8 as controlled
@@ -250,12 +248,10 @@ MPLCONFIGDIR=/tmp/cnn-wp7-matplotlib .venv/bin/python -m experiments.fgsm.genera
 
 Default outputs:
 
-```text
-results/WP7/qualitative/fgsm_example_000_clean.png
-results/WP7/qualitative/fgsm_example_000_adversarial.png
-results/WP7/qualitative/fgsm_example_000_input_gradient.png
-results/WP7/qualitative/fgsm_example_000_perturbation.png
-```
+- [Clean image](results/WP7/qualitative/fgsm_example_000_clean.png)
+- [FGSM adversarial image](results/WP7/qualitative/fgsm_example_000_adversarial.png)
+- [Input-gradient map](results/WP7/qualitative/fgsm_example_000_input_gradient.png)
+- [Perturbation map](results/WP7/qualitative/fgsm_example_000_perturbation.png)
 
 ### Run controlled FGSM robustness evaluation
 
@@ -267,10 +263,8 @@ MPLCONFIGDIR=/tmp/cnn-wp8-matplotlib .venv/bin/python -m experiments.fgsm.evalua
 
 Default outputs:
 
-```text
-results/WP8/fgsm_robustness_metrics.json
-results/WP8/fgsm_accuracy_vs_epsilon.png
-```
+- [FGSM robustness metrics (JSON)](results/WP8/fgsm_robustness_metrics.json)
+- [FGSM accuracy vs. epsilon plot (PNG)](results/WP8/fgsm_accuracy_vs_epsilon.png)
 
 The data loader checks for local CIFAR-10 data and does not silently fabricate
 large-scale benchmark results.

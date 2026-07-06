@@ -134,22 +134,54 @@ def plot_fgsm_accuracy_vs_epsilon(
     figure_path.parent.mkdir(parents=True, exist_ok=True)
 
     figure, axes = plt.subplots(figsize=(6, 4))
+    axes.axhline(0.0, color="0.75", linewidth=1.0, zorder=1)
     axes.plot(
         epsilons,
         clean_accuracy,
+        color="#1f77b4",
+        linewidth=2.4,
         marker="o",
+        markersize=4,
+        markerfacecolor="white",
+        markeredgewidth=1.2,
         label="Clean Accuracy",
+        zorder=3,
     )
     axes.plot(
         epsilons,
         adversarial_accuracy,
-        marker="o",
+        color="#ff7f0e",
+        linewidth=2.0,
+        linestyle="--",
+        marker="s",
+        markersize=3.5,
+        markerfacecolor="white",
+        markeredgewidth=1.1,
         label="FGSM Accuracy",
+        zorder=4,
     )
     axes.set_xlabel("Epsilon")
     axes.set_ylabel("Accuracy")
     axes.set_title("FGSM Accuracy vs Epsilon")
     axes.set_ylim(0.0, 1.0)
+    axes.spines["bottom"].set_position(("outward", 6))
+    if np.allclose(clean_accuracy, adversarial_accuracy):
+        axes.text(
+            0.5,
+            0.06,
+            "Clean and FGSM accuracy overlap in this controlled run.",
+            transform=axes.transAxes,
+            ha="center",
+            va="bottom",
+            fontsize=8,
+            color="0.35",
+            bbox={
+                "boxstyle": "round,pad=0.25",
+                "facecolor": "white",
+                "edgecolor": "0.8",
+                "alpha": 0.9,
+            },
+        )
     axes.grid(True, alpha=0.3)
     axes.legend()
     figure.tight_layout()

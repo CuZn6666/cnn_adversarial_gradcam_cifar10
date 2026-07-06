@@ -31,13 +31,7 @@ from src.robustness import (
     select_fgsm_representative_examples,
 )
 
-DEFAULT_EPSILON_VALUES = (
-    0.0,
-    2.0 / 255.0,
-    4.0 / 255.0,
-    8.0 / 255.0,
-    16.0 / 255.0,
-)
+DEFAULT_EPSILON_VALUES = tuple(index / 255.0 for index in range(17))
 
 
 @dataclass(frozen=True)

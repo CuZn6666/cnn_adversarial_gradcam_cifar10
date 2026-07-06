@@ -74,13 +74,7 @@ def test_wp8_config_defaults_match_documented_controlled_settings() -> None:
     assert config.eval_samples == 32
     assert config.batch_size == 8
     assert config.seed == 42
-    assert config.epsilon_values == (
-        0.0,
-        2.0 / 255.0,
-        4.0 / 255.0,
-        8.0 / 255.0,
-        16.0 / 255.0,
-    )
+    assert config.epsilon_values == tuple(index / 255.0 for index in range(17))
     assert config.output_dir.name == "WP8"
     assert config.representative_epsilon == 8.0 / 255.0
     assert config.max_successful_examples == 1
