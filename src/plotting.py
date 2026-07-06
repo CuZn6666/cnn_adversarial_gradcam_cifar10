@@ -269,3 +269,143 @@ def plot_runtime_comparison(
     figure.savefig(figure_path, dpi=170)
     plt.close(figure)
     return figure_path
+
+
+def plot_training_loss_curve(
+    metrics_history: list[dict[str, Any]],
+    output_path: str | Path,
+) -> Path:
+    """Save a training-loss curve from real epoch-level metrics."""
+    if not metrics_history:
+        raise ValueError("Metrics history must not be empty.")
+
+    epochs = _required_series(metrics_history, ("epoch",), "epoch")
+    training_loss = _required_series(
+        metrics_history,
+        ("training_loss", "train_loss"),
+        "training loss",
+    )
+
+    figure_path = Path(output_path)
+    figure_path.parent.mkdir(parents=True, exist_ok=True)
+
+    figure, axes = plt.subplots(figsize=(6, 4))
+    axes.plot(
+        epochs,
+        training_loss,
+        color="#1f77b4",
+        marker="o",
+        linewidth=2.0,
+        markersize=4,
+    )
+    axes.set_xlabel("Epoch")
+    axes.set_ylabel("Training Loss")
+    axes.set_title("Training Loss Curve")
+    axes.grid(True, alpha=0.3)
+    figure.tight_layout()
+    figure.savefig(figure_path, dpi=160)
+    plt.close(figure)
+    return figure_path
+
+
+def plot_train_validation_accuracy_curve(
+    metrics_history: list[dict[str, Any]],
+    output_path: str | Path,
+) -> Path:
+    """Save train-vs-validation accuracy curves from epoch metrics."""
+    if not metrics_history:
+        raise ValueError("Metrics history must not be empty.")
+
+    epochs = _required_series(metrics_history, ("epoch",), "epoch")
+    training_accuracy = _required_series(
+        metrics_history,
+        ("training_accuracy", "train_accuracy"),
+        "training accuracy",
+    )
+    validation_accuracy = _required_series(
+        metrics_history,
+        ("validation_accuracy", "eval_accuracy"),
+        "validation accuracy",
+    )
+
+    figure_path = Path(output_path)
+    figure_path.parent.mkdir(parents=True, exist_ok=True)
+
+    figure, axes = plt.subplots(figsize=(6, 4))
+    axes.plot(
+        epochs,
+        training_accuracy,
+        color="#1f77b4",
+        marker="o",
+        linewidth=2.0,
+        label="Training Accuracy",
+    )
+    axes.plot(
+        epochs,
+        validation_accuracy,
+        color="#ff7f0e",
+        marker="s",
+        linewidth=2.0,
+        label="Validation Accuracy",
+    )
+    axes.set_xlabel("Epoch")
+    axes.set_ylabel("Accuracy")
+    axes.set_title("Train vs Validation Accuracy")
+    axes.set_ylim(0.0, 1.0)
+    axes.grid(True, alpha=0.3)
+    axes.legend()
+    figure.tight_layout()
+    figure.savefig(figure_path, dpi=160)
+    plt.close(figure)
+    return figure_path
+
+
+def plot_confusion_matrix(
+    confusion_matrix: np.ndarray,
+    class_names: list[str],
+    output_path: str | Path,
+) -> Path:
+    """Save a raw-count confusion matrix heatmap."""
+    matrix = np.asarray(confusion_matrix)
+    if matrix.ndim != 2 or matrix.shape[0] != matrix.shape[1]:
+        raise ValueError("confusion_matrix must be a square 2D array.")
+    if len(class_names) != matrix.shape[0]:
+        raise ValueError("class_names length must match confusion_matrix size.")
+    if not np.isfinite(matrix).all() or np.any(matrix < 0):
+        raise ValueError(
+            "confusion_matrix must contain non-negative finite values."
+        )
+
+    figure_path = Path(output_path)
+    figure_path.parent.mkdir(parents=True, exist_ok=True)
+
+    figure, axes = plt.subplots(figsize=(8, 7))
+    image = axes.imshow(matrix, cmap="Blues")
+    axes.set_title("CIFAR-10 Confusion Matrix")
+    axes.set_xlabel("Predicted Label")
+    axes.set_ylabel("True Label")
+    axes.set_xticks(np.arange(len(class_names)))
+    axes.set_yticks(np.arange(len(class_names)))
+    axes.set_xticklabels(class_names, rotation=45, ha="right")
+    axes.set_yticklabels(class_names)
+
+    max_value = float(matrix.max()) if matrix.size else 0.0
+    threshold = max_value / 2.0
+    for row_index in range(matrix.shape[0]):
+        for column_index in range(matrix.shape[1]):
+            value = matrix[row_index, column_index]
+            axes.text(
+                column_index,
+                row_index,
+                f"{int(value)}",
+                ha="center",
+                va="center",
+                color="white" if value > threshold else "black",
+                fontsize=7,
+            )
+
+    figure.colorbar(image, ax=axes, fraction=0.046, pad=0.04, label="Count")
+    figure.tight_layout()
+    figure.savefig(figure_path, dpi=160)
+    plt.close(figure)
+    return figure_path

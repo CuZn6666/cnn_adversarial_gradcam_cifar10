@@ -2,9 +2,12 @@ import pytest
 from matplotlib.axes import Axes
 
 from src.plotting import (
+    plot_confusion_matrix,
     plot_fgsm_accuracy_vs_epsilon,
     plot_metrics,
     plot_runtime_comparison,
+    plot_train_validation_accuracy_curve,
+    plot_training_loss_curve,
     runtime_speedup,
 )
 
@@ -24,6 +27,23 @@ def _metrics_history() -> list[dict[str, float | int]]:
             "train_accuracy": 0.25,
             "eval_loss": 2.1,
             "eval_accuracy": 0.20,
+        },
+    ]
+
+
+def _portfolio_history() -> list[dict[str, float | int]]:
+    return [
+        {
+            "epoch": 1,
+            "training_loss": 2.2,
+            "training_accuracy": 0.18,
+            "validation_accuracy": 0.16,
+        },
+        {
+            "epoch": 2,
+            "training_loss": 1.9,
+            "training_accuracy": 0.31,
+            "validation_accuracy": 0.27,
         },
     ]
 
@@ -190,4 +210,55 @@ def test_plot_runtime_comparison_rejects_invalid_timings(
             before_seconds,
             after_seconds,
             tmp_path / "runtime.png",
+        )
+
+
+def test_plot_training_loss_curve_creates_requested_file(tmp_path) -> None:
+    output_path = tmp_path / "baseline" / "training_loss_curve.png"
+
+    saved_path = plot_training_loss_curve(_portfolio_history(), output_path)
+
+    assert saved_path == output_path
+    assert output_path.is_file()
+    assert output_path.stat().st_size > 0
+    assert output_path.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
+
+
+def test_plot_train_validation_accuracy_curve_creates_requested_file(
+    tmp_path,
+) -> None:
+    output_path = tmp_path / "baseline" / "accuracy_curve.png"
+
+    saved_path = plot_train_validation_accuracy_curve(
+        _portfolio_history(),
+        output_path,
+    )
+
+    assert saved_path == output_path
+    assert output_path.is_file()
+    assert output_path.stat().st_size > 0
+    assert output_path.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
+
+
+def test_plot_confusion_matrix_creates_requested_file(tmp_path) -> None:
+    output_path = tmp_path / "baseline" / "confusion_matrix.png"
+
+    saved_path = plot_confusion_matrix(
+        confusion_matrix=[[3, 1], [0, 4]],
+        class_names=["class_a", "class_b"],
+        output_path=output_path,
+    )
+
+    assert saved_path == output_path
+    assert output_path.is_file()
+    assert output_path.stat().st_size > 0
+    assert output_path.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
+
+
+def test_plot_confusion_matrix_rejects_invalid_values(tmp_path) -> None:
+    with pytest.raises(ValueError, match="non-negative finite"):
+        plot_confusion_matrix(
+            confusion_matrix=[[1, -1], [0, 2]],
+            class_names=["class_a", "class_b"],
+            output_path=tmp_path / "confusion_matrix.png",
         )

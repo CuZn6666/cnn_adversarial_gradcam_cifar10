@@ -15,13 +15,46 @@ gradients, and FGSM attack pipeline are implemented directly with NumPy.
 | **From-scratch NumPy CNN** | `Conv2D`, `ReLU`, `MaxPool2D`, `Flatten`, `Linear`, and `CompactCNN` implemented manually. |
 | **Manual backward propagation** | Layer-level and full-model `backward(...)` pipeline implemented and tested. |
 | **Numerical gradient verification** | `Linear`, `Conv2D`, `SoftmaxCrossEntropyLoss`, and input-gradient sanity checks validated. |
-| **Automated tests** | `159 passed` in the current local full test suite. |
+| **Automated tests** | `173 passed` in the current local full test suite. |
+| **Clean CIFAR-10 portfolio baseline** | Deterministic NumPy baseline checkpoint reached `47.07%` validation accuracy and `44.73%` clean test-subset accuracy. |
 | **FGSM adversarial attack pipeline** | Input gradients, FGSM perturbations, clipping, and qualitative visualizations implemented. |
 | **Robustness evaluation** | Clean/adversarial metrics, epsilon sweep, accuracy drop, attack success rate, JSON output, and plot generation implemented. |
 | **Runtime engineering** | Profiling identified `Conv2D.backward` as the bottleneck; a focused NumPy optimization achieved a documented `207.72x` local speedup. |
 | **Structured workflow** | Work-package-based development with tests, deliverables, metrics, and result artifacts. |
 
 ## Visual Results
+
+### Clean CIFAR-10 portfolio baseline
+
+| Training loss | Train vs validation accuracy | Confusion matrix |
+| ------------- | ---------------------------- | ---------------- |
+| [![Training Loss Curve](results/baseline/training_loss_curve.png)](results/baseline/training_loss_curve.png) | [![Train vs Validation Accuracy](results/baseline/train_validation_accuracy_curve.png)](results/baseline/train_validation_accuracy_curve.png) | [![CIFAR-10 Confusion Matrix](results/baseline/confusion_matrix.png)](results/baseline/confusion_matrix.png) |
+
+Deterministic local baseline configuration:
+
+```text
+train_samples: 4096
+validation_samples: 1024
+test_samples: 1024
+batch_size: 32
+epochs: 15
+learning_rate: 0.03
+seed: 42
+```
+
+Selected by validation accuracy:
+
+```text
+best_epoch: 15
+validation_accuracy: 0.4707
+clean_test_subset_accuracy: 0.4473
+```
+
+Baseline artifacts:
+
+- [Best baseline checkpoint](results/baseline/portfolio_baseline_best.npz)
+- [Training history JSON](results/baseline/portfolio_training_history.json)
+- [Final metrics JSON](results/baseline/portfolio_final_metrics.json)
 
 ### FGSM robustness smoke evaluation
 
@@ -31,9 +64,11 @@ Controlled WP8 smoke run over epsilon values from `0/255` through `16/255`.
 The pipeline produces clean accuracy, adversarial accuracy, accuracy drop, and
 attack success rate metrics.
 
-Important limitation: the current controlled checkpoint achieved `0.0` clean
-accuracy on the fixed 32-sample subset, so this plot validates the evaluation
-pipeline rather than proving final CIFAR-10 robustness.
+Important limitation: this committed WP8 smoke plot was generated with the old
+tiny subset checkpoint, which achieved `0.0` clean accuracy on the fixed
+32-sample subset. It validates the evaluation pipeline rather than proving
+final CIFAR-10 robustness. The stronger portfolio baseline above is prepared
+for the next FGSM robustness rerun.
 
 ### Qualitative FGSM example artifacts
 
@@ -113,7 +148,7 @@ The output shape is:
 Latest local validation:
 
 ```text
-159 passed
+173 passed
 ```
 
 The tests cover:
@@ -248,6 +283,23 @@ This does not load CIFAR-10:
 .venv/bin/python -c 'from experiments.baseline.train_baseline import run_synthetic_baseline; result = run_synthetic_baseline(); print(result["final_metrics"])'
 ```
 
+### Train the portfolio CIFAR-10 baseline
+
+Requires existing local CIFAR-10 data:
+
+```bash
+MPLCONFIGDIR=/tmp/cnn-baseline-matplotlib .venv/bin/python -m experiments.baseline.train_portfolio_baseline
+```
+
+Default outputs:
+
+- [Best baseline checkpoint](results/baseline/portfolio_baseline_best.npz)
+- [Training history JSON](results/baseline/portfolio_training_history.json)
+- [Final metrics JSON](results/baseline/portfolio_final_metrics.json)
+- [Training loss curve](results/baseline/training_loss_curve.png)
+- [Train vs validation accuracy curve](results/baseline/train_validation_accuracy_curve.png)
+- [Confusion matrix](results/baseline/confusion_matrix.png)
+
 ### Generate qualitative FGSM examples
 
 Requires an existing local checkpoint and extracted CIFAR-10 test batch:
@@ -314,6 +366,7 @@ emphasized:
 * Numerical gradient checks.
 * Training, evaluation, checkpointing, metrics, and plotting utilities.
 * Controlled baseline runners.
+* Portfolio clean CIFAR-10 baseline checkpoint and Day 1 training figures.
 * Runtime bottleneck profiling and `Conv2D.backward` optimization.
 * Input-gradient computation.
 * FGSM attack and qualitative visualizations.
@@ -321,7 +374,7 @@ emphasized:
 
 ### Planned
 
-* Stronger baseline training before making final robustness claims.
+* Rerun FGSM robustness evaluation with the stronger portfolio baseline.
 * Grad-CAM implementation and clean/adversarial heatmap comparison.
 * PGD and additional attack evaluation if time and runtime allow.
 * Optional adversarial training.

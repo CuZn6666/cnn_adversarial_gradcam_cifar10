@@ -1,0 +1,16 @@
+{
+  "batch_size": 32,
+  "best_epoch": 15,
+  "best_validation_accuracy": 0.470703125,
+  "checkpoint_path": "/Users/tongxinzhang/Desktop/advance_practice/cnn_adversarial_gradcam_cifar10/results/baseline/portfolio_baseline_best.npz",
+  "epochs": 15,
+  "final_test_accuracy": 0.447265625,
+  "final_test_loss": 1.490841269493103,
+  "final_validation_accuracy": 0.470703125,
+  "final_validation_loss": 1.4981354288756847,
+  "learning_rate": 0.03,
+  "seed": 42,
+  "test_samples": 1024,
+  "train_samples": 4096,
+  "validation_samples": 1024
+}
