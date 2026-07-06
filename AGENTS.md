@@ -13,6 +13,13 @@ The project is organized by Work Packages. Codex must follow `WP_PLAN.md` before
 * Do not translate terminal output or error messages.
 * When reporting changes, use Chinese explanations with English filenames and commands.
 
+## Public-Facing Content
+
+* Do not expose internal planning labels, private workflow milestones, application schedules, or personal preparation timelines in public-facing repository content.
+* Public documentation should use technical, domain-based terminology instead of internal planning terminology.
+* Keep private planning files and personal application materials out of tracked repository content.
+* Before editing `README.md` or other public-facing documentation, check that headings and descriptions are appropriate for supervisors, reviewers, recruiters, and external contributors.
+
 ## Current Project Status
 
 * WP0 is mostly completed.

@@ -16,7 +16,7 @@ gradients, and FGSM attack pipeline are implemented directly with NumPy.
 | **Manual backward propagation** | Layer-level and full-model `backward(...)` pipeline implemented and tested. |
 | **Numerical gradient verification** | `Linear`, `Conv2D`, `SoftmaxCrossEntropyLoss`, and input-gradient sanity checks validated. |
 | **Automated tests** | `191 passed` in the current local full test suite. |
-| **Clean CIFAR-10 portfolio baseline** | Deterministic NumPy baseline checkpoint reached `47.07%` validation accuracy and `44.73%` clean test-subset accuracy. |
+| **Clean CIFAR-10 baseline** | Deterministic NumPy baseline checkpoint reached `47.07%` validation accuracy and `44.73%` clean test-subset accuracy. |
 | **FGSM adversarial attack pipeline** | Input gradients, FGSM perturbations, clipping, and qualitative visualizations implemented. |
 | **FGSM quantitative robustness** | Portfolio baseline evaluated on `1024` CIFAR-10 test samples across `0`, `2/255`, `4/255`, `8/255`, and `16/255`. |
 | **Runtime engineering** | Profiling identified `Conv2D.backward` as the bottleneck; a focused NumPy optimization achieved a documented `207.72x` local speedup. |
@@ -24,7 +24,7 @@ gradients, and FGSM attack pipeline are implemented directly with NumPy.
 
 ## Visual Results
 
-### Clean CIFAR-10 portfolio baseline
+### Clean CIFAR-10 baseline training and evaluation
 
 | Training loss | Train vs validation accuracy | Confusion matrix |
 | ------------- | ---------------------------- | ---------------- |
@@ -56,13 +56,14 @@ Baseline artifacts:
 - [Training history JSON](results/baseline/portfolio_training_history.json)
 - [Final metrics JSON](results/baseline/portfolio_final_metrics.json)
 
-### FGSM quantitative robustness with portfolio baseline
+### FGSM quantitative robustness with reproducible baseline
 
 | Accuracy vs epsilon | Attack success rate | Accuracy drop |
 | ------------------- | ------------------- | ------------- |
 | [![Accuracy vs Epsilon](results/fgsm/accuracy_vs_epsilon.png)](results/fgsm/accuracy_vs_epsilon.png) | [![Attack Success Rate vs Epsilon](results/fgsm/attack_success_rate_vs_epsilon.png)](results/fgsm/attack_success_rate_vs_epsilon.png) | [![Accuracy Drop vs Epsilon](results/fgsm/accuracy_drop_vs_epsilon.png)](results/fgsm/accuracy_drop_vs_epsilon.png) |
 
-This Day 2 evaluation uses the stronger portfolio checkpoint:
+This FGSM quantitative evaluation uses the stronger reproducible baseline
+checkpoint:
 
 ```text
 checkpoint: results/baseline/portfolio_baseline_best.npz
@@ -82,7 +83,7 @@ Measured FGSM robustness:
 | `8/255` | `45.80%` | `1.17%` | `44.63 pp` | `97.44%` |
 | `16/255` | `45.80%` | `0.00%` | `45.80 pp` | `100.00%` |
 
-Day 2 artifacts:
+FGSM quantitative artifacts:
 
 - [FGSM quantitative metrics (JSON)](results/fgsm/fgsm_quantitative_metrics.json)
 - [Accuracy vs epsilon](results/fgsm/accuracy_vs_epsilon.png)
@@ -100,10 +101,10 @@ attack success rate metrics.
 Important limitation: this historical WP8 smoke plot was generated with the old
 tiny subset checkpoint, which achieved `0.0` clean accuracy on the fixed
 32-sample subset. It validates the evaluation pipeline rather than proving
-final CIFAR-10 robustness. The Day 2 figures above are the portfolio-facing
-FGSM quantitative results using the stronger baseline checkpoint.
+final CIFAR-10 robustness. The FGSM quantitative figures above are the current
+controlled evaluation results using the stronger baseline checkpoint.
 
-### Day 3 qualitative FGSM visualization with portfolio baseline
+### FGSM qualitative analysis with reproducible baseline
 
 [![FGSM Qualitative Analysis](results/fgsm/fgsm_qualitative_comparison.png)](results/fgsm/fgsm_qualitative_comparison.png)
 
@@ -118,7 +119,7 @@ adversarial image.
 The epsilon progression keeps the same clean source image and independently
 generates FGSM examples for `0`, `2/255`, `4/255`, `8/255`, and `16/255`.
 
-Day 3 qualitative artifacts:
+FGSM qualitative artifacts:
 
 - [FGSM qualitative comparison](results/fgsm/fgsm_qualitative_comparison.png)
 - [FGSM epsilon progression](results/fgsm/epsilon_progression.png)
@@ -212,8 +213,8 @@ The tests cover:
 * input-gradient computation,
 * FGSM behavior,
 * robustness evaluation and epsilon sweeps,
-* Day 2 FGSM quantitative runner and plots,
-* Day 3 FGSM qualitative runner and visualizations,
+* FGSM quantitative runner and plots,
+* FGSM qualitative runner and visualizations,
 * experiment runner smoke tests.
 
 Run the full suite:
@@ -332,7 +333,7 @@ This does not load CIFAR-10:
 .venv/bin/python -c 'from experiments.baseline.train_baseline import run_synthetic_baseline; result = run_synthetic_baseline(); print(result["final_metrics"])'
 ```
 
-### Train the portfolio CIFAR-10 baseline
+### Train the reproducible CIFAR-10 baseline
 
 Requires existing local CIFAR-10 data:
 
@@ -380,7 +381,7 @@ Default outputs:
 The data loader checks for local CIFAR-10 data and does not silently fabricate
 large-scale benchmark results.
 
-### Run portfolio FGSM quantitative evaluation
+### Run FGSM quantitative evaluation
 
 Uses `results/baseline/portfolio_baseline_best.npz` and writes to
 `results/fgsm/`:
@@ -396,10 +397,10 @@ Default outputs:
 - [Attack success rate vs epsilon](results/fgsm/attack_success_rate_vs_epsilon.png)
 - [Accuracy drop vs epsilon](results/fgsm/accuracy_drop_vs_epsilon.png)
 
-### Generate portfolio FGSM qualitative visualizations
+### Generate FGSM qualitative visualizations
 
 Uses `results/baseline/portfolio_baseline_best.npz`, the deterministic
-portfolio test-subset policy, and writes to `results/fgsm/`:
+test-subset policy, and writes to `results/fgsm/`:
 
 ```bash
 MPLCONFIGDIR=/tmp/cnn-day3-matplotlib .venv/bin/python -m experiments.fgsm.generate_day3_visualizations
@@ -446,7 +447,7 @@ emphasized:
 * Numerical gradient checks.
 * Training, evaluation, checkpointing, metrics, and plotting utilities.
 * Controlled baseline runners.
-* Portfolio clean CIFAR-10 baseline checkpoint and Day 1 training figures.
+* Reproducible clean CIFAR-10 baseline checkpoint and training/evaluation figures.
 * Runtime bottleneck profiling and `Conv2D.backward` optimization.
 * Input-gradient computation.
 * FGSM attack and qualitative visualizations.
