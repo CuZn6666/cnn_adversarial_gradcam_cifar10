@@ -14,6 +14,10 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 
+DEFAULT_GRADCAM_CMAP = "turbo"
+DEFAULT_OVERLAY_ALPHA = 0.85
+
+
 def nchw_to_display_image(image: np.ndarray) -> np.ndarray:
     """Convert one NCHW image with shape (1, C, H, W) to HWC display format."""
     if image.ndim != 4 or image.shape[0] != 1:
@@ -52,10 +56,10 @@ def resize_heatmap_to_image(
 def heatmap_overlay(
     image: np.ndarray,
     heatmap: np.ndarray,
-    alpha: float = 0.45,
-    cmap: str = "inferno",
+    alpha: float = DEFAULT_OVERLAY_ALPHA,
+    cmap: str = DEFAULT_GRADCAM_CMAP,
 ) -> np.ndarray:
-    """Create an RGB overlay from an HWC image and same-size heatmap."""
+    """Create a heatmap-weighted RGB overlay from an HWC image and heatmap."""
     if image.ndim != 3 or image.shape[2] != 3:
         raise ValueError("image must have shape (H, W, 3).")
     if heatmap.ndim != 2 or heatmap.shape != image.shape[:2]:
@@ -72,15 +76,21 @@ def heatmap_overlay(
         raise ValueError("image and heatmap must contain only finite values.")
 
     base = np.clip(image, 0.0, 1.0)
-    colored_heatmap = plt.colormaps[cmap](np.clip(heatmap, 0.0, 1.0))[..., :3]
-    return np.clip((1.0 - alpha) * base + alpha * colored_heatmap, 0.0, 1.0)
+    clipped_heatmap = np.clip(heatmap, 0.0, 1.0)
+    colored_heatmap = plt.colormaps[cmap](clipped_heatmap)[..., :3]
+    alpha_map = float(alpha) * clipped_heatmap[..., None]
+    return np.clip(
+        (1.0 - alpha_map) * base + alpha_map * colored_heatmap,
+        0.0,
+        1.0,
+    )
 
 
 def normalized_perturbation(
     clean_image: np.ndarray,
     adversarial_image: np.ndarray,
 ) -> np.ndarray:
-    """Return a normalized |adversarial-clean| perturbation map for display."""
+    """Return scaled |adversarial-clean| perturbation magnitude for display."""
     if adversarial_image.shape != clean_image.shape:
         raise ValueError("adversarial_image must match clean_image shape.")
     if not np.isfinite(clean_image).all() or not np.isfinite(adversarial_image).all():
@@ -188,7 +198,7 @@ def save_gradcam_hero_figure(
             panels["adversarial_overlay"],
             panels["perturbation"],
         ]
-        cmaps = [None, None, None, None, "gray"]
+        cmaps = [None, None, None, None, "magma"]
         for axis, image, cmap in zip(axes[row], images, cmaps):
             axis.imshow(image, cmap=cmap, vmin=0.0, vmax=1.0)
             _hide_axis(axis)
@@ -199,6 +209,70 @@ def save_gradcam_hero_figure(
 
     figure.tight_layout(rect=(0.0, 0.0, 1.0, 0.94))
     figure.savefig(figure_path, dpi=180)
+    plt.close(figure)
+    return figure_path
+
+
+def save_gradcam_presentation_figure(
+    examples: Sequence[Mapping[str, Any]],
+    output_path: str | Path,
+    epsilon_label: str,
+) -> Path:
+    """Save a presentation-oriented clean/adversarial Grad-CAM figure."""
+    if len(examples) < 1:
+        raise ValueError(
+            "At least one example is required for the presentation figure."
+        )
+
+    figure_path = Path(output_path)
+    figure_path.parent.mkdir(parents=True, exist_ok=True)
+    rows = len(examples)
+    figure, axes = plt.subplots(rows, 6, figsize=(17.0, 4.2 * rows))
+    if rows == 1:
+        axes = np.asarray([axes])
+    figure.suptitle(
+        f"Clean vs Adversarial Grad-CAM | FGSM ε = {epsilon_label}\n"
+        "Heatmaps and overlays use prediction-aligned target classes",
+        fontsize=16,
+    )
+
+    for row, example in enumerate(examples):
+        panels = _prepared_panels(example)
+        clean_target = str(_example_field(example, "clean_prediction_class"))
+        adversarial_target = str(
+            _example_field(example, "adversarial_prediction_class")
+        )
+        contents = [
+            panels["clean_image"],
+            panels["clean_heatmap"],
+            panels["clean_overlay"],
+            panels["adversarial_image"],
+            panels["adversarial_heatmap"],
+            panels["adversarial_overlay"],
+        ]
+        titles = [
+            f"Clean Image\n{_short_row_label(example)}",
+            f"Clean Grad-CAM Heatmap\nTarget: {clean_target}",
+            f"Clean Grad-CAM Overlay\nTarget: {clean_target}",
+            f"Adversarial Image\nPred: {adversarial_target}",
+            f"Adversarial Grad-CAM Heatmap\nTarget: {adversarial_target}",
+            f"Adversarial Grad-CAM Overlay\nTarget: {adversarial_target}",
+        ]
+        cmaps = [
+            None,
+            DEFAULT_GRADCAM_CMAP,
+            None,
+            None,
+            DEFAULT_GRADCAM_CMAP,
+            None,
+        ]
+        for axis, content, title, cmap in zip(axes[row], contents, titles, cmaps):
+            axis.imshow(content, cmap=cmap, vmin=0.0, vmax=1.0)
+            axis.set_title(title, fontsize=8.5)
+            _hide_axis(axis)
+
+    figure.tight_layout(rect=(0.0, 0.0, 1.0, 0.90), h_pad=3.0, w_pad=0.8)
+    figure.savefig(figure_path, dpi=200)
     plt.close(figure)
     return figure_path
 
@@ -239,7 +313,7 @@ def save_gradcam_detailed_comparison(
             axes[row_index],
             (image, heatmap, overlay),
             column_suffixes,
-            (None, "inferno", None),
+            (None, DEFAULT_GRADCAM_CMAP, None),
         ):
             axis.imshow(content, cmap=cmap, vmin=0.0, vmax=1.0)
             axis.set_title(f"{prefix} {suffix}", fontsize=10)

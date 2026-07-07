@@ -3,6 +3,7 @@
     "detailed_comparison": "results/gradcam/gradcam_detailed_comparison.png",
     "fixed_target_comparison": "results/gradcam/gradcam_fixed_target_comparison.png",
     "hero": "results/gradcam/gradcam_hero.png",
+    "hero_presentation": "results/gradcam/gradcam_hero_presentation.png",
     "metadata": "results/gradcam/gradcam_comparison_metadata.json",
     "success_vs_control": "results/gradcam/gradcam_success_vs_control.png"
   },
@@ -139,5 +140,9 @@
   "selection_rule": "Scan CIFAR-10 test samples in deterministic dataset order; keep clean-correct samples; classify FGSM results at epsilon 8/255; select first valid examples by distinct true class where possible, then fill remaining slots in scan order; skip constant Grad-CAM maps.",
   "successful_attacks_found": 492,
   "usable_control_examples": 2,
-  "usable_success_examples": 6
+  "usable_success_examples": 6,
+  "visualization_notes": {
+    "overlay": "Grad-CAM overlays use turbo colormap with heatmap-weighted alpha; low-activation regions remain closer to the original image.",
+    "perturbation": "Perturbation panels show mean absolute adversarial-clean difference scaled for display only; this does not change the attack."
+  }
 }

@@ -9,8 +9,10 @@ from experiments.gradcam.generate_adversarial_comparisons import (
 )
 from src.gradcam_visualization import (
     heatmap_overlay,
+    normalized_perturbation,
     resize_heatmap_to_image,
     save_gradcam_hero_figure,
+    save_gradcam_presentation_figure,
 )
 
 
@@ -108,10 +110,53 @@ def test_heatmap_overlay_returns_rgb_values_in_range() -> None:
     assert overlay.max() <= 1.0
 
 
+def test_heatmap_overlay_uses_heatmap_weighted_alpha() -> None:
+    image = np.ones((8, 8, 3), dtype=np.float32) * 0.5
+    zero_heatmap = np.zeros((8, 8), dtype=np.float32)
+    one_heatmap = np.ones((8, 8), dtype=np.float32)
+
+    zero_overlay = heatmap_overlay(image, zero_heatmap, alpha=0.8)
+    one_overlay = heatmap_overlay(image, one_heatmap, alpha=0.8)
+
+    np.testing.assert_allclose(zero_overlay, image)
+    assert not np.allclose(one_overlay, image)
+    assert np.isfinite(one_overlay).all()
+    assert one_overlay.min() >= 0.0
+    assert one_overlay.max() <= 1.0
+
+
+def test_normalized_perturbation_returns_display_range() -> None:
+    clean_image = np.zeros((1, 3, 4, 4), dtype=np.float32)
+    adversarial_image = clean_image.copy()
+    adversarial_image[:, :, 1:3, 1:3] = 0.02
+
+    perturbation = normalized_perturbation(clean_image, adversarial_image)
+
+    assert perturbation.shape == (4, 4)
+    assert np.isfinite(perturbation).all()
+    assert perturbation.min() >= 0.0
+    assert perturbation.max() <= 1.0
+    assert perturbation.max() == 1.0
+
+
 def test_save_gradcam_hero_figure_creates_non_empty_png(tmp_path: Path) -> None:
     output_path = save_gradcam_hero_figure(
         [_figure_example(3), _figure_example(7), _figure_example(11)],
         tmp_path / "gradcam_hero.png",
+        epsilon_label="8/255",
+    )
+
+    assert output_path.is_file()
+    assert output_path.stat().st_size > 0
+    assert output_path.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
+
+
+def test_save_gradcam_presentation_figure_creates_non_empty_png(
+    tmp_path: Path,
+) -> None:
+    output_path = save_gradcam_presentation_figure(
+        [_figure_example(3), _figure_example(7), _figure_example(11)],
+        tmp_path / "gradcam_hero_presentation.png",
         epsilon_label="8/255",
     )
 

@@ -24,6 +24,7 @@ from src.gradcam_visualization import (
     save_gradcam_detailed_comparison,
     save_gradcam_fixed_target_comparison,
     save_gradcam_hero_figure,
+    save_gradcam_presentation_figure,
     save_gradcam_success_vs_control,
 )
 from src.input_gradients import compute_input_gradient
@@ -367,6 +368,11 @@ def run_adversarial_gradcam_comparisons(
         output_dir / "gradcam_hero.png",
         config.epsilon_label,
     )
+    hero_presentation_path = save_gradcam_presentation_figure(
+        hero_examples,
+        output_dir / "gradcam_hero_presentation.png",
+        config.epsilon_label,
+    )
     detailed_path = save_gradcam_detailed_comparison(
         selected_successes[0],
         output_dir / "gradcam_detailed_comparison.png",
@@ -420,6 +426,16 @@ def run_adversarial_gradcam_comparisons(
                 "spatial localization, not absolute activation magnitude."
             ),
         },
+        "visualization_notes": {
+            "overlay": (
+                "Grad-CAM overlays use turbo colormap with heatmap-weighted alpha; "
+                "low-activation regions remain closer to the original image."
+            ),
+            "perturbation": (
+                "Perturbation panels show mean absolute adversarial-clean "
+                "difference scaled for display only; this does not change the attack."
+            ),
+        },
         "selected_successes": [
             _metadata_example(example) for example in selected_successes
         ],
@@ -428,6 +444,7 @@ def run_adversarial_gradcam_comparisons(
         ],
         "artifacts": {
             "hero": str(hero_path.relative_to(PROJECT_ROOT)),
+            "hero_presentation": str(hero_presentation_path.relative_to(PROJECT_ROOT)),
             "detailed_comparison": str(detailed_path.relative_to(PROJECT_ROOT)),
             "fixed_target_comparison": str(fixed_target_path.relative_to(PROJECT_ROOT)),
             "success_vs_control": str(success_control_path.relative_to(PROJECT_ROOT)),
@@ -442,6 +459,7 @@ def run_adversarial_gradcam_comparisons(
 
     return {
         "hero_path": hero_path,
+        "hero_presentation_path": hero_presentation_path,
         "detailed_path": detailed_path,
         "fixed_target_path": fixed_target_path,
         "success_control_path": success_control_path,
