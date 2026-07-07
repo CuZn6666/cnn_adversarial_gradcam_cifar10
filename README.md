@@ -1,5 +1,7 @@
 # cnn_adversarial_gradcam_cifar10
 
+[![CI](https://github.com/CuZn6666/cnn_adversarial_gradcam_cifar10/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/CuZn6666/cnn_adversarial_gradcam_cifar10/actions/workflows/ci.yml?query=branch%3Amain)
+
 A **NumPy-only, from-scratch CompactCNN pipeline for CIFAR-10** with manual
 forward/backward propagation, numerical gradient validation, FGSM adversarial
 robustness evaluation, and Grad-CAM-based explainability analysis.
@@ -15,10 +17,10 @@ gradients, and FGSM attack pipeline are implemented directly with NumPy.
 | **From-scratch NumPy CNN** | `Conv2D`, `ReLU`, `MaxPool2D`, `Flatten`, `Linear`, and `CompactCNN` implemented manually. |
 | **Manual backward propagation** | Layer-level and full-model `backward(...)` pipeline implemented and tested. |
 | **Numerical gradient verification** | `Linear`, `Conv2D`, `SoftmaxCrossEntropyLoss`, and input-gradient sanity checks validated. |
-| **Automated tests** | `213 passed` in the current local full test suite. |
+| **Automated tests and CI** | `213 passed` in the current local full test suite; GitHub Actions runs the suite on push and pull requests. |
 | **Clean CIFAR-10 baseline** | Deterministic NumPy baseline checkpoint reached `47.07%` validation accuracy and `44.73%` clean test-subset accuracy. |
 | **FGSM adversarial attack pipeline** | Input gradients, FGSM perturbations, clipping, and qualitative visualizations implemented. |
-| **FGSM quantitative robustness** | Portfolio baseline evaluated on `1024` CIFAR-10 test samples across `0`, `2/255`, `4/255`, `8/255`, and `16/255`. |
+| **FGSM quantitative robustness** | Reproducible baseline evaluated on `1024` CIFAR-10 test samples across `0`, `2/255`, `4/255`, `8/255`, and `16/255`. |
 | **Grad-CAM explainability** | Clean and adversarial Grad-CAM comparisons generated from the validated `relu2` target activation. |
 | **Runtime engineering** | Profiling identified `Conv2D.backward` as the bottleneck; a focused NumPy optimization achieved a documented `207.72x` local speedup. |
 | **Structured workflow** | Work-package-based development with tests, deliverables, metrics, and result artifacts. |
@@ -245,7 +247,7 @@ The tests cover:
 Run the full suite:
 
 ```bash
-.venv/bin/python -m pytest tests/ -q
+MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q
 ```
 
 For a fresh environment:
@@ -253,8 +255,11 @@ For a fresh environment:
 ```bash
 python -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
-.venv/bin/python -m pytest tests/ -q
+MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q
 ```
+
+The GitHub Actions workflow in `.github/workflows/ci.yml` runs the same test
+suite on push and pull requests.
 
 ## Numerical Gradient Checking
 
@@ -347,7 +352,7 @@ python -m venv .venv
 ### Run tests
 
 ```bash
-.venv/bin/python -m pytest tests/ -q
+MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q
 ```
 
 ### Run the synthetic baseline smoke test
@@ -495,16 +500,17 @@ emphasized:
 * Input-gradient computation.
 * FGSM attack and qualitative visualizations.
 * Controlled FGSM robustness evaluation with epsilon sweep.
-* Portfolio FGSM quantitative robustness figures.
-* Portfolio FGSM qualitative comparison and epsilon progression figures.
+* FGSM quantitative robustness figures.
+* FGSM qualitative comparison and epsilon progression figures.
 * Clean Grad-CAM core for the final `relu2` activation.
 * Clean vs adversarial Grad-CAM qualitative comparison figures.
+* GitHub Actions CI workflow for automated test validation.
 
 ### Planned
 
 * PGD and additional attack evaluation if time and runtime allow.
 * Optional adversarial training.
-* CI and final reproducibility packaging.
+* Final reproducibility packaging.
 
 PGD, black-box attacks, and adversarial training are planned work; they are not
 implemented in the current repository state.
