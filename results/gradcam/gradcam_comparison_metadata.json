@@ -1,0 +1,143 @@
+{
+  "artifacts": {
+    "detailed_comparison": "results/gradcam/gradcam_detailed_comparison.png",
+    "fixed_target_comparison": "results/gradcam/gradcam_fixed_target_comparison.png",
+    "hero": "results/gradcam/gradcam_hero.png",
+    "metadata": "results/gradcam/gradcam_comparison_metadata.json",
+    "success_vs_control": "results/gradcam/gradcam_success_vs_control.png"
+  },
+  "checkpoint": "results/baseline/portfolio_baseline_best.npz",
+  "clean_correct_count": 499,
+  "controls_found": 7,
+  "dataset_split": "cifar10_test",
+  "epsilon": 0.03137254901960784,
+  "epsilon_label": "8/255",
+  "gradcam_target_semantics": {
+    "fixed_original_target": "clean and adversarial original-class maps target the clean prediction; adversarial new-class map targets adversarial prediction",
+    "normalization_note": "Grad-CAM maps are independently normalized to [0, 1]; compare spatial localization, not absolute activation magnitude.",
+    "prediction_aligned": "clean Grad-CAM target = clean prediction; adversarial Grad-CAM target = adversarial prediction"
+  },
+  "samples_scanned": 1000,
+  "scan_budget": 1000,
+  "seed": 42,
+  "selected_controls": [
+    {
+      "adversarial_confidence": 0.44560590386390686,
+      "adversarial_original_class_confidence": 0.44560590386390686,
+      "adversarial_prediction": 6,
+      "adversarial_prediction_class": "frog",
+      "clean_confidence": 0.9472886919975281,
+      "clean_prediction": 6,
+      "clean_prediction_class": "frog",
+      "confidence_drop": 0.5016827881336212,
+      "dataset_index": 542,
+      "status": "attack_resisted",
+      "true_class": "frog",
+      "true_label": 6
+    },
+    {
+      "adversarial_confidence": 0.6764153838157654,
+      "adversarial_original_class_confidence": 0.6764153838157654,
+      "adversarial_prediction": 8,
+      "adversarial_prediction_class": "ship",
+      "clean_confidence": 0.983805239200592,
+      "clean_prediction": 8,
+      "clean_prediction_class": "ship",
+      "confidence_drop": 0.30738985538482666,
+      "dataset_index": 612,
+      "status": "attack_resisted",
+      "true_class": "ship",
+      "true_label": 8
+    }
+  ],
+  "selected_successes": [
+    {
+      "adversarial_confidence": 0.7895873188972473,
+      "adversarial_original_class_confidence": 0.06044537201523781,
+      "adversarial_prediction": 5,
+      "adversarial_prediction_class": "dog",
+      "clean_confidence": 0.6644703149795532,
+      "clean_prediction": 3,
+      "clean_prediction_class": "cat",
+      "confidence_drop": 0.6040249429643154,
+      "dataset_index": 0,
+      "status": "attack_success",
+      "true_class": "cat",
+      "true_label": 3
+    },
+    {
+      "adversarial_confidence": 0.750423014163971,
+      "adversarial_original_class_confidence": 0.010555586777627468,
+      "adversarial_prediction": 1,
+      "adversarial_prediction_class": "automobile",
+      "clean_confidence": 0.5080462098121643,
+      "clean_prediction": 8,
+      "clean_prediction_class": "ship",
+      "confidence_drop": 0.49749062303453684,
+      "dataset_index": 1,
+      "status": "attack_success",
+      "true_class": "ship",
+      "true_label": 8
+    },
+    {
+      "adversarial_confidence": 0.3939754366874695,
+      "adversarial_original_class_confidence": 0.08204153925180435,
+      "adversarial_prediction": 4,
+      "adversarial_prediction_class": "deer",
+      "clean_confidence": 0.7803489565849304,
+      "clean_prediction": 6,
+      "clean_prediction_class": "frog",
+      "confidence_drop": 0.6983074173331261,
+      "dataset_index": 5,
+      "status": "attack_success",
+      "true_class": "frog",
+      "true_label": 6
+    },
+    {
+      "adversarial_confidence": 0.9440043568611145,
+      "adversarial_original_class_confidence": 0.0030250197742134333,
+      "adversarial_prediction": 5,
+      "adversarial_prediction_class": "dog",
+      "clean_confidence": 0.5583583116531372,
+      "clean_prediction": 1,
+      "clean_prediction_class": "automobile",
+      "confidence_drop": 0.5553332918789238,
+      "dataset_index": 6,
+      "status": "attack_success",
+      "true_class": "automobile",
+      "true_label": 1
+    },
+    {
+      "adversarial_confidence": 0.9571779370307922,
+      "adversarial_original_class_confidence": 0.006356432102620602,
+      "adversarial_prediction": 1,
+      "adversarial_prediction_class": "automobile",
+      "clean_confidence": 0.4703984558582306,
+      "clean_prediction": 9,
+      "clean_prediction_class": "truck",
+      "confidence_drop": 0.46404202375561,
+      "dataset_index": 11,
+      "status": "attack_success",
+      "true_class": "truck",
+      "true_label": 9
+    },
+    {
+      "adversarial_confidence": 0.4182622730731964,
+      "adversarial_original_class_confidence": 0.011866546235978603,
+      "adversarial_prediction": 6,
+      "adversarial_prediction_class": "frog",
+      "clean_confidence": 0.2631162405014038,
+      "clean_prediction": 5,
+      "clean_prediction_class": "dog",
+      "confidence_drop": 0.2512496942654252,
+      "dataset_index": 12,
+      "status": "attack_success",
+      "true_class": "dog",
+      "true_label": 5
+    }
+  ],
+  "selection_rule": "Scan CIFAR-10 test samples in deterministic dataset order; keep clean-correct samples; classify FGSM results at epsilon 8/255; select first valid examples by distinct true class where possible, then fill remaining slots in scan order; skip constant Grad-CAM maps.",
+  "successful_attacks_found": 492,
+  "usable_control_examples": 2,
+  "usable_success_examples": 6
+}

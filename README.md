@@ -2,7 +2,7 @@
 
 A **NumPy-only, from-scratch CompactCNN pipeline for CIFAR-10** with manual
 forward/backward propagation, numerical gradient validation, FGSM adversarial
-robustness evaluation, and explainability-oriented future work.
+robustness evaluation, and Grad-CAM-based explainability analysis.
 
 This repository is built as an engineering project, not a thin wrapper around
 PyTorch or TensorFlow: the CNN layers, gradients, optimizer path, input
@@ -15,10 +15,11 @@ gradients, and FGSM attack pipeline are implemented directly with NumPy.
 | **From-scratch NumPy CNN** | `Conv2D`, `ReLU`, `MaxPool2D`, `Flatten`, `Linear`, and `CompactCNN` implemented manually. |
 | **Manual backward propagation** | Layer-level and full-model `backward(...)` pipeline implemented and tested. |
 | **Numerical gradient verification** | `Linear`, `Conv2D`, `SoftmaxCrossEntropyLoss`, and input-gradient sanity checks validated. |
-| **Automated tests** | `191 passed` in the current local full test suite. |
+| **Automated tests** | `210 passed` in the current local full test suite. |
 | **Clean CIFAR-10 baseline** | Deterministic NumPy baseline checkpoint reached `47.07%` validation accuracy and `44.73%` clean test-subset accuracy. |
 | **FGSM adversarial attack pipeline** | Input gradients, FGSM perturbations, clipping, and qualitative visualizations implemented. |
 | **FGSM quantitative robustness** | Portfolio baseline evaluated on `1024` CIFAR-10 test samples across `0`, `2/255`, `4/255`, `8/255`, and `16/255`. |
+| **Grad-CAM explainability** | Clean and adversarial Grad-CAM comparisons generated from the validated `relu2` target activation. |
 | **Runtime engineering** | Profiling identified `Conv2D.backward` as the bottleneck; a focused NumPy optimization achieved a documented `207.72x` local speedup. |
 | **Structured workflow** | Work-package-based development with tests, deliverables, metrics, and result artifacts. |
 
@@ -125,6 +126,24 @@ FGSM qualitative artifacts:
 - [FGSM epsilon progression](results/fgsm/epsilon_progression.png)
 - [FGSM qualitative metadata (JSON)](results/fgsm/fgsm_qualitative_metadata.json)
 
+### Clean vs adversarial Grad-CAM
+
+[![Clean vs Adversarial Grad-CAM](results/gradcam/gradcam_hero.png)](results/gradcam/gradcam_hero.png)
+
+Clean vs adversarial Grad-CAM under FGSM (`epsilon = 8/255`). The examples are
+clean-correct CIFAR-10 test samples where FGSM changes the model prediction.
+Grad-CAM maps are independently normalized to `[0, 1]`, so the visualization
+compares spatial localization patterns rather than absolute activation
+magnitude.
+
+Grad-CAM artifacts:
+
+- [README hero figure](results/gradcam/gradcam_hero.png)
+- [Detailed clean vs adversarial comparison](results/gradcam/gradcam_detailed_comparison.png)
+- [Fixed-original-target Grad-CAM comparison](results/gradcam/gradcam_fixed_target_comparison.png)
+- [Attack success vs control comparison](results/gradcam/gradcam_success_vs_control.png)
+- [Grad-CAM comparison metadata (JSON)](results/gradcam/gradcam_comparison_metadata.json)
+
 Historical WP7 smoke qualitative artifacts remain available for traceability:
 
 - [Clean image](results/WP7/qualitative/fgsm_example_000_clean.png)
@@ -196,7 +215,7 @@ The output shape is:
 Latest local validation:
 
 ```text
-191 passed
+210 passed
 ```
 
 The tests cover:
@@ -215,6 +234,7 @@ The tests cover:
 * robustness evaluation and epsilon sweeps,
 * FGSM quantitative runner and plots,
 * FGSM qualitative runner and visualizations,
+* Grad-CAM core and adversarial Grad-CAM visualization helpers,
 * experiment runner smoke tests.
 
 Run the full suite:
@@ -412,6 +432,23 @@ Default outputs:
 - [FGSM epsilon progression](results/fgsm/epsilon_progression.png)
 - [FGSM qualitative metadata (JSON)](results/fgsm/fgsm_qualitative_metadata.json)
 
+### Generate clean vs adversarial Grad-CAM comparisons
+
+Uses `results/baseline/portfolio_baseline_best.npz`, deterministic CIFAR-10
+test-sample selection, and writes to `results/gradcam/`:
+
+```bash
+MPLCONFIGDIR=/tmp/cnn-gradcam-matplotlib .venv/bin/python -m experiments.gradcam.generate_adversarial_comparisons
+```
+
+Default outputs:
+
+- [README hero figure](results/gradcam/gradcam_hero.png)
+- [Detailed clean vs adversarial comparison](results/gradcam/gradcam_detailed_comparison.png)
+- [Fixed-original-target Grad-CAM comparison](results/gradcam/gradcam_fixed_target_comparison.png)
+- [Attack success vs control comparison](results/gradcam/gradcam_success_vs_control.png)
+- [Grad-CAM comparison metadata (JSON)](results/gradcam/gradcam_comparison_metadata.json)
+
 ## Repository Structure
 
 ```text
@@ -454,16 +491,17 @@ emphasized:
 * Controlled FGSM robustness evaluation with epsilon sweep.
 * Portfolio FGSM quantitative robustness figures.
 * Portfolio FGSM qualitative comparison and epsilon progression figures.
+* Clean Grad-CAM core for the final `relu2` activation.
+* Clean vs adversarial Grad-CAM qualitative comparison figures.
 
 ### Planned
 
-* Grad-CAM implementation and clean/adversarial heatmap comparison.
 * PGD and additional attack evaluation if time and runtime allow.
 * Optional adversarial training.
 * CI and final reproducibility packaging.
 
-Grad-CAM, PGD, black-box attacks, and adversarial training are planned work;
-they are not implemented in the current repository state.
+PGD, black-box attacks, and adversarial training are planned work; they are not
+implemented in the current repository state.
 
 ## Scope and Limitations
 
