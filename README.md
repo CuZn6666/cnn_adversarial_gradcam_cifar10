@@ -17,7 +17,7 @@ gradients, and FGSM attack pipeline are implemented directly with NumPy.
 | **From-scratch NumPy CNN** | `Conv2D`, `ReLU`, `MaxPool2D`, `Flatten`, `Linear`, and `CompactCNN` implemented manually. |
 | **Manual backward propagation** | Layer-level and full-model `backward(...)` pipeline implemented and tested. |
 | **Numerical gradient verification** | `Linear`, `Conv2D`, `SoftmaxCrossEntropyLoss`, and input-gradient sanity checks validated. |
-| **Automated tests and CI** | `213 passed` in the current local full test suite; GitHub Actions runs the suite on push and pull requests. |
+| **Automated tests and CI** | Offline CI suite: `212 passed, 3 deselected`; full local suite with CIFAR-10 available: `215 passed`. |
 | **Clean CIFAR-10 baseline** | Deterministic NumPy baseline checkpoint reached `47.07%` validation accuracy and `44.73%` clean test-subset accuracy. |
 | **FGSM adversarial attack pipeline** | Input gradients, FGSM perturbations, clipping, and qualitative visualizations implemented. |
 | **FGSM quantitative robustness** | Reproducible baseline evaluated on `1024` CIFAR-10 test samples across `0`, `2/255`, `4/255`, `8/255`, and `16/255`. |
@@ -219,10 +219,11 @@ The output shape is:
 
 ## Validation and Testing
 
-Latest local validation:
+Latest validation:
 
 ```text
-213 passed
+Offline CI suite: 212 passed, 3 deselected
+Full local suite with CIFAR-10 available: 215 passed
 ```
 
 The tests cover:
@@ -250,16 +251,28 @@ Run the full suite:
 MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q
 ```
 
+Run the standard offline CI subset:
+
+```bash
+MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -m "not requires_data" --maxfail=1
+```
+
 For a fresh environment:
 
 ```bash
 python -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
-MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q
+MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -m "not requires_data" --maxfail=1
 ```
 
 The GitHub Actions workflow in `.github/workflows/ci.yml` runs the same test
-suite on push and pull requests.
+offline test subset on push and pull requests. Tests marked `requires_data`
+exercise the real CIFAR-10 data pipeline and can be run manually when the
+dataset is already available locally:
+
+```bash
+.venv/bin/python -m pytest -q -m requires_data
+```
 
 ## Numerical Gradient Checking
 
@@ -352,7 +365,7 @@ python -m venv .venv
 ### Run tests
 
 ```bash
-MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q
+MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -m "not requires_data" --maxfail=1
 ```
 
 ### Run the synthetic baseline smoke test
