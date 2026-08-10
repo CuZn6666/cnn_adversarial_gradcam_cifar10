@@ -4,9 +4,18 @@
 
 PARTIALLY COMPLETE.
 
-This slice introduces a minimal NumPy-first backend boundary and migrates the
-main tensor path to use that boundary. NumPy remains the default and reference
-backend. CuPy remains optional and is not a required dependency.
+EWP1-A: COMPLETE.
+
+The first slice introduced a minimal NumPy-first backend boundary and migrated
+the main tensor path to use that boundary. NumPy remains the default and
+reference backend. CuPy remains optional and is not a required dependency.
+
+EWP1-B: NEEDS GPU RUNTIME.
+
+The second slice adds optional CuPy runtime-compatibility tests and environment
+checks. The local development environment does not have CuPy installed and does
+not expose CUDA tooling, so actual GPU execution remains unverified locally.
+The tests skip cleanly and can be run later on a CUDA GPU node.
 
 No PGD implementation, PGD refactor, or PGD experiment was added.
 
@@ -28,6 +37,9 @@ Core backend and tensor path:
 Validation and planning:
 
 * `tests/test_backend.py`
+* `tests/cupy_test_utils.py`
+* `tests/conftest.py`
+* `tests/test_cupy_backend_runtime.py`
 * `TESTING.md`
 * `WP_PLAN.md`
 * `deliverables/EWP1/backend_migration_report.md`
@@ -120,6 +132,60 @@ CuPy equivalence testing should pay special attention to:
 * Any future experiment runner that mixes CPU data loader output with a CuPy
   model without explicit `to_backend(...)`.
 
+## EWP1-B Runtime Compatibility Checks
+
+The optional CuPy runtime tests cover:
+
+* CuPy import and version visibility.
+* CUDA runtime version query.
+* Visible CUDA device count and GPU name.
+* Simple CuPy allocation, computation, and synchronization.
+* Array creation/conversion through `to_backend(...)` and `to_numpy(...)`.
+* `zeros`, `zeros_like`, `maximum`, `max`, `argmax`, `sum`, `mean`, `abs`,
+  `exp`, `log`, `divide`, `clip`, `sign`, `matmul`, and finite checks.
+* Scalar conversions through `to_python_bool`, `to_python_float`, and
+  `to_python_int`.
+* `einsum(..., optimize=True)`.
+* `cupy.add.at` with repeated indices.
+* `sliding_window_view(...)` through the backend wrapper.
+* `Conv2D.forward` and `Conv2D.backward` equivalence for deterministic small
+  tensors.
+
+The Conv2D equivalence test compares forward outputs, input gradients,
+weight gradients, and bias gradients with:
+
+```text
+rtol = 1e-5
+atol = 1e-6
+```
+
+These tolerances are chosen for small float32 tensor operations. They are not
+weakened to mask runtime differences; they should be revisited only if an
+actual CuPy run demonstrates a numerically justified difference.
+
+## Current Local Environment
+
+Observed on the current local development machine:
+
+```text
+Python: 3.13.1
+CuPy installed: no
+nvidia-smi: not available
+nvcc: not available
+CUDA GPU visible through CuPy: not testable because cupy is not installed
+Simple CuPy allocation/computation: not testable because cupy is not installed
+```
+
+Because no CuPy runtime is available locally, the following risky primitives
+remain runtime-unverified:
+
+* `sliding_window_view`
+* `einsum(..., optimize=True)`
+* `cupy.add.at`
+
+They are covered by optional tests and should be run on a CUDA GPU node before
+claiming EWP1-B complete.
+
 ## Validation
 
 Commands run after this slice:
@@ -129,15 +195,25 @@ MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -
 MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q
 MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -m "not requires_data" --maxfail=1
 MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -m requires_data
+MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q tests/test_cupy_backend_runtime.py -rs
 ```
 
 Observed results:
 
 ```text
 87 passed
-219 passed
-216 passed, 3 deselected
-3 passed, 216 deselected
+219 passed, 6 skipped
+216 passed, 6 skipped, 3 deselected
+3 passed, 222 deselected
+6 skipped because cupy is not installed
+```
+
+Observed EWP1-B results after optional CuPy tests were added:
+
+```text
+Pre-change full suite: 219 passed
+Post-change full suite: 219 passed, 6 skipped
+CuPy runtime slice: 6 skipped because cupy is not installed
 ```
 
 ## Risks Before CuPy Equivalence Testing
@@ -151,3 +227,5 @@ Observed results:
   CPU and are not designed as fully device-resident pipelines.
 * Grad-CAM remains NumPy-only and should be migrated separately only if GPU
   explainability becomes part of the active scope.
+* EWP1-B cannot be marked complete until the optional CuPy runtime tests run on
+  an environment with CuPy, CUDA runtime access, and a visible CUDA GPU.

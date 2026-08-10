@@ -3,21 +3,25 @@
 ## Purpose
 
 This file defines the validation procedure for the current NumPy reference
-implementation, the original Work Packages, and the first backend-abstraction
-slice. It also records which existing tests should later serve as the NumPy
-reference for CuPy numerical-equivalence testing.
+implementation, the original Work Packages, EWP1 backend abstraction, and
+optional CuPy runtime-compatibility checks. It also records which existing
+tests should later serve as the NumPy reference for broader CuPy
+numerical-equivalence testing.
 
-No CuPy numerical-equivalence tests exist yet. `tests/test_backend.py` is
-NumPy-only smoke coverage for the backend abstraction.
+`tests/test_backend.py` is NumPy-only smoke coverage for the backend
+abstraction. `tests/test_cupy_backend_runtime.py` contains optional CuPy
+runtime tests and must skip cleanly when CuPy, CUDA runtime access, or a
+visible CUDA GPU is unavailable.
 
 ## Current Test State
 
 Latest verified local state:
 
 ```text
-Offline CI-compatible suite: 216 passed, 3 deselected
-Data-marked suite: 3 passed, 216 deselected
-Full local suite: 219 passed
+Offline CI-compatible suite: 216 passed, 6 skipped, 3 deselected
+Data-marked suite: 3 passed, 222 deselected
+Full local suite: 219 passed, 6 skipped
+CuPy runtime slice on this machine: 6 skipped because cupy is not installed
 ```
 
 Standard offline CI command:
@@ -36,6 +40,12 @@ Data-only command:
 
 ```bash
 MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -m requires_data
+```
+
+CuPy runtime-compatibility command:
+
+```bash
+MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q tests/test_cupy_backend_runtime.py -rs
 ```
 
 The GitHub Actions workflow in `.github/workflows/ci.yml` runs the offline
@@ -427,10 +437,34 @@ Expected results:
 * Documentation links match tracked or explicitly documented local artifacts.
 * Large ignored artifacts are clearly documented as regenerable or external.
 
+## CuPy Runtime Compatibility Tests
+
+The optional EWP1-B runtime tests are:
+
+```text
+tests/cupy_test_utils.py
+tests/conftest.py
+tests/test_cupy_backend_runtime.py
+```
+
+They validate:
+
+* CuPy import, CUDA runtime query, visible GPU count, GPU name, and simple
+  allocation/computation.
+* Backend primitive compatibility for the tensor operations used by the
+  migrated path.
+* `sliding_window_view`, `einsum(..., optimize=True)`, and `cupy.add.at`.
+* First Conv2D forward/backward NumPy/CuPy equivalence slice with `rtol=1e-5`
+  and `atol=1e-6`, matching the expected float32 scale of the tested
+  operations.
+
+These tests are not cluster integration and do not run large CIFAR-10
+experiments.
+
 ## NumPy Reference Tests for Future CuPy Equivalence
 
-The following existing tests should serve as the NumPy reference before any
-CuPy tests are introduced:
+The following existing tests should serve as the NumPy reference before broader
+EWP2 CuPy equivalence tests are introduced:
 
 ```text
 tests/test_forward.py

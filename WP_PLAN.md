@@ -779,14 +779,31 @@ Status:
 
 PARTIALLY COMPLETE.
 
-Implemented in the first EWP1 slice:
+EWP1-A: Backend abstraction
+
+Status: COMPLETE.
 
 * Minimal backend module for optional NumPy/CuPy dispatch.
 * NumPy remains the default and reference backend.
 * Tensor-path backend plumbing is implemented for layers, model
   forward/backward, loss, SGD, training metrics, input gradients, FGSM,
   robustness evaluation, and checkpoint CPU/device boundaries.
-* CuPy numerical-equivalence validation has not started yet.
+
+EWP1-B: CuPy runtime compatibility validation
+
+Status: NEEDS GPU RUNTIME.
+
+* Optional CuPy test infrastructure is available and skips cleanly when CuPy,
+  CUDA runtime access, or a visible CUDA GPU is unavailable.
+* Primitive compatibility tests cover array creation/conversion, zeros,
+  zeros_like, maximum, max, argmax, sum, mean, abs, exp, log, divide, clip,
+  sign, matmul, `einsum(..., optimize=True)`, `add.at`, finite checks, scalar
+  conversion helpers, and `sliding_window_view`.
+* First equivalence slice covers `Conv2D.forward` and `Conv2D.backward`
+  outputs/gradients with explicit float32 tolerances.
+* Local runtime validation is blocked until CuPy and a usable CUDA GPU are
+  available.
+* Broader EWP2 numerical-equivalence validation has not started yet.
 
 Relevant folders/files:
 
@@ -802,6 +819,9 @@ src/attacks/fgsm.py
 src/robustness.py
 src/checkpointing.py
 tests/test_backend.py
+tests/cupy_test_utils.py
+tests/conftest.py
+tests/test_cupy_backend_runtime.py
 deliverables/EWP1/backend_migration_report.md
 ```
 
@@ -809,7 +829,8 @@ Validation:
 
 * Preserve all NumPy reference behavior.
 * Run the full local NumPy test suite after each slice.
-* Do not require CuPy in the local development environment yet.
+* CuPy-specific tests must skip cleanly when the GPU backend is unavailable.
+* Do not require CuPy in the local development environment.
 
 Dependencies:
 
