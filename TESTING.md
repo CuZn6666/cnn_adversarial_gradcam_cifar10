@@ -3,21 +3,21 @@
 ## Purpose
 
 This file defines the validation procedure for the current NumPy reference
-implementation and the original Work Packages. It also records which existing
-tests should later serve as the NumPy reference for CuPy numerical-equivalence
-testing.
+implementation, the original Work Packages, and the first backend-abstraction
+slice. It also records which existing tests should later serve as the NumPy
+reference for CuPy numerical-equivalence testing.
 
-No CuPy tests exist yet. Do not add CuPy validation in documentation-only
-tasks.
+No CuPy numerical-equivalence tests exist yet. `tests/test_backend.py` is
+NumPy-only smoke coverage for the backend abstraction.
 
 ## Current Test State
 
 Latest verified local state:
 
 ```text
-Offline CI-compatible suite: 212 passed, 3 deselected
-Data-marked suite: 3 passed, 212 deselected
-Full local suite: 215 passed
+Offline CI-compatible suite: 216 passed, 3 deselected
+Data-marked suite: 3 passed, 216 deselected
+Full local suite: 219 passed
 ```
 
 Standard offline CI command:
@@ -444,6 +444,7 @@ tests/test_fgsm.py
 tests/test_fgsm_evaluation.py
 tests/test_fgsm_quantitative_runner.py
 tests/test_gradcam.py
+tests/test_backend.py
 ```
 
 Recommended future equivalence coverage:
@@ -454,10 +455,10 @@ Recommended future equivalence coverage:
 * Model loss-to-input gradients.
 * FGSM adversarial examples.
 * FGSM robustness metrics.
-* Checkpoint load into NumPy and CuPy model instances, if a backend-specific
-  model state representation is introduced.
+* Checkpoint load into NumPy and CuPy model instances.
 
-Do not add CuPy tests until the backend design is implemented.
+Do not add CuPy equivalence tests until the optional CuPy environment is
+available and the NumPy backend path is stable.
 
 ## Cluster / GPU Validation Boundary
 

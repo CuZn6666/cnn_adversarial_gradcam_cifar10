@@ -4,6 +4,8 @@ from collections.abc import Iterable
 
 import numpy as np
 
+from src.backend import ensure_same_backend, isfinite_all
+
 ParameterGradientPair = tuple[np.ndarray, np.ndarray]
 NamedParameterGradientPair = tuple[str, np.ndarray, np.ndarray]
 
@@ -46,13 +48,14 @@ class SGD:
 
             if parameter.shape != gradient.shape:
                 raise ValueError("Parameter and gradient shapes must match.")
-            if not np.isfinite(parameter).all():
+            ensure_same_backend(parameter, gradient)
+            if not isfinite_all(parameter):
                 raise ValueError("Parameters must contain only finite values.")
-            if not np.isfinite(gradient).all():
+            if not isfinite_all(gradient):
                 raise ValueError("Gradients must contain only finite values.")
 
             updated_parameter = parameter - self.learning_rate * gradient
-            if not np.isfinite(updated_parameter).all():
+            if not isfinite_all(updated_parameter):
                 raise ValueError(
                     "SGD update produced non-finite parameter values."
                 )

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 
 from configs.default_config import (
@@ -9,36 +11,54 @@ from configs.default_config import (
     NUM_CLASSES,
     SEED,
 )
+from src.backend import ensure_backend_array, resolve_backend
 from src.layers import Conv2D, Flatten, Linear, MaxPool2D, ReLU
 
 
 class CompactCNN:
     """Compact CNN with manual forward and backward passes."""
 
-    def __init__(self, seed: int = SEED) -> None:
+    def __init__(self, seed: int = SEED, backend: str | Any = "numpy") -> None:
+        self.xp = resolve_backend(backend)
         rng = np.random.default_rng(seed)
 
-        self.conv1 = Conv2D(IMAGE_CHANNELS, 8, kernel_size=3, padding=1, rng=rng)
-        self.relu1 = ReLU()
-        self.pool1 = MaxPool2D(kernel_size=2, stride=2)
+        self.conv1 = Conv2D(
+            IMAGE_CHANNELS,
+            8,
+            kernel_size=3,
+            padding=1,
+            rng=rng,
+            backend=self.xp,
+        )
+        self.relu1 = ReLU(backend=self.xp)
+        self.pool1 = MaxPool2D(kernel_size=2, stride=2, backend=self.xp)
 
-        self.conv2 = Conv2D(8, 16, kernel_size=3, padding=1, rng=rng)
-        self.relu2 = ReLU()
-        self.pool2 = MaxPool2D(kernel_size=2, stride=2)
+        self.conv2 = Conv2D(
+            8,
+            16,
+            kernel_size=3,
+            padding=1,
+            rng=rng,
+            backend=self.xp,
+        )
+        self.relu2 = ReLU(backend=self.xp)
+        self.pool2 = MaxPool2D(kernel_size=2, stride=2, backend=self.xp)
 
         pooled_height = IMAGE_HEIGHT // 4
         pooled_width = IMAGE_WIDTH // 4
-        self.flatten = Flatten()
+        self.flatten = Flatten(backend=self.xp)
         self.classifier = Linear(
             16 * pooled_height * pooled_width,
             NUM_CLASSES,
             rng=rng,
+            backend=self.xp,
         )
         self._logits_shape: tuple[int, ...] | None = None
-        self._gradcam_activation: np.ndarray | None = None
+        self._gradcam_activation: Any | None = None
         self._backward_completed = False
 
     def forward(self, inputs: np.ndarray) -> np.ndarray:
+        ensure_backend_array(inputs, self.xp, name="inputs")
         expected_shape = (IMAGE_CHANNELS, IMAGE_HEIGHT, IMAGE_WIDTH)
         if inputs.ndim != 4 or inputs.shape[1:] != expected_shape:
             raise ValueError(
@@ -66,6 +86,7 @@ class CompactCNN:
         return self._gradcam_activation.copy()
 
     def backward(self, grad_logits: np.ndarray) -> np.ndarray:
+        ensure_backend_array(grad_logits, self.xp, name="grad_logits")
         if self._logits_shape is None:
             raise RuntimeError(
                 "CompactCNN.backward requires a preceding forward call."

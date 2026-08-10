@@ -8,6 +8,7 @@ from typing import Literal, TypedDict
 import numpy as np
 
 from src.attacks import fgsm_attack
+from src.backend import ensure_same_backend, to_numpy, to_python_int
 from src.input_gradients import compute_input_gradient
 from src.losses import SoftmaxCrossEntropyLoss
 from src.models import CompactCNN
@@ -62,7 +63,8 @@ def evaluate_fgsm_batch(
 ) -> FGSMBatchResult:
     """Evaluate clean and FGSM predictions for one batch."""
     clean_logits = model.forward(images)
-    clean_predictions = np.argmax(clean_logits, axis=1)
+    xp = ensure_same_backend(clean_logits, labels)
+    clean_predictions = xp.argmax(clean_logits, axis=1)
 
     grad_input = compute_input_gradient(
         model,
@@ -72,15 +74,15 @@ def evaluate_fgsm_batch(
     )
     adversarial_images = fgsm_attack(images, grad_input, epsilon)
     adversarial_logits = model.forward(adversarial_images)
-    adversarial_predictions = np.argmax(adversarial_logits, axis=1)
+    adversarial_predictions = xp.argmax(adversarial_logits, axis=1)
 
     total_samples = labels.shape[0]
     clean_correct_mask = clean_predictions == labels
     adversarial_correct_mask = adversarial_predictions == labels
-    clean_correct = int(np.sum(clean_correct_mask))
-    adversarial_correct = int(np.sum(adversarial_correct_mask))
-    successful_attacks = int(
-        np.sum(clean_correct_mask & ~adversarial_correct_mask)
+    clean_correct = to_python_int(xp.sum(clean_correct_mask))
+    adversarial_correct = to_python_int(xp.sum(adversarial_correct_mask))
+    successful_attacks = to_python_int(
+        xp.sum(clean_correct_mask & ~adversarial_correct_mask)
     )
 
     clean_accuracy = clean_correct / total_samples
@@ -137,7 +139,8 @@ def select_fgsm_representative_examples(
 
     for batch_index, (images, labels) in enumerate(batch_values):
         clean_logits = model.forward(images)
-        clean_predictions = np.argmax(clean_logits, axis=1)
+        xp = ensure_same_backend(clean_logits, labels)
+        clean_predictions = xp.argmax(clean_logits, axis=1)
         grad_input = compute_input_gradient(
             model,
             loss_function,
@@ -146,12 +149,16 @@ def select_fgsm_representative_examples(
         )
         adversarial_images = fgsm_attack(images, grad_input, epsilon)
         adversarial_logits = model.forward(adversarial_images)
-        adversarial_predictions = np.argmax(adversarial_logits, axis=1)
+        adversarial_predictions = xp.argmax(adversarial_logits, axis=1)
 
-        for index_in_batch, true_label in enumerate(labels):
-            clean_prediction = int(clean_predictions[index_in_batch])
+        labels_cpu = to_numpy(labels)
+        clean_predictions_cpu = to_numpy(clean_predictions)
+        adversarial_predictions_cpu = to_numpy(adversarial_predictions)
+
+        for index_in_batch, true_label in enumerate(labels_cpu):
+            clean_prediction = int(clean_predictions_cpu[index_in_batch])
             adversarial_prediction = int(
-                adversarial_predictions[index_in_batch]
+                adversarial_predictions_cpu[index_in_batch]
             )
             true_label_value = int(true_label)
 

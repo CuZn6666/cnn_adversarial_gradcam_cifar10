@@ -777,7 +777,45 @@ Scope:
 
 Status:
 
-PLANNED.
+PARTIALLY COMPLETE.
+
+Implemented in the first EWP1 slice:
+
+* Minimal backend module for optional NumPy/CuPy dispatch.
+* NumPy remains the default and reference backend.
+* Tensor-path backend plumbing is implemented for layers, model
+  forward/backward, loss, SGD, training metrics, input gradients, FGSM,
+  robustness evaluation, and checkpoint CPU/device boundaries.
+* CuPy numerical-equivalence validation has not started yet.
+
+Relevant folders/files:
+
+```text
+src/backend.py
+src/layers/forward.py
+src/models/compact_cnn.py
+src/losses/cross_entropy.py
+src/optimizers/sgd.py
+src/training.py
+src/input_gradients.py
+src/attacks/fgsm.py
+src/robustness.py
+src/checkpointing.py
+tests/test_backend.py
+deliverables/EWP1/backend_migration_report.md
+```
+
+Validation:
+
+* Preserve all NumPy reference behavior.
+* Run the full local NumPy test suite after each slice.
+* Do not require CuPy in the local development environment yet.
+
+Dependencies:
+
+* NumPy remains required.
+* CuPy is optional and must not be added as a hard dependency in EWP1.
+* CIFAR-10 loading, plotting, JSON artifacts, and image output remain CPU-side.
 
 ---
 

@@ -1,7 +1,14 @@
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
-from numpy.lib.stride_tricks import sliding_window_view
+
+from src.backend import (
+    ensure_backend_array,
+    resolve_backend,
+    sliding_window_view,
+)
 
 
 class Conv2D:
@@ -15,37 +22,41 @@ class Conv2D:
         padding: int = 0,
         stride: int = 1,
         rng: np.random.Generator | None = None,
+        backend: str | Any = "numpy",
     ) -> None:
         if min(in_channels, out_channels, kernel_size, stride) <= 0:
             raise ValueError("Convolution dimensions and stride must be positive.")
         if padding < 0:
             raise ValueError("Padding must be non-negative.")
 
+        self.xp = resolve_backend(backend)
         generator = rng if rng is not None else np.random.default_rng()
         scale = np.sqrt(2.0 / (in_channels * kernel_size * kernel_size))
 
-        self.weights = generator.normal(
+        initial_weights = generator.normal(
             0.0,
             scale,
             size=(out_channels, in_channels, kernel_size, kernel_size),
         ).astype(np.float32)
-        self.bias = np.zeros(out_channels, dtype=np.float32)
-        self.grad_weight = np.zeros_like(self.weights)
-        self.grad_bias = np.zeros_like(self.bias)
+        self.weights = self.xp.asarray(initial_weights)
+        self.bias = self.xp.zeros(out_channels, dtype=np.float32)
+        self.grad_weight = self.xp.zeros_like(self.weights)
+        self.grad_bias = self.xp.zeros_like(self.bias)
         self.padding = padding
         self.stride = stride
         self._input_shape: tuple[int, ...] | None = None
         self._output_shape: tuple[int, ...] | None = None
-        self._padded_inputs: np.ndarray | None = None
+        self._padded_inputs: Any | None = None
 
     def forward(self, inputs: np.ndarray) -> np.ndarray:
+        xp = ensure_backend_array(inputs, self.xp, name="inputs")
         if inputs.ndim != 4:
             raise ValueError("Conv2D expects input with shape (N, C, H, W).")
         if inputs.shape[1] != self.weights.shape[1]:
             raise ValueError("Input channels do not match convolution weights.")
 
         kernel_height, kernel_width = self.weights.shape[2:]
-        padded = np.pad(
+        padded = xp.pad(
             inputs,
             (
                 (0, 0),
@@ -65,7 +76,7 @@ class Conv2D:
         )
         windows = windows[:, :, :: self.stride, :: self.stride, :, :]
 
-        outputs = np.einsum(
+        outputs = xp.einsum(
             "nchwkl,ockl->nohw",
             windows,
             self.weights,
@@ -81,6 +92,7 @@ class Conv2D:
         return outputs
 
     def backward(self, grad_out: np.ndarray) -> np.ndarray:
+        xp = ensure_backend_array(grad_out, self.xp, name="grad_out")
         if (
             self._input_shape is None
             or self._output_shape is None
@@ -91,7 +103,7 @@ class Conv2D:
             raise ValueError("Output gradient shape does not match Conv2D output.")
 
         kernel_height, kernel_width = self.weights.shape[2:]
-        grad_padded_input = np.zeros_like(
+        grad_padded_input = xp.zeros_like(
             self._padded_inputs,
             dtype=grad_out.dtype,
         )
@@ -105,7 +117,7 @@ class Conv2D:
         input_windows = input_windows[
             :, :, :: self.stride, :: self.stride, :, :
         ]
-        self.grad_weight = np.einsum(
+        self.grad_weight = xp.einsum(
             "nohw,nchwkl->ockl",
             grad_out,
             input_windows,
@@ -119,7 +131,7 @@ class Conv2D:
                 column_stop = (
                     kernel_column + output_width * self.stride
                 )
-                contribution = np.einsum(
+                contribution = xp.einsum(
                     "nohw,oc->nchw",
                     grad_out,
                     self.weights[:, :, kernel_row, kernel_column],
@@ -148,14 +160,17 @@ class Conv2D:
 class ReLU:
     """Rectified linear activation with manual forward and backward passes."""
 
-    def __init__(self) -> None:
-        self._positive_mask: np.ndarray | None = None
+    def __init__(self, backend: str | Any = "numpy") -> None:
+        self.xp = resolve_backend(backend)
+        self._positive_mask: Any | None = None
 
     def forward(self, inputs: np.ndarray) -> np.ndarray:
+        xp = ensure_backend_array(inputs, self.xp, name="inputs")
         self._positive_mask = inputs > 0
-        return np.maximum(inputs, 0)
+        return xp.maximum(inputs, 0)
 
     def backward(self, grad_out: np.ndarray) -> np.ndarray:
+        ensure_backend_array(grad_out, self.xp, name="grad_out")
         if self._positive_mask is None:
             raise RuntimeError("ReLU.backward requires a preceding forward call.")
         if grad_out.shape != self._positive_mask.shape:
@@ -169,20 +184,27 @@ class ReLU:
 class MaxPool2D:
     """Square max pooling with manual forward and backward passes."""
 
-    def __init__(self, kernel_size: int = 2, stride: int | None = None) -> None:
+    def __init__(
+        self,
+        kernel_size: int = 2,
+        stride: int | None = None,
+        backend: str | Any = "numpy",
+    ) -> None:
         if kernel_size <= 0:
             raise ValueError("Pooling kernel size must be positive.")
 
+        self.xp = resolve_backend(backend)
         self.kernel_size = kernel_size
         self.stride = stride if stride is not None else kernel_size
         self._input_shape: tuple[int, ...] | None = None
         self._output_shape: tuple[int, ...] | None = None
-        self._max_indices: np.ndarray | None = None
+        self._max_indices: Any | None = None
 
         if self.stride <= 0:
             raise ValueError("Pooling stride must be positive.")
 
     def forward(self, inputs: np.ndarray) -> np.ndarray:
+        ensure_backend_array(inputs, self.xp, name="inputs")
         if inputs.ndim != 4:
             raise ValueError("MaxPool2D expects input with shape (N, C, H, W).")
         if (
@@ -202,12 +224,13 @@ class MaxPool2D:
         self._input_shape = inputs.shape
         self._output_shape = outputs.shape
         flattened_windows = windows.reshape(*windows.shape[:4], -1)
-        # np.argmax selects the first maximum in row-major order for ties.
+        # argmax selects the first maximum in row-major order for ties.
         self._max_indices = flattened_windows.argmax(axis=-1)
 
         return outputs
 
     def backward(self, grad_out: np.ndarray) -> np.ndarray:
+        xp = ensure_backend_array(grad_out, self.xp, name="grad_out")
         if (
             self._input_shape is None
             or self._output_shape is None
@@ -217,8 +240,8 @@ class MaxPool2D:
         if grad_out.shape != self._output_shape:
             raise ValueError("Output gradient shape does not match MaxPool2D output.")
 
-        grad_input = np.zeros(self._input_shape, dtype=grad_out.dtype)
-        batch_indices, channel_indices = np.indices(self._input_shape[:2])
+        grad_input = xp.zeros(self._input_shape, dtype=grad_out.dtype)
+        batch_indices, channel_indices = xp.indices(self._input_shape[:2])
 
         for output_row in range(self._output_shape[2]):
             for output_column in range(self._output_shape[3]):
@@ -233,7 +256,7 @@ class MaxPool2D:
                     output_column * self.stride
                     + max_indices % self.kernel_size
                 )
-                np.add.at(
+                xp.add.at(
                     grad_input,
                     (
                         batch_indices,
@@ -252,11 +275,13 @@ class MaxPool2D:
 class Flatten:
     """Flatten layer with manual forward and backward passes."""
 
-    def __init__(self) -> None:
+    def __init__(self, backend: str | Any = "numpy") -> None:
+        self.xp = resolve_backend(backend)
         self._input_shape: tuple[int, ...] | None = None
         self._output_shape: tuple[int, ...] | None = None
 
     def forward(self, inputs: np.ndarray) -> np.ndarray:
+        ensure_backend_array(inputs, self.xp, name="inputs")
         if inputs.ndim < 2:
             raise ValueError("Flatten expects an input with a batch dimension.")
 
@@ -266,6 +291,7 @@ class Flatten:
         return outputs
 
     def backward(self, grad_out: np.ndarray) -> np.ndarray:
+        ensure_backend_array(grad_out, self.xp, name="grad_out")
         if self._input_shape is None or self._output_shape is None:
             raise RuntimeError("Flatten.backward requires a preceding forward call.")
         if grad_out.shape != self._output_shape:
@@ -284,24 +310,28 @@ class Linear:
         in_features: int,
         out_features: int,
         rng: np.random.Generator | None = None,
+        backend: str | Any = "numpy",
     ) -> None:
         if min(in_features, out_features) <= 0:
             raise ValueError("Linear layer dimensions must be positive.")
 
+        self.xp = resolve_backend(backend)
         generator = rng if rng is not None else np.random.default_rng()
         scale = np.sqrt(2.0 / in_features)
 
-        self.weights = generator.normal(
+        initial_weights = generator.normal(
             0.0,
             scale,
             size=(out_features, in_features),
         ).astype(np.float32)
-        self.bias = np.zeros(out_features, dtype=np.float32)
-        self.grad_weight = np.zeros_like(self.weights)
-        self.grad_bias = np.zeros_like(self.bias)
-        self._inputs: np.ndarray | None = None
+        self.weights = self.xp.asarray(initial_weights)
+        self.bias = self.xp.zeros(out_features, dtype=np.float32)
+        self.grad_weight = self.xp.zeros_like(self.weights)
+        self.grad_bias = self.xp.zeros_like(self.bias)
+        self._inputs: Any | None = None
 
     def forward(self, inputs: np.ndarray) -> np.ndarray:
+        ensure_backend_array(inputs, self.xp, name="inputs")
         if inputs.ndim != 2:
             raise ValueError("Linear expects input with shape (N, features).")
         if inputs.shape[1] != self.weights.shape[1]:
@@ -311,6 +341,7 @@ class Linear:
         return inputs @ self.weights.T + self.bias
 
     def backward(self, grad_out: np.ndarray) -> np.ndarray:
+        ensure_backend_array(grad_out, self.xp, name="grad_out")
         if self._inputs is None:
             raise RuntimeError("Linear.backward requires a preceding forward call.")
         if grad_out.ndim != 2:

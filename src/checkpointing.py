@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
+from src.backend import get_array_module, to_backend, to_numpy
 from src.models import CompactCNN
 
 PARAMETER_NAMES = (
@@ -18,7 +20,7 @@ PARAMETER_NAMES = (
 
 def _named_parameters(
     model: CompactCNN,
-) -> tuple[tuple[str, np.ndarray], ...]:
+) -> tuple[tuple[str, Any], ...]:
     return (
         ("conv1.weights", model.conv1.weights),
         ("conv1.bias", model.conv1.bias),
@@ -33,7 +35,7 @@ def save_checkpoint(model: CompactCNN, path: str | Path) -> Path:
     """Save CompactCNN trainable parameters to a NumPy archive."""
     checkpoint_path = Path(path)
     parameters = {
-        name: parameter
+        name: to_numpy(parameter)
         for name, parameter in _named_parameters(model)
     }
     np.savez(checkpoint_path, **parameters)
@@ -70,4 +72,8 @@ def load_checkpoint(model: CompactCNN, path: str | Path) -> None:
             )
 
     for name in PARAMETER_NAMES:
-        target_parameters[name][...] = loaded_parameters[name]
+        backend = get_array_module(target_parameters[name])
+        target_parameters[name][...] = to_backend(
+            loaded_parameters[name],
+            backend,
+        )

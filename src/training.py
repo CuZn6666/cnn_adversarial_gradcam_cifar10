@@ -4,6 +4,7 @@ from collections.abc import Iterable
 
 import numpy as np
 
+from src.backend import ensure_same_backend, to_python_float, to_python_int
 from src.losses import SoftmaxCrossEntropyLoss
 from src.models import CompactCNN
 from src.optimizers import SGD
@@ -36,7 +37,10 @@ def _train_step_metrics(
 ) -> tuple[float, int]:
     logits = model.forward(images)
     loss = loss_function.forward(logits, labels)
-    correct_predictions = int(np.sum(np.argmax(logits, axis=1) == labels))
+    xp = ensure_same_backend(logits, labels)
+    correct_predictions = to_python_int(
+        xp.sum(xp.argmax(logits, axis=1) == labels)
+    )
     grad_logits = loss_function.backward()
     model.backward(grad_logits)
     parameter_gradient_pairs = model.named_parameters_and_gradients()
@@ -87,8 +91,9 @@ def evaluate_batch(
     """Evaluate one batch without updating model parameters."""
     logits = model.forward(images)
     loss = loss_function.forward(logits, labels)
-    predictions = np.argmax(logits, axis=1)
-    accuracy = float(np.mean(predictions == labels))
+    xp = ensure_same_backend(logits, labels)
+    predictions = xp.argmax(logits, axis=1)
+    accuracy = to_python_float(xp.mean(predictions == labels))
     return loss, accuracy
 
 
