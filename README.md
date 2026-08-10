@@ -55,9 +55,18 @@ clean_test_subset_accuracy: 0.4473
 
 Baseline artifacts:
 
-- [Best baseline checkpoint](results/baseline/portfolio_baseline_best.npz)
+- Local baseline checkpoint: `results/baseline/portfolio_baseline_best.npz`
+  (not tracked; regenerate locally or provide through an external artifact
+  store for larger runs)
 - [Training history JSON](results/baseline/portfolio_training_history.json)
 - [Final metrics JSON](results/baseline/portfolio_final_metrics.json)
+
+Checkpoint artifact policy: `.npz` model checkpoints are intentionally ignored
+by Git to avoid committing large binary artifacts. The repository tracks
+configuration, metrics, plots, and small JSON/PNG result summaries. Checkpoints
+should be regenerated from the documented scripts or distributed through a
+release artifact, cluster storage path, or another explicit external artifact
+store when an experiment needs an exact saved model.
 
 ### FGSM quantitative robustness with reproducible baseline
 
@@ -386,7 +395,8 @@ MPLCONFIGDIR=/tmp/cnn-baseline-matplotlib .venv/bin/python -m experiments.baseli
 
 Default outputs:
 
-- [Best baseline checkpoint](results/baseline/portfolio_baseline_best.npz)
+- Local baseline checkpoint: `results/baseline/portfolio_baseline_best.npz`
+  (not tracked by Git)
 - [Training history JSON](results/baseline/portfolio_training_history.json)
 - [Final metrics JSON](results/baseline/portfolio_final_metrics.json)
 - [Training loss curve](results/baseline/training_loss_curve.png)
@@ -446,7 +456,7 @@ Uses `results/baseline/portfolio_baseline_best.npz`, the deterministic
 test-subset policy, and writes to `results/fgsm/`:
 
 ```bash
-MPLCONFIGDIR=/tmp/cnn-day3-matplotlib .venv/bin/python -m experiments.fgsm.generate_day3_visualizations
+MPLCONFIGDIR=/tmp/cnn-fgsm-qualitative-matplotlib .venv/bin/python -m experiments.fgsm.generate_day3_visualizations
 ```
 
 Default outputs:

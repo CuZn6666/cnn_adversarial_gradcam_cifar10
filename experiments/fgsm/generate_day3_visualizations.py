@@ -1,4 +1,4 @@
-"""Generate Day 3 portfolio FGSM qualitative visualizations."""
+"""Generate FGSM qualitative visualizations."""
 
 from __future__ import annotations
 
@@ -42,7 +42,7 @@ DAY3_TARGET_EPSILON_LABEL = "8/255"
 
 @dataclass(frozen=True)
 class Day3FGSMVisualizationConfig:
-    """Deterministic Day 3 qualitative FGSM configuration."""
+    """Deterministic qualitative FGSM configuration."""
 
     eval_samples: int = 1024
     seed: int = SEED
@@ -215,7 +215,7 @@ def run_day3_fgsm_visualizations(
     config: Day3FGSMVisualizationConfig = DAY3_FGSM_VISUALIZATION_CONFIG,
     data_dir: str | Path = DATA_DIR,
 ) -> dict[str, Any]:
-    """Generate Day 3 qualitative comparison and epsilon progression."""
+    """Generate qualitative FGSM comparison and epsilon progression."""
     if not config.checkpoint_path.is_file():
         raise FileNotFoundError(
             f"Model checkpoint is not available at {config.checkpoint_path}."
@@ -227,7 +227,7 @@ def run_day3_fgsm_visualizations(
         raise FileNotFoundError(
             "CIFAR-10 data is not available at "
             f"{dataset_path}. Download and extract it explicitly before "
-            "running Day 3 FGSM visualizations."
+            "running FGSM qualitative visualizations."
         )
 
     _, _, test_images, test_labels, class_names = load_cifar10(data_path)

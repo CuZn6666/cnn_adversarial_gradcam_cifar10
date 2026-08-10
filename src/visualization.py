@@ -190,7 +190,7 @@ def save_fgsm_qualitative_comparison(
     adversarial_prediction: str,
     epsilon_label: str,
 ) -> Path:
-    """Save a portfolio FGSM comparison: clean, gradient, perturbation, adv."""
+    """Save an FGSM comparison: clean, gradient, perturbation, adversarial."""
     clean_display = _nchw_single_to_display_image(clean_image)
     adversarial_display = _nchw_single_to_display_image(adversarial_image)
     height, width = clean_image.shape[2:]

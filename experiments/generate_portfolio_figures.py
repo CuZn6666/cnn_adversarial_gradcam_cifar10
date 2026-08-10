@@ -17,7 +17,7 @@ CONV2D_BACKWARD_AFTER_SECONDS = 0.000209222
 def generate_portfolio_figures(
     project_root: str | Path = PROJECT_ROOT,
 ) -> dict[str, Path]:
-    """Generate README-ready portfolio figures from committed artifacts."""
+    """Generate README-ready figures from committed artifacts."""
     root = Path(project_root)
 
     combined_fgsm_path = save_combined_fgsm_figure(

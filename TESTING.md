@@ -2,351 +2,242 @@
 
 ## Purpose
 
-This file defines the validation procedure for each Work Package.
+This file defines the validation procedure for the current NumPy reference
+implementation and the original Work Packages. It also records which existing
+tests should later serve as the NumPy reference for CuPy numerical-equivalence
+testing.
 
-A Work Package is not considered completed until the relevant tests or checks have been run and the result has been reported.
+No CuPy tests exist yet. Do not add CuPy validation in documentation-only
+tasks.
 
-## General Local Checks
+## Current Test State
 
-Run these commands before and after important code changes when applicable:
+Latest verified local state:
+
+```text
+Offline CI-compatible suite: 212 passed, 3 deselected
+Data-marked suite: 3 passed, 212 deselected
+Full local suite: 215 passed
+```
+
+Standard offline CI command:
+
+```bash
+MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -m "not requires_data" --maxfail=1
+```
+
+Full local command when CIFAR-10 data is available:
+
+```bash
+MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q
+```
+
+Data-only command:
+
+```bash
+MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -m requires_data
+```
+
+The GitHub Actions workflow in `.github/workflows/ci.yml` runs the offline
+subset on Python 3.13.
+
+## General Validation Rules
+
+Before and after important implementation changes:
 
 ```bash
 python --version
-pytest tests/
+MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -m "not requires_data" --maxfail=1
+git diff --check
+git status -sb
 ```
 
-If `pytest` is not installed:
-
-```bash
-pip install pytest
-```
-
-If the full test suite is too expensive, run only the relevant test file for the current Work Package.
+For documentation-only changes, run the full test suite when feasible and
+always run `git diff --check`.
 
 ## WP0: Project Orientation and Planning Validation
 
 Goal:
 
-Check that the project planning files and repository orientation are available.
+Check that planning files and documentation deliverables exist and reflect the
+current implementation.
 
 Suggested checks:
 
 ```bash
-ls
 ls AGENTS.md WP_PLAN.md TESTING.md
+ls deliverables/WP0/
 ```
 
 Expected results:
 
-* `AGENTS.md` exists.
-* `WP_PLAN.md` exists.
-* `TESTING.md` exists.
-* The project status correctly says that WP0 and WP1 are mostly completed.
-* The project status correctly reflects the current active Work Package.
+* `AGENTS.md`, `WP_PLAN.md`, and `TESTING.md` exist.
+* WP status in `WP_PLAN.md` matches the current repository.
+* WP0 deliverables record method selection and metrics from repository
+  evidence, with TODO markers only where external citation details are still
+  missing.
 
 ## WP1: Data Pipeline Validation
 
 Goal:
 
-Check that CIFAR-10 data loading works correctly.
+Check CIFAR-10 loading, preprocessing, batching, and reproducibility.
 
 Suggested commands:
 
 ```bash
-pytest tests/test_data.py
+.venv/bin/python -m pytest tests/test_data_pipeline.py -v
+.venv/bin/python -m experiments.check_data_pipeline
 ```
 
 Expected results:
 
-* CIFAR-10 batches can be loaded.
-* Image tensors or arrays have the expected shape.
-* Labels are valid class indices.
-* No file path or dataset loading error occurs.
+* CIFAR-10 train/test arrays have shapes `(50000, 3, 32, 32)` and
+  `(10000, 3, 32, 32)` when local data is present.
+* Image dtype is `float32` and values are in `[0, 1]`.
+* Labels are `int64` class IDs in `[0, 9]`.
+* Fixed seeds reproduce the first shuffled batch.
+* The data sanity script writes `results/figures/cifar10_sample_batch.png`.
 
-If no test exists yet:
+Tests:
 
-Create a minimal test that loads one batch and checks image and label shapes.
+```text
+tests/test_data_pipeline.py
+```
 
 ## WP2: Compact CNN Forward Pass Validation
 
 Goal:
 
-Check that the compact CNN forward pass works before implementing any backward pass.
+Check the manual forward implementation for layers, model, and loss.
 
 Suggested commands:
 
 ```bash
-pytest tests/test_forward.py
-pytest tests/
+.venv/bin/python -m pytest tests/test_forward.py tests/test_losses.py -v
 ```
 
 Expected results:
 
-* The model accepts a CIFAR-10 shaped batch.
-* The expected input shape is compatible with CIFAR-10, usually `(batch_size, 3, 32, 32)` or the project’s chosen equivalent.
-* The model output has shape `(batch_size, 10)`.
-* The forward pass runs without runtime errors.
-* The output contains no NaN or Inf values.
-* The loss can be computed if a loss function already exists.
+* `Conv2D`, `ReLU`, `MaxPool2D`, `Flatten`, and `Linear` match deterministic
+  references.
+* `CompactCNN.forward` accepts `(N, 3, 32, 32)` inputs and returns `(N, 10)`.
+* Outputs are finite.
+* Fixed-seed initialization is reproducible.
+* Invalid shapes are rejected.
+* Softmax Cross-Entropy forward is numerically stable.
 
-If no forward test exists yet:
+Tests:
 
-Create a minimal test that:
-
-1. creates a small random input batch,
-2. passes it through the compact CNN,
-3. checks that the output shape is correct,
-4. checks that the output values are finite.
-
-Important:
-
-Do not start WP3 manual backward implementation before WP2 forward validation passes.
+```text
+tests/test_forward.py
+tests/test_losses.py
+```
 
 ## WP3: Manual Backward Validation
 
-Status:
-
-Completed. Manual layer backward passes, `CompactCNN.backward`,
-Softmax Cross-Entropy forward/backward, and loss-to-model integration are
-implemented and validated.
-
 Goal:
 
-Check that manual backward functions return gradients with correct shapes and stable values.
+Check layer-level and model-level manual backward propagation.
 
 Suggested commands:
 
 ```bash
-.venv/bin/python -m pytest tests/test_layers.py -v
-.venv/bin/python -m pytest tests/test_losses.py -v
-.venv/bin/python -m pytest tests/test_backward.py -v
-.venv/bin/python -m pytest tests/test_integration.py -v
-.venv/bin/python -m pytest tests/ -v
+.venv/bin/python -m pytest tests/test_layers.py tests/test_backward.py tests/test_integration.py tests/test_losses.py -v
 ```
 
 Expected results:
 
-* `Linear.backward` returns correct input, weight, and bias gradients.
-* `ReLU.backward` masks zero and negative activations.
-* `Flatten.backward` restores the original input shape.
-* `MaxPool2D.backward` routes gradients to deterministic maximum locations.
-* `Conv2D.backward` returns correct input, weight, and bias gradients,
-  including supported stride and padding behavior.
-* Softmax Cross-Entropy forward and backward match deterministic NumPy
-  references and remain stable for large logits.
-* `CompactCNN.backward` executes the complete reverse layer order and returns
-  finite input gradients with the expected shape.
-* The loss-to-model integration produces finite parameter gradients with
-  shapes matching their parameters.
-* No NaN or Inf occurs in gradients.
+* `Linear.backward`, `ReLU.backward`, `Flatten.backward`,
+  `MaxPool2D.backward`, and `Conv2D.backward` return expected shapes and
+  deterministic values.
+* `Conv2D.backward` supports stride and padding behavior covered by tests.
+* `SoftmaxCrossEntropyLoss.backward` matches deterministic references.
+* `CompactCNN.backward` returns finite input gradients.
+* Parameter gradients match parameter shapes and are finite.
 
-Recommended implementation order:
+Tests:
 
-1. Test Linear backward.
-2. Test ReLU backward.
-3. Test MaxPool backward.
-4. Test Conv2D backward.
-5. Test Softmax Cross-Entropy backward.
-6. Test full model backward.
-7. Test the loss-to-model backward integration.
-
-If a test fails:
-
-* Do not continue to the next layer.
-* Explain the failure.
-* Fix only the relevant component.
+```text
+tests/test_layers.py
+tests/test_backward.py
+tests/test_integration.py
+tests/test_losses.py
+```
 
 ## WP4: Gradient Check and Input-Gradient Validation
 
-Status:
-
-Completed. Numerical gradient checks and the full input-gradient pipeline
-sanity check are implemented and validated.
-
 Goal:
 
-Compare manual gradients against numerical gradients and validate gradients
-with respect to input images.
+Compare selected manual gradients against finite differences and validate
+loss-to-input gradients.
 
 Suggested commands:
 
 ```bash
-.venv/bin/python -m pytest tests/test_gradient_check.py -v
-.venv/bin/python -m pytest tests/ -v
+.venv/bin/python -m pytest tests/test_gradient_check.py tests/test_input_gradients.py -v
 ```
 
 Expected results:
 
-* `Linear` input, weight, and bias gradients match centered finite
-  differences.
-* `Conv2D` input, weight, and bias gradients match centered finite
-  differences.
-* `SoftmaxCrossEntropyLoss.backward` matches the numerical gradient with
-  respect to logits.
-* Numerical checks satisfy `relative_error < 1e-4`.
-* The `CompactCNN` loss-to-input gradient pipeline returns gradients with the
-  same shape as the input batch.
-* Input gradients are finite and not entirely zero.
-* Model parameter gradients have the expected shapes and contain no NaN or
-  Inf values.
-* Latest validation result: `tests/test_gradient_check.py` reports 4 passed
-  and the full suite reports 53 passed.
+* `Linear`, `Conv2D`, and `SoftmaxCrossEntropyLoss` gradients match centered
+  finite-difference checks.
+* Relative-error threshold remains `1e-4` for the existing checks.
+* Input gradients are finite, deterministic, and do not update parameters.
+* Input-gradient maps are normalized per image and handle zero gradients.
 
-Suggested relative error criterion:
+Tests:
 
 ```text
-relative_error < 1e-4
+tests/test_gradient_check.py
+tests/test_input_gradients.py
 ```
-
-The completed checks use this threshold. `Conv2D` uses a larger finite-
-difference epsilon to account for its `float32` forward output.
 
 ## WP5: Baseline Training Validation
 
-Status:
-
-Completed for the controlled NumPy baseline pipeline. The optimizer,
-training/evaluation helpers, checkpointing, metrics persistence, plotting,
-configuration, synthetic runner, and controlled real CIFAR-10 subset runner
-are implemented and validated.
-
 Goal:
 
-Check that the model can train and that metrics are saved.
+Validate optimizer, training/evaluation helpers, checkpointing, metrics,
+plotting, and baseline runners.
 
-Validation order:
-
-1. Validate deterministic optimizer parameter updates.
-2. Validate single- and multi-batch training and clean evaluation.
-3. Validate checkpoint, metric, plot, and baseline configuration helpers.
-4. Validate the deterministic synthetic baseline runner.
-5. Execute the tiny synthetic smoke run and verify its artifacts.
-6. Run the full test suite.
-
-Relevant test commands:
+Suggested commands:
 
 ```bash
-.venv/bin/python -m pytest tests/test_optimizer.py -v
-.venv/bin/python -m pytest tests/test_training.py -v
-.venv/bin/python -m pytest tests/test_checkpointing.py -v
-.venv/bin/python -m pytest tests/test_metrics.py -v
-.venv/bin/python -m pytest tests/test_plotting.py -v
-.venv/bin/python -m pytest tests/test_config.py -v
-.venv/bin/python -m pytest tests/test_baseline_runner.py -v
-.venv/bin/python -m pytest tests/test_cifar10_baseline_runner.py -v
-.venv/bin/python -m pytest tests/ -v
+.venv/bin/python -m pytest tests/test_optimizer.py tests/test_training.py tests/test_checkpointing.py tests/test_metrics.py tests/test_plotting.py tests/test_config.py tests/test_baseline_runner.py tests/test_cifar10_baseline_runner.py tests/test_portfolio_baseline_runner.py -v
 ```
-
-Tiny deterministic synthetic baseline command:
-
-```bash
-.venv/bin/python -c 'from experiments.baseline.train_baseline import run_synthetic_baseline; result = run_synthetic_baseline(); print(result["final_metrics"]); print(result["checkpoint_path"]); print(result["metrics_path"]); print(result["loss_curve_path"]); print(result["accuracy_curve_path"])'
-```
-
-This command uses `BASELINE_CONFIG` and synthetic arrays generated inside the
-runner. It does not load CIFAR-10.
-
-Expected local artifact paths:
-
-```text
-results/checkpoints/synthetic_baseline.npz
-results/logs/synthetic_metrics.json
-results/figures/loss_curve.png
-results/figures/accuracy_curve.png
-```
-
-The checkpoint is ignored by the repository's `*.npz` rule. Generated smoke-run
-artifacts should not be force-added. Regenerate them with the command above.
 
 Expected results:
 
-* Synthetic training orchestration starts without runtime errors.
-* Loss decreases in the repeated-batch smoke test.
-* Clean loss is finite and accuracy is in `[0, 1]`.
-* Checkpoints, metrics, and loss/accuracy curves are saved under `results/`.
-* Existing WP1–WP4 tests continue to pass.
-* The full suite reports 110 passed.
+* SGD updates match deterministic hand-computed values.
+* `train_step`, `train_batches`, `evaluate_batch`, and `evaluate_batches`
+  produce finite sample-weighted metrics.
+* Checkpoint save/load restores model parameters and logits.
+* JSON metrics are deterministic and human-readable.
+* Baseline plots and confusion-matrix plots are generated.
+* Synthetic and controlled real-data runners create expected artifacts.
+* The stronger 4096/1024/1024 baseline runner is tested with synthetic
+  monkeypatched data, not by running a full expensive training job in tests.
 
-Latest synthetic artifact-validation run:
-
-```text
-seed: 42
-batch_size: 8
-epochs: 1
-train_samples: 64
-eval_samples: 32
-train_loss: 2.3956282436847687
-train_accuracy: 0.09375
-eval_loss: 2.396390974521637
-eval_accuracy: 0.15625
-```
-
-These metrics are only a deterministic synthetic smoke-run result. They are
-not a CIFAR-10 accuracy result and must not be presented as the full baseline.
-
-Controlled real CIFAR-10 subset command:
-
-```bash
-MPLCONFIGDIR=/tmp/cnn-wp5-matplotlib .venv/bin/python -c 'from experiments.baseline.train_baseline import run_cifar10_subset_baseline; result = run_cifar10_subset_baseline(); print(result["final_metrics"])'
-```
-
-The command requires an existing extracted CIFAR-10 dataset under
-`data/raw/cifar-10-batches-py/`. The subset runner checks for this directory
-before calling the existing loader and does not automatically download data.
-
-Controlled subset configuration and result:
+Tests:
 
 ```text
-seed: 42
-learning_rate: 0.0005
-batch_size: 8
-epochs: 1
-train_samples: 64
-eval_samples: 32
-train_loss: 2.4283203780651093
-train_accuracy: 0.171875
-eval_loss: 2.434686303138733
-eval_accuracy: 0.15625
+tests/test_optimizer.py
+tests/test_training.py
+tests/test_checkpointing.py
+tests/test_metrics.py
+tests/test_plotting.py
+tests/test_config.py
+tests/test_baseline_runner.py
+tests/test_cifar10_baseline_runner.py
+tests/test_portfolio_baseline_runner.py
 ```
 
-Expected local subset artifact paths:
-
-```text
-results/checkpoints/cifar10_subset_baseline.npz
-results/logs/cifar10_subset_metrics.json
-results/figures/cifar10_subset_loss_curve.png
-results/figures/cifar10_subset_accuracy_curve.png
-```
-
-The controlled subset run validates real-data pipeline integration only. It is
-not full CIFAR-10 multi-epoch baseline training. Full training is deferred
-because the current manual NumPy `Conv2D` runtime is slow.
-
-For quick local testing, prefer a small number of batches or epochs.
-
-## WP6: Focused Runtime Bottleneck Validation
+## WP6: Runtime Bottleneck Validation
 
 Goal:
 
-Identify and measure the main runtime bottleneck, then validate one selected
-optimization path without broad framework benchmarking.
-
-Status:
-
-Completed. Initial profiling, single-bottleneck selection, focused
-`Conv2D.backward` optimization, before/after measurement, and scoped
-correctness validation are complete.
-
-Initial profiling protocol:
-
-* Profile before choosing or implementing an optimization.
-* Measure `Conv2D.forward`, `Conv2D.backward`, and one `train_step`.
-* Use a fixed random seed.
-* Use documented fixed input and gradient shapes.
-* Use a fixed warm-up count and fixed measured iteration count.
-* Use identical inputs and timing procedure for later before/after
-  comparisons.
-* Keep the profiling workload small and independent of full CIFAR-10 training.
+Validate the focused `Conv2D.backward` optimization and record runtime
+measurements.
 
 Profiling command:
 
@@ -354,323 +245,226 @@ Profiling command:
 .venv/bin/python -m experiments.runtime.profile_wp6
 ```
 
-Final WP6 correctness checks:
+Current audit profiler output:
+
+```text
+conv2d_forward_seconds=0.000115542
+conv2d_backward_seconds=0.000345306
+train_step_seconds=0.003370375
+```
+
+Correctness commands:
 
 ```bash
 .venv/bin/python -m pytest tests/test_layers.py -v -k conv2d_backward
-.venv/bin/python -m pytest tests/test_gradient_check.py -v -k 'conv2d or compact_cnn_input_gradient'
-.venv/bin/python -m pytest tests/test_backward.py -v
-.venv/bin/python -m pytest tests/test_integration.py -v
+.venv/bin/python -m pytest tests/test_gradient_check.py -v -k "conv2d or compact_cnn_input_gradient"
+.venv/bin/python -m pytest tests/test_backward.py tests/test_integration.py -v
 ```
 
 Expected results:
 
-* `Conv2D.backward` is identified as the single computational bottleneck.
-* One focused NumPy optimization path is implemented.
-* Conv2D, numerical-gradient, model-backward, and integration tests pass.
-* Runtime measurements are used to understand the bottleneck, not to compare
-  NumPy, CuPy, JAX, and PyTorch broadly.
-* The measurement record includes seed, shapes, warm-up count, iteration
-  count, timing summary, selected path, and limitations.
+* `Conv2D.backward` remains correct after optimization.
+* Runtime measurements are treated as local profiling data, not broad hardware
+  benchmarks.
+* CuPy/GPU work is not part of WP6 validation.
 
-Recorded fixed benchmark:
-
-```text
-Conv2D.forward: 0.000068569 -> 0.000066375 seconds
-Conv2D.backward: 0.043458736 -> 0.000209222 seconds
-Conv2D.backward speedup: 207.72x
-train_step: 0.070350708 -> 0.001886028 seconds
-train_step speedup: 37.30x
-```
-
-The small `Conv2D.forward` difference is treated as local timing noise because
-that operation was not optimized.
-
-Out of scope for the initial WP6 profiling step:
-
-* CIFAR-10 loading or full training,
-* attacks or Grad-CAM,
-* GPU, CuPy, CUDA, cluster, or SLURM support,
-* adding dependencies,
-* further optimization beyond the selected `Conv2D.backward` target.
-
-## WP7: FGSM Attack and Input-Gradient Validation
+## WP7: FGSM Attack and Input-Gradient Visualization
 
 Goal:
 
-Validate input gradients, minimal FGSM behavior, and a small number of
-qualitative visualizations without performing the WP8 robustness evaluation.
+Validate minimal FGSM behavior and small qualitative visualization generation.
 
-Status:
+Suggested commands:
 
-Completed. Input-gradient computation and maps, minimal FGSM, qualitative
-visualization saving, and the controlled one-example runner are implemented
-and validated.
+```bash
+MPLCONFIGDIR=/tmp/cnn-wp7-matplotlib .venv/bin/python -m pytest tests/test_input_gradients.py tests/test_fgsm.py tests/test_visualization.py tests/test_fgsm_examples.py -v
+```
 
 Expected results:
 
-* Loss gradients with respect to inputs match the input shape.
-* Input gradients and adversarial images contain only finite values.
-* FGSM preserves input shape.
+* FGSM preserves shape and clips images to `[0, 1]`.
 * `epsilon=0` leaves inputs unchanged.
-* The `L_inf` perturbation does not exceed epsilon within tolerance.
-* Adversarial images remain in `[0, 1]`.
-* Fixed inputs, labels, model parameters, and epsilon produce deterministic
-  outputs.
-* Input-gradient, clean-image, adversarial-image, and perturbation
-  visualizations can be saved for a small number of examples.
-* Model parameters are not updated during attack generation.
+* Perturbations satisfy the `L_inf` bound.
+* Attack generation does not update model parameters.
+* Qualitative PNG helpers create deterministic non-empty files.
 
-Final lightweight commands:
-
-```bash
-MPLCONFIGDIR=/tmp/cnn-wp7-matplotlib .venv/bin/python -m pytest tests/test_input_gradients.py -v
-.venv/bin/python -m pytest tests/test_fgsm.py -v
-MPLCONFIGDIR=/tmp/cnn-wp7-matplotlib .venv/bin/python -m pytest tests/test_visualization.py -v
-MPLCONFIGDIR=/tmp/cnn-wp7-matplotlib .venv/bin/python -m pytest tests/test_fgsm_examples.py -v
-.venv/bin/python -m pytest tests/test_backward.py tests/test_integration.py tests/test_losses.py -v
-```
-
-Controlled local example command:
-
-```bash
-MPLCONFIGDIR=/tmp/cnn-wp7-matplotlib .venv/bin/python -m experiments.fgsm.generate_examples
-```
-
-The command defaults to one deterministic CIFAR-10 test example,
-`epsilon=8/255`, the checkpoint
-`results/checkpoints/cifar10_subset_baseline.npz`, and the output directory
-`results/WP7/qualitative/`. It requires an existing local CIFAR-10
-`test_batch` and checkpoint, does not download data, and does not train or
-update the model.
-
-Expected qualitative artifact names:
+Tests:
 
 ```text
-results/WP7/qualitative/fgsm_example_000_clean.png
-results/WP7/qualitative/fgsm_example_000_adversarial.png
-results/WP7/qualitative/fgsm_example_000_input_gradient.png
-results/WP7/qualitative/fgsm_example_000_perturbation.png
+tests/test_input_gradients.py
+tests/test_fgsm.py
+tests/test_visualization.py
+tests/test_fgsm_examples.py
 ```
-
-The automated runner smoke test uses synthetic arrays and a temporary
-directory, so the test suite does not depend on CIFAR-10 data, an external
-checkpoint, or committed generated images.
-
-Latest WP7 final validation:
-
-```text
-WP7 input-gradient, FGSM, visualization, and runner tests: 26 passed
-Backward, loss integration, and loss tests: 21 passed
-Controlled local CIFAR-10 example: 1 example generated successfully under
-results/WP7/qualitative/
-```
-
-WP7 boundary:
-
-* WP7 implements FGSM and creates small qualitative examples.
-* WP7 does not run an epsilon sweep, aggregate attack success rate, evaluate
-  large batches, or produce accuracy-versus-epsilon results.
-* PGD, black-box attacks, and Grad-CAM are out of scope.
 
 ## WP8: FGSM Robustness Evaluation Validation
 
 Goal:
 
-Evaluate FGSM quantitatively over selected epsilon values and a controlled
-evaluation subset after WP7 is completed.
-
-Status:
-
-Completed for the controlled FGSM pipeline-validation scope. Single-batch,
-multi-batch, epsilon-sweep, plotting, representative-selection, persistence,
-and controlled-runner paths are implemented and tested.
-
-Controlled local smoke configuration:
-
-```text
-eval_samples: 32
-batch_size: 8
-seed: 42
-epsilon_values: [0, 2/255, 4/255, 8/255, 16/255]
-output_directory: results/WP8/
-deliverable_directory: deliverables/WP8/
-```
-
-Metric definitions:
-
-```text
-clean_accuracy = clean_correct / total_samples
-adversarial_accuracy = adversarial_correct / total_samples
-accuracy_drop = clean_accuracy - adversarial_accuracy
-attack_success_rate = successful_attacks / clean_correct_samples
-```
-
-A successful attack requires a correct clean prediction and an incorrect
-adversarial prediction.
-
-Expected results:
-
-* Clean and adversarial accuracy are measured consistently.
-* Multiple epsilon values are evaluated.
-* Accuracy-versus-epsilon results are produced.
-* Attack success rate is aggregated where defined.
-* Representative successful and failed attacks are selected when eligible
-  clean-correct samples exist.
-
-Validation commands:
-
-```bash
-MPLCONFIGDIR=/tmp/cnn-wp8-matplotlib .venv/bin/python -m pytest tests/test_fgsm_evaluation.py tests/test_fgsm_robustness_runner.py tests/test_plotting.py -v
-MPLCONFIGDIR=/tmp/cnn-wp8-matplotlib .venv/bin/python -m pytest tests/ -q
-```
-
-Latest validation result:
-
-```text
-Focused WP8 evaluation, runner, and plotting tests: 27 passed
-Full suite: 159 passed
-```
-
-The focused tests cover:
-
-1. single-batch metric formulas and `epsilon=0`,
-2. sample-weighted multi-batch aggregation with different batch sizes,
-3. epsilon-order-preserving sweeps and empty-sweep rejection,
-4. unchanged model parameters,
-5. representative successful/failed selection and clean-wrong exclusion,
-6. accuracy-versus-epsilon plotting,
-7. runner configuration, JSON persistence, and plot generation without
-   external data or checkpoint dependencies in tests.
-
-Controlled local smoke command:
-
-```bash
-MPLCONFIGDIR=/tmp/cnn-wp8-matplotlib .venv/bin/python -m experiments.fgsm.evaluate_robustness
-```
-
-The command requires the existing local checkpoint and extracted CIFAR-10
-data. It does not auto-download data or train the model.
-
-Committed smoke artifacts:
-
-```text
-results/WP8/fgsm_robustness_metrics.json
-results/WP8/fgsm_accuracy_vs_epsilon.png
-deliverables/WP8/wp8_smoke_review.md
-```
-
-Reuse the existing FGSM, input-gradient, batching, checkpointing, metrics,
-plotting, and CIFAR-10 loader code. Do not reimplement FGSM.
-
-The controlled 32-sample run produced zero clean-correct samples for every
-epsilon. Therefore clean accuracy, adversarial accuracy, accuracy drop, and
-attack success rate are all `0.0`, and the successful/failed representative
-lists are empty. This validates pipeline execution only and is not a
-meaningful CIFAR-10 robustness conclusion.
-
-Local execution is allowed for documentation, unit tests, helper
-implementation, and the completed tiny smoke evaluation. ZITI is not needed
-for the current WP8 validation or closeout. Before any larger formal
-evaluation, expanded subset, or repeated-seed run, pause and ask the user
-whether to use the university-provided ZITI cluster. Such evaluation remains
-deferred until a stronger baseline checkpoint exists and the user gives
-explicit approval. Do not introduce cluster, GPU, Slurm, or CUDA workflows
-without explicit approval.
-
-No larger evaluation, denser epsilon sweep, model retraining, ZITI run, PGD,
-black-box attack, Grad-CAM, or later Work Package was included in WP8.
-
-## WP9: Final Reproducibility Validation
-
-Goal:
-
-Check that another person can reproduce the project.
+Validate clean-vs-FGSM evaluation, epsilon sweeps, aggregation, plots,
+representative metadata, and quantitative runner artifacts.
 
 Suggested commands:
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-pytest tests/
+MPLCONFIGDIR=/tmp/cnn-wp8-matplotlib .venv/bin/python -m pytest tests/test_fgsm_evaluation.py tests/test_fgsm_robustness_runner.py tests/test_fgsm_quantitative_runner.py tests/test_plotting.py -v
 ```
-
-Then run the main experiment commands listed in the README.
 
 Expected results:
 
-* Dependencies install successfully.
-* Tests pass.
-* Main scripts run with documented commands.
-* Results are saved in documented locations.
+* Single-batch metrics match hand-computed references.
+* Multi-batch aggregation uses raw sample counts and handles different batch
+  sizes.
+* `epsilon=0` preserves adversarial predictions and accuracy.
+* Evaluation does not update model parameters.
+* Epsilon sweep preserves input epsilon order.
+* Historical WP8 config defaults to 32 samples, batch size 8, and epsilon
+  values `0/255` through `16/255`.
+* Quantitative FGSM config defaults to 1024 samples, batch size 32, and
+  epsilon values `[0, 2/255, 4/255, 8/255, 16/255]`.
 
-## Cluster / GPU Validation
-
-The cluster should be used for longer training or GPU experiments, not for basic local debugging.
-
-Before implementing or running large-scale data processing, full-dataset runs,
-many-image evaluation, epsilon sweeps, repeated-seed experiments, PGD-style
-multi-step evaluation, or large-batch evaluation, pause and ask the user
-whether to use the university-provided ZITI cluster.
-
-Do not introduce GPU, Slurm, CUDA, or ZITI cluster validation workflows
-automatically. Use them only after explicit user approval.
-
-Before using the cluster:
-
-1. Ensure the project runs locally on a small test.
-2. Ensure dependencies are listed in `requirements.txt` or `pyproject.toml`.
-3. Ensure experiment commands are reproducible.
-4. Ensure output directories such as `results/` and `logs/` exist.
-
-Known cluster username:
+Tests:
 
 ```text
-gpu04
+tests/test_fgsm_evaluation.py
+tests/test_fgsm_robustness_runner.py
+tests/test_fgsm_quantitative_runner.py
+tests/test_plotting.py
 ```
 
-Do not store the password in this repository.
+## WP9-WP12: Deferred Attack Work
 
-Manual login pattern:
+PGD and black-box attacks are intentionally deferred.
+
+Current expected result:
+
+* No PGD implementation exists.
+* No PGD evaluation exists.
+* No black-box attack implementation exists.
+* No query-count evaluation exists.
+
+Do not add PGD, PGD tests, black-box attacks, or black-box tests during the
+current CuPy preparation cycle.
+
+## WP13: Grad-CAM Implementation Validation
+
+Goal:
+
+Validate the implemented Grad-CAM core and visualization helpers.
+
+Suggested commands:
 
 ```bash
-ssh gpu04@zitigate.ziti.uni-heidelberg.de
-ssh gpu04@csg-headnode
+MPLCONFIGDIR=/tmp/cnn-gradcam-matplotlib .venv/bin/python -m pytest tests/test_gradcam.py tests/test_gradcam_visualization.py -v
 ```
 
-Optional local SSH config pattern:
+Expected results:
 
-```sshconfig
-Host zitigate
-    HostName zitigate.ziti.uni-heidelberg.de
-    User gpu04
+* `compute_gradcam` returns heatmaps with expected shape and finite `[0, 1]`
+  range.
+* Default target class uses the predicted class.
+* Explicit target classes are accepted and validated.
+* Grad-CAM is deterministic for fixed inputs and targets.
+* Model parameters and classifier gradient buffers are restored.
+* `CompactCNN.gradcam_activation` requires a preceding forward call and returns
+  a copy.
+* Heatmap resizing and overlays produce finite display-ready arrays.
+* Grad-CAM figure helpers create non-empty PNG files.
 
-Host headnode
-    HostName csg-headnode
-    User gpu04
-    ProxyJump zitigate
+Tests:
+
+```text
+tests/test_gradcam.py
+tests/test_gradcam_visualization.py
 ```
 
-Then connect with:
+## WP14: FGSM-Only Grad-CAM Analysis Validation
+
+Goal:
+
+Validate clean-vs-FGSM Grad-CAM analysis helpers.
+
+Current scope:
+
+* FGSM only.
+* PGD and black-box Grad-CAM comparisons are absent because WP9-WP12 are
+  deferred.
+
+Suggested command:
 
 ```bash
-ssh headnode
+MPLCONFIGDIR=/tmp/cnn-gradcam-matplotlib .venv/bin/python -m pytest tests/test_gradcam.py tests/test_gradcam_visualization.py -v
 ```
 
-Possible Slurm commands:
+The full runner:
 
 ```bash
-sinfo
-squeue -u gpu04
-sbatch scripts/slurm_train.sh
-scancel <jobid>
+MPLCONFIGDIR=/tmp/cnn-gradcam-matplotlib .venv/bin/python -m experiments.gradcam.generate_adversarial_comparisons
 ```
 
-Possible interactive GPU command pattern:
+The full runner requires local CIFAR-10 data and the local ignored checkpoint
+`results/baseline/portfolio_baseline_best.npz`. It should not be run as part
+of standard offline CI.
+
+## WP15: Integration and Reproducibility Validation
+
+Goal:
+
+Check that documentation, tests, CI, and result artifacts remain consistent.
+
+Suggested commands:
 
 ```bash
-srun -p exercise-gpu --gres=gpu:1 --pty -- bash
+MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q
+git diff --check
+git status -sb
 ```
 
-Do not hard-code passwords in any script.
+Expected results:
+
+* Full suite passes locally.
+* Offline CI subset passes without local CIFAR-10.
+* Documentation links match tracked or explicitly documented local artifacts.
+* Large ignored artifacts are clearly documented as regenerable or external.
+
+## NumPy Reference Tests for Future CuPy Equivalence
+
+The following existing tests should serve as the NumPy reference before any
+CuPy tests are introduced:
+
+```text
+tests/test_forward.py
+tests/test_layers.py
+tests/test_losses.py
+tests/test_backward.py
+tests/test_integration.py
+tests/test_gradient_check.py
+tests/test_input_gradients.py
+tests/test_fgsm.py
+tests/test_fgsm_evaluation.py
+tests/test_fgsm_quantitative_runner.py
+tests/test_gradcam.py
+```
+
+Recommended future equivalence coverage:
+
+* Forward logits.
+* Layer backward gradients.
+* Loss values and logits gradients.
+* Model loss-to-input gradients.
+* FGSM adversarial examples.
+* FGSM robustness metrics.
+* Checkpoint load into NumPy and CuPy model instances, if a backend-specific
+  model state representation is introduced.
+
+Do not add CuPy tests until the backend design is implemented.
+
+## Cluster / GPU Validation Boundary
+
+Cluster/GPU execution is future extension work. The current repository has no
+Slurm scripts and no CuPy dependency.
+
+Before large-scale data processing, expanded evaluation subsets, repeated-seed
+runs, GPU experiments, or cluster runs, ask the user whether to use the
+university-provided ZITI cluster. Do not introduce GPU, CUDA, CuPy, Slurm, or
+ZITI workflows without explicit approval.

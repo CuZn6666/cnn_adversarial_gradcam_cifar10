@@ -4,172 +4,106 @@
 
 Compact CNN on CIFAR-10 with Adversarial Robustness and Grad-CAM Analysis
 
-## Project Goal
+## Purpose
 
-The goal of this project is to implement and analyze a compact CNN on CIFAR-10
-through the complete sequence defined in `WorkPackagePlan.txt`:
+This file records the current status of the original Work Package sequence and
+the extension work planned after the verified NumPy implementation. The
+original Work Packages remain historical project milestones. The Extended Work
+Packages at the end of this file describe the current GPU-scaling direction and
+do not rewrite the original definitions.
 
-1. focused literature review and final method selection,
-2. project setup and the CIFAR-10 data pipeline,
-3. compact CNN forward implementation,
-4. manual backward implementation,
-5. gradient checks and input-gradient support,
-6. baseline training and clean evaluation,
-7. focused runtime bottleneck handling,
-8. FGSM implementation, visualization, and robustness evaluation,
-9. PGD implementation, evaluation, and comparison,
-10. non-gradient black-box attack implementation and evaluation,
-11. Grad-CAM implementation and qualitative attack analysis,
-12. final integration, reproducibility, and result organization.
+## Current Verified State
 
-The source spreadsheet estimates a total technical workload of 360 hours
-(180 hours per project participant), excluding the final report and poster.
-Individual estimates are planning values and may vary during implementation.
+Latest local validation:
 
-## Current Status
+```text
+Offline CI-compatible suite: 212 passed, 3 deselected
+Data-marked suite: 3 passed, 212 deselected
+Full local suite: 215 passed
+```
 
-| WP   | Title                                                    | Status           |
-| ---- | -------------------------------------------------------- | ---------------- |
-| WP0  | Focused Literature Review and Final Method Selection     | mostly completed |
-| WP1  | Project setup and CIFAR-10 pipeline                      | mostly completed |
-| WP2  | Compact CNN forward implementation                       | completed        |
-| WP3  | Manual Backward Implementation                           | completed        |
-| WP4  | Gradient Checks and Input-Gradient Support               | completed        |
-| WP5  | Baseline training and clean evaluation                   | completed        |
-| WP6  | Focused Runtime Bottleneck Handling                      | completed        |
-| WP7  | FGSM Attack and Input-Gradient Visualization             | completed        |
-| WP8  | FGSM robustness evaluation                               | completed        |
-| WP9  | PGD Attack Implementation                                | planned          |
-| WP10 | PGD Robustness Evaluation and Comparison                 | planned          |
-| WP11 | Non-Gradient Black-Box Attack Implementation             | planned          |
-| WP12 | Black-Box Attack Evaluation                              | planned          |
-| WP13 | Grad-CAM Implementation                                  | planned          |
-| WP14 | Grad-CAM Analysis Before and After Attacks               | planned          |
-| WP15 | Final integration, reproducibility and result organization | planned        |
+Current implementation summary:
 
-## Immediate Next Step
+* The reference implementation remains NumPy-based.
+* WP1-WP4 are complete.
+* WP5 is functionally implemented for controlled and reproducible subset
+  baselines, including a stronger 4096/1024/1024 CIFAR-10 baseline run, but no
+  full 50k/10k training run has been completed.
+* WP6, WP7, and WP8 are complete for their documented scopes.
+* WP8 includes the validated FGSM pipeline and a 1024-sample quantitative FGSM
+  evaluation. The historical WP8 smoke runner currently uses 17 epsilon values
+  from `0/255` through `16/255`.
+* WP9-WP12 are intentionally deferred.
+* WP13 implementation exists and needs formal documentation/closeout.
+* WP14 currently covers clean-vs-FGSM Grad-CAM analysis only.
+* WP15 remains incomplete because final integration is not finished.
 
-WP2 forward implementation, WP3 manual backward implementation, WP4 gradient
-validation, and the controlled WP5 NumPy baseline pipeline are completed.
+## Status Overview
 
-WP5 includes SGD, model parameter access, deterministic single- and multi-batch
-training and clean evaluation, checkpointing, JSON metrics persistence,
-plotting, baseline configuration, a synthetic runner, and a controlled real
-CIFAR-10 subset runner. The real subset run used 64 training samples, 32
-evaluation samples, one epoch, `batch_size=8`, and `seed=42`. It produced the
-documented checkpoint, metrics JSON, and curves.
+| WP | Title | Status | Current Notes |
+| --- | --- | --- | --- |
+| WP0 | Focused Literature Review and Final Method Selection | NEEDS DOCUMENTATION | Scope exists; summary, selection, and metrics docs have now been filled from repository evidence. Remaining TODOs are limited to adding exact literature citations if required. |
+| WP1 | Project setup and CIFAR-10 pipeline | COMPLETE | CIFAR-10 loading, NCHW preprocessing, deterministic batching, and reproducibility checks are implemented and tested. |
+| WP2 | Compact CNN forward implementation | COMPLETE | Manual forward layers, `CompactCNN.forward`, and loss forward path are implemented and tested. |
+| WP3 | Manual Backward Implementation | COMPLETE | Manual layer backward passes, loss backward, and full model backward integration are implemented and tested. |
+| WP4 | Gradient Checks and Input-Gradient Support | COMPLETE | Numerical gradient checks and input-gradient pipeline sanity checks pass. |
+| WP5 | Baseline training and clean evaluation | PARTIALLY COMPLETE | Training/evaluation/checkpointing/metrics/plots are implemented. Controlled subset and 4096/1024/1024 baseline runs exist. Full 50k/10k training remains unfinished. |
+| WP6 | Focused Runtime Bottleneck Handling | COMPLETE | `Conv2D.backward` was profiled, selected, optimized, benchmarked, and tested. |
+| WP7 | FGSM Attack and Input-Gradient Visualization | COMPLETE | Input gradients, FGSM, qualitative visualizations, and controlled example generation are implemented and tested. |
+| WP8 | FGSM robustness evaluation | COMPLETE | Original FGSM robustness scope is complete, including batch evaluation, epsilon sweeps, plots, representative metadata, and 1024-sample quantitative evaluation. Larger GPU runs are an extension, not missing WP8 work. |
+| WP9 | PGD Attack Implementation | DEFERRED | Intentionally not active. No PGD implementation exists. |
+| WP10 | PGD Robustness Evaluation and Comparison | DEFERRED | Intentionally not active. No PGD evaluation exists. |
+| WP11 | Non-Gradient Black-Box Attack Implementation | DEFERRED | Intentionally not active. No black-box attack implementation exists. |
+| WP12 | Black-Box Attack Evaluation | DEFERRED | Intentionally not active. Query-count evaluation is not implemented. |
+| WP13 | Grad-CAM Implementation | NEEDS DOCUMENTATION | Core Grad-CAM implementation exists and is tested; formal WP13 closeout remains to be written. |
+| WP14 | Grad-CAM Analysis Before and After Attacks | PARTIALLY COMPLETE | Clean-vs-FGSM Grad-CAM analysis exists. PGD/black-box Grad-CAM analysis is absent because WP9-WP12 are deferred. |
+| WP15 | Final integration, reproducibility and result organization | PARTIALLY COMPLETE | README, CI, tests, and result artifacts exist, but final integration is incomplete while extension work is pending. |
 
-WP5 is complete for the controlled NumPy baseline scope. The 64/32 subset run
-is not full CIFAR-10 multi-epoch training. A full baseline remains deferred
-because the current manual NumPy `Conv2D` implementation is too slow for a
-practical full run.
-
-WP6 is completed. Inspection-only profiling identified `Conv2D.backward` as
-the single bottleneck target. A focused NumPy optimization replaced the
-batch/channel/spatial Python loops with `einsum`-based gradient accumulation
-and kernel-position loops.
-
-Under the fixed local profiling setup, `Conv2D.backward` improved from
-`0.043458736` to `0.000209222` seconds per iteration (`207.72x`), and one
-`train_step` improved from `0.070350708` to `0.001886028` seconds per iteration
-(`37.30x`). Correctness checks passed.
-
-WP7 is completed. It provides deterministic loss-to-input gradients,
-normalized input-gradient maps, minimal untargeted FGSM with clipping and
-`L_inf` validation, four-part qualitative visualization saving, and a
-controlled runner that defaults to one CIFAR-10 test example with
-`epsilon=8/255`.
-
-WP8 is completed for the controlled FGSM pipeline-validation scope. It
-provides single- and multi-batch FGSM evaluation, sample-weighted metrics,
-epsilon sweeps, accuracy-versus-epsilon plotting, representative-example
-metadata selection, JSON persistence, and a controlled local runner.
-
-The committed smoke run used 32 evaluation samples, `batch_size=8`, `seed=42`,
-epsilon values `0`, `2/255`, `4/255`, `8/255`, and `16/255`, and
-`representative_epsilon=8/255`. The checkpoint produced zero clean-correct
-samples on this fixed subset, so all reported accuracies and attack metrics
-were `0.0`, and no representative examples were eligible. This validates
-pipeline execution only and is not a meaningful CIFAR-10 robustness
-conclusion.
-
-ZITI is not needed for this smoke validation. A larger formal evaluation is
-deferred until a stronger baseline checkpoint is available and the user
-explicitly confirms whether to use ZITI. No later Work Package has started.
-
-## Work Package Details
+## Original Work Packages
 
 ### WP0: Focused Literature Review and Final Method Selection
 
 Goal:
 
-Review Lecture 04 Example 8 and conduct focused literature research on
-adversarial attacks and explainability. Select suitable gradient-based methods,
-including FGSM and PGD, and one non-gradient-based black-box method, such as a
-simplified square-based attack. Define the final evaluation metrics, including
-accuracy drop, attack success rate, query count, and qualitative Grad-CAM
-analysis.
+Review introductory adversarial attack and explainability material, select
+methods, and define metrics.
 
-Expected deliverables:
+Implemented functionality and documentation:
 
-* short method summary,
-* final attack selection,
-* final evaluation metrics,
-* updated project scope.
+* Project scope draft exists in `deliverables/WP0/project_scope_draft.md`.
+* Method summary, final method selection, and evaluation metrics are documented
+  in `deliverables/WP0/`.
+* Current selected implemented methods are NumPy CompactCNN, FGSM, and
+  Grad-CAM.
+* PGD and simplified square-based black-box attacks remain selected historical
+  candidates but are not active in the current development cycle.
 
-Relevant folders/files:
+Remaining work:
+
+* Add exact external citation details if required by a final report.
+
+Relevant files:
 
 ```text
 README.md
-AGENTS.md
 WP_PLAN.md
 TESTING.md
 WorkPackagePlan.txt
-WorkPackagePlan.xlsx
-deliverables/WP0/project_scope_draft.md
-deliverables/WP0/method_summary.md
-deliverables/WP0/final_method_selection.md
-deliverables/WP0/evaluation_metrics.md
+deliverables/WP0/
 ```
 
-Suggested implementation order:
-
-1. Review Lecture 04 Example 8 and related examples — 2h.
-2. Review introductory FGSM and adversarial-example references — 3h.
-3. Review introductory PGD and robust-optimization references — 3h.
-4. Review the Grad-CAM reference — 3h.
-5. Review non-gradient and black-box attack references — 4h.
-6. Decide the final methods and evaluation metrics — 3h.
-
 Validation:
-
-* The project scope, selected attacks, explainability method, and evaluation
-  metrics are documented consistently.
-* The WP0 deliverables contain the method summary, final attack selection,
-  evaluation metrics, and updated scope.
-* `AGENTS.md`, `WP_PLAN.md`, and `TESTING.md` exist and agree on the active Work
-  Package.
-
-Suggested checks:
 
 ```bash
 ls AGENTS.md WP_PLAN.md TESTING.md
 ls deliverables/WP0/
 ```
 
-Dependencies:
-
-* No earlier Work Package dependency.
-* Requires access to the project brief, Lecture 04 Example 8, and the focused
-  literature references used for method selection.
-
-Estimated duration:
-
-18h total (9h per participant).
-
 Status:
 
-Mostly completed.
+NEEDS DOCUMENTATION, because the technical implementation has moved ahead and
+the WP0 deliverables now summarize repository evidence but do not yet include
+full literature citation details.
 
 ---
 
@@ -177,72 +111,52 @@ Mostly completed.
 
 Goal:
 
-Set up the project structure, environment, data folders, logging structure, and
-reproducibility settings. Implement CIFAR-10 loading, preprocessing, batching,
-and basic dataset utilities. Keep the infrastructure compact and focused on the
-needs of later experiments.
+Set up the project structure, environment, data folders, result directories,
+reproducibility settings, CIFAR-10 loading, preprocessing, batching, and basic
+dataset utilities.
 
-Expected deliverables:
+Implemented functionality:
 
-* working CIFAR-10 data pipeline,
-* reproducible project skeleton.
+* CIFAR-10 archive download/extraction helper.
+* CIFAR-10 batch loading via Python/NumPy.
+* NCHW image tensors with `float32` values in `[0, 1]`.
+* Integer labels in `[0, 9]`.
+* Deterministic mini-batch iterator.
+* Seed helper.
+* Data-pipeline sanity-check script and sample-batch figure.
 
-Relevant folders/files:
+Remaining work:
+
+* None for the original WP1 scope.
+
+Relevant files:
 
 ```text
-requirements.txt
 configs/default_config.py
-src/data/__init__.py
 src/data/cifar10_loader.py
 src/data/batching.py
 src/utils/seed.py
 experiments/check_data_pipeline.py
 tests/test_data_pipeline.py
-results/checkpoints/.gitkeep
-results/figures/
 deliverables/WP1/
 ```
 
-Suggested implementation order:
-
-1. Set up the project structure and environment — 4h.
-2. Implement CIFAR-10 loading and preprocessing — 4h.
-3. Implement mini-batch utilities — 3h.
-4. Set up logging and result directories — 3h.
-5. Add basic reproducibility settings — 2h.
-
-Validation:
-
-* CIFAR-10 training and test arrays have the expected NCHW shapes.
-* Images use `float32` values in `[0, 1]`.
-* Labels use valid class indices from `0` to `9`.
-* Mini-batches have the expected image and label shapes.
-* A fixed seed reproduces the same shuffled first batch.
-* The data pipeline sanity-check script runs without dataset, path, or checksum
-  errors.
-
-Suggested commands:
+Tests:
 
 ```bash
 .venv/bin/python -m pytest tests/test_data_pipeline.py -v
-.venv/bin/python -m experiments.check_data_pipeline
 ```
 
-Dependencies:
+Current validation:
 
-* WP0 project scope and method selection are sufficiently defined.
-* The Python environment can install the versions listed in
-  `requirements.txt`.
-* The CIFAR-10 archive is locally available or can be downloaded from the
-  configured official URL.
-
-Estimated duration:
-
-16h total (8h per participant).
+```text
+tests/test_data_pipeline.py: 5 tests collected
+requires_data tests pass when local CIFAR-10 data is present
+```
 
 Status:
 
-Mostly completed.
+COMPLETE.
 
 ---
 
@@ -250,76 +164,40 @@ Mostly completed.
 
 Goal:
 
-Implement the forward pass of a compact CNN from scratch. This includes
-`Conv2D`, `ReLU`, `MaxPool`, `Flatten`, `Linear`, and Softmax Cross-Entropy
-loss. The implementation is limited to the architecture required by this
-project rather than a general deep learning framework.
+Implement the from-scratch forward pass for `Conv2D`, `ReLU`, `MaxPool2D`,
+`Flatten`, `Linear`, `CompactCNN`, and Softmax Cross-Entropy loss.
 
-Expected deliverables:
+Implemented functionality:
 
-* compact CNN forward pass,
-* shape tests,
-* initial predictions on CIFAR-10 batches.
+* Forward layers in `src/layers/forward.py`.
+* Compact CIFAR-10 architecture in `src/models/compact_cnn.py`.
+* Softmax Cross-Entropy forward path in `src/losses/cross_entropy.py`.
+* Shape checks, finite-output checks, and reproducible initialization.
 
-Relevant folders/files:
+Remaining work:
+
+* None for the original WP2 scope.
+
+Relevant files:
 
 ```text
-configs/default_config.py
-src/layers/__init__.py
 src/layers/forward.py
-src/models/__init__.py
 src/models/compact_cnn.py
-tests/test_forward.py
-src/losses/__init__.py
 src/losses/cross_entropy.py
+tests/test_forward.py
 tests/test_losses.py
+deliverables/WP2/manual_review/
 ```
 
-Suggested implementation order:
-
-1. Implement `Conv2D` forward — 9h.
-2. Implement `ReLU` and pooling forward — 5h.
-3. Implement `Flatten` and `Linear` — 4h.
-4. Implement Softmax Cross-Entropy loss — 4h.
-5. Add shape tests and debug the forward pipeline — 6h.
-
-Validation:
-
-* Deterministic forward tests pass for `Conv2D`, `ReLU`, `MaxPool2D`,
-  `Flatten`, and `Linear`.
-* `CompactCNN.forward` accepts CIFAR-10 NCHW inputs with shape
-  `(batch_size, 3, 32, 32)`.
-* Model output has shape `(batch_size, 10)` for tested batch sizes.
-* Forward outputs are finite and fixed-seed initialization is reproducible.
-* Invalid model input shapes are rejected.
-* Existing data-pipeline tests continue to pass.
-
-Suggested commands:
+Tests:
 
 ```bash
-.venv/bin/python -m pytest tests/test_forward.py -v
-.venv/bin/python -m pytest tests/ -v
+.venv/bin/python -m pytest tests/test_forward.py tests/test_losses.py -v
 ```
-
-Implementation note:
-
-* Softmax Cross-Entropy forward was added alongside its backward implementation
-  during WP3 and is validated in `tests/test_losses.py`.
-
-Dependencies:
-
-* WP1 data pipeline and the NCHW input convention are implemented and
-  validated.
-* `NUM_CLASSES`, image dimensions, channel count, and reproducibility seed are
-  defined in `configs/default_config.py`.
-
-Estimated duration:
-
-28h total (14h per participant).
 
 Status:
 
-Completed.
+COMPLETE.
 
 ---
 
@@ -327,84 +205,44 @@ Completed.
 
 Goal:
 
-Implement the manual backward pass for the CNN layers. This includes gradients
-for `Linear`, `ReLU`, `MaxPool`, `Conv2D`, and Softmax Cross-Entropy loss. The
-backward pipeline forms the technical basis for training and for computing
-gradients with respect to input images and feature maps.
+Implement manual backward passes for all model layers and the loss.
 
-Expected deliverables:
+Implemented functionality:
 
-* manual backward pass for the compact CNN.
+* `Linear.backward`
+* `ReLU.backward`
+* `Flatten.backward`
+* `MaxPool2D.backward`
+* `Conv2D.backward`
+* `SoftmaxCrossEntropyLoss.backward`
+* `CompactCNN.backward`
+* `CompactCNN.named_parameters_and_gradients`
 
-Relevant folders/files:
+Remaining work:
+
+* None for the original WP3 scope.
+
+Relevant files:
 
 ```text
 src/layers/forward.py
-src/layers/__init__.py
 src/models/compact_cnn.py
-src/models/__init__.py
-src/losses/__init__.py
 src/losses/cross_entropy.py
 tests/test_layers.py
 tests/test_backward.py
-tests/test_losses.py
 tests/test_integration.py
+deliverables/WP3/manual_review/
 ```
 
-Suggested implementation order:
-
-1. Implement `Linear.backward` — 5h — completed and tested.
-2. Implement `ReLU.backward` — 4h — completed and tested.
-3. Implement `MaxPool.backward` — 6h — completed and tested.
-4. Implement `Conv2D.backward` — 12h — completed and tested.
-5. Implement Softmax Cross-Entropy backward — 3h — completed and tested.
-6. Integrate `CompactCNN.backward` and the loss-to-model backward chain —
-   completed and tested.
-
-Validation:
-
-* Each backward method requires an appropriate preceding forward call.
-* `Linear.backward`, `ReLU.backward`, `MaxPool.backward`, and
-  `Conv2D.backward` return gradients with the expected shapes.
-* Parameterized layers store parameter gradients with shapes matching their
-  parameters.
-* Deterministic hand-computed tests validate the backward values for each
-  layer.
-* Max-pooling gradients are routed to the selected maximum locations.
-* The full model backward pipeline runs after layer-level backward components
-  are validated.
-* All produced gradients are finite.
-* Existing data-pipeline and forward tests continue to pass.
-* Softmax Cross-Entropy forward and backward match deterministic NumPy
-  references and remain finite for large logits.
-* The complete model-loss backward chain returns finite input and parameter
-  gradients with the expected shapes.
-
-Suggested commands:
+Tests:
 
 ```bash
-.venv/bin/python -m pytest tests/test_layers.py -v
-.venv/bin/python -m pytest tests/test_losses.py -v
-.venv/bin/python -m pytest tests/test_backward.py -v
-.venv/bin/python -m pytest tests/test_integration.py -v
-.venv/bin/python -m pytest tests/ -v
+.venv/bin/python -m pytest tests/test_layers.py tests/test_backward.py tests/test_integration.py -v
 ```
-
-Dependencies:
-
-* WP2 forward layers and `CompactCNN.forward` are implemented and validated.
-* Forward methods must cache only the values required by their corresponding
-  backward methods.
-* Softmax Cross-Entropy forward is implemented and validated.
-* Numerical gradient checking is intentionally deferred to WP4.
-
-Estimated duration:
-
-30h total (15h per participant).
 
 Status:
 
-Completed.
+COMPLETE.
 
 ---
 
@@ -412,67 +250,37 @@ Completed.
 
 Goal:
 
-Verify selected gradients numerically to ensure that manual backpropagation is
-correct. Extend the backward pipeline so that gradients with respect to input
-images can be computed. This support is required by FGSM, PGD, and
-input-gradient visualization.
+Validate selected manual gradients numerically and support gradients with
+respect to input images.
 
-Expected deliverables:
+Implemented functionality:
 
-* selected gradient-check results,
-* input-gradient computation support.
+* Numerical gradient checks for `Linear`, `Conv2D`, and
+  `SoftmaxCrossEntropyLoss`.
+* `CompactCNN` loss-to-input gradient sanity check.
+* Input-gradient helper and normalized input-gradient maps.
 
-Relevant folders/files:
+Remaining work:
+
+* None for the original WP4 scope.
+
+Relevant files:
 
 ```text
-src/layers/forward.py
-src/models/compact_cnn.py
-src/losses/cross_entropy.py
-tests/test_layers.py
-tests/test_backward.py
-tests/test_losses.py
-tests/test_integration.py
+src/input_gradients.py
 tests/test_gradient_check.py
+tests/test_input_gradients.py
 ```
 
-Suggested implementation order:
+Tests:
 
-1. Add a numerical gradient check for the linear layer — 3h — completed.
-2. Add a numerical gradient check for `Conv2D` — 5h — completed.
-3. Add a numerical gradient check for the loss function — 3h — completed.
-4. Validate the existing gradients with respect to input images — 4h —
-   completed.
-5. Debug and document gradient correctness — 3h — completed.
-
-Validation:
-
-* Selected analytical gradients match finite-difference numerical gradients
-  within a documented relative-error tolerance.
-* Numerical checks cover `Linear`, `Conv2D`, and Softmax Cross-Entropy.
-* `CompactCNN.backward` returns input gradients with the same shape as its
-  input.
-* Numerical and input gradients contain no NaN or Inf values.
-* Existing WP1–WP3 tests continue to pass.
-* `Linear`, `Conv2D`, and Softmax Cross-Entropy numerical checks pass with
-  `relative_error < 1e-4`.
-* The `CompactCNN` input-gradient sanity check confirms finite, nonzero input
-  gradients and finite parameter gradients.
-* Latest full-suite result: 53 passed.
-
-Dependencies:
-
-* WP3 manual backward implementations and full backward integration are
-  completed and validated.
-* Deterministic small inputs and parameters are used to keep finite-difference
-  checks reproducible and computationally manageable.
-
-Estimated duration:
-
-18h total (9h per participant).
+```bash
+.venv/bin/python -m pytest tests/test_gradient_check.py tests/test_input_gradients.py -v
+```
 
 Status:
 
-Completed.
+COMPLETE.
 
 ---
 
@@ -480,100 +288,74 @@ Completed.
 
 Goal:
 
-Implement the training loop, optimizer updates, clean test evaluation, and
-result logging. Train the compact CNN on CIFAR-10 and generate baseline loss
-and accuracy curves. The trained model will be the target for adversarial
-attacks and Grad-CAM analysis.
+Implement optimizer updates, training loops, clean evaluation, checkpointing,
+metrics, and plots for the CompactCNN baseline.
 
-Expected deliverables:
+Implemented functionality:
 
-* trained baseline CNN,
-* clean accuracy,
-* loss and accuracy curves.
-
-Relevant folders/files:
+* Minimal SGD optimizer.
+* Single-batch and multi-batch training/evaluation helpers.
+* Checkpoint save/load.
+* Deterministic JSON metrics persistence.
+* Loss/accuracy and confusion-matrix plotting.
+* Synthetic baseline smoke runner.
+* Controlled CIFAR-10 64/32 subset baseline runner.
+* Reproducible stronger CIFAR-10 baseline runner using:
 
 ```text
-configs/default_config.py
-src/data/
-src/layers/forward.py
-src/losses/cross_entropy.py
-src/models/compact_cnn.py
-src/optimizers/
+train_samples: 4096
+validation_samples: 1024
+test_samples: 1024
+batch_size: 32
+epochs: 15
+learning_rate: 0.03
+seed: 42
+```
+
+Recorded stronger baseline result:
+
+```text
+best_epoch: 15
+best_validation_accuracy: 0.470703125
+final_test_accuracy: 0.447265625
+```
+
+Remaining work:
+
+* A full 50k/10k CIFAR-10 training run has not been completed.
+* Large or repeated training runs should be done through the later cluster
+  extension path after explicit user approval.
+
+Relevant files:
+
+```text
+src/optimizers/sgd.py
 src/training.py
 src/checkpointing.py
 src/metrics.py
 src/plotting.py
 experiments/baseline/train_baseline.py
-tests/test_optimizer.py
+experiments/baseline/train_portfolio_baseline.py
 tests/test_training.py
+tests/test_optimizer.py
 tests/test_checkpointing.py
-tests/test_metrics.py
-tests/test_plotting.py
-tests/test_config.py
 tests/test_baseline_runner.py
 tests/test_cifar10_baseline_runner.py
-results/checkpoints/
-results/logs/
-results/figures/
-results/tables/
-deliverables/WP5/baseline_smoke_run.md
-deliverables/WP5/cifar10_subset_baseline.md
+tests/test_portfolio_baseline_runner.py
+results/baseline/
+deliverables/WP5/
 ```
 
-Suggested implementation order:
+Tests:
 
-1. Implement optimizer and parameter updates — 5h.
-2. Implement the training loop — 7h.
-3. Implement clean test evaluation — 4h.
-4. Generate loss and accuracy plots — 4h.
-5. Debug and stabilize baseline training — 6h.
-
-Validation:
-
-* Optimizer updates match a deterministic hand-computed parameter-update
-  example.
-* A short deterministic training run completes without runtime errors and
-  decreases loss on a repeated mini-batch.
-* Clean evaluation returns finite loss and accuracy in the valid range
-  `[0, 1]`.
-* Fixed seeds reproduce the intended short-run data order and initialization.
-* The synthetic baseline runner produces a checkpoint, JSON metrics, and
-  loss/accuracy curves at documented locations under `results/`.
-* `tests/test_baseline_runner.py` validates deterministic orchestration without
-  loading CIFAR-10.
-* `tests/test_cifar10_baseline_runner.py` validates deterministic real-data
-  subset orchestration and confirms that missing local data does not trigger an
-  automatic download.
-* A controlled real CIFAR-10 subset run completes with 64 training samples and
-  32 evaluation samples and writes the documented artifacts.
-* The full test suite reports 110 passed.
-* Full CIFAR-10 multi-epoch baseline performance remains deferred and is not
-  represented by the subset metrics.
-
-Dependencies:
-
-* WP1 data loading and batching are available.
-* WP2 model and loss forward passes are completed.
-* WP3 parameter gradients and full backward integration are completed.
-* WP4 numerical gradient checks and input-gradient validation are completed.
-* The current optimizer is NumPy SGD and the local smoke-run hyperparameters
-  are defined by `BaselineConfig`.
-* Local development should use short smoke runs; longer training should use
-  the configured compute environment.
-
-Estimated duration:
-
-26h total (13h per participant).
+```bash
+.venv/bin/python -m pytest tests/test_optimizer.py tests/test_training.py tests/test_checkpointing.py tests/test_baseline_runner.py tests/test_cifar10_baseline_runner.py tests/test_portfolio_baseline_runner.py -v
+```
 
 Status:
 
-Completed for the controlled NumPy baseline pipeline. Synthetic orchestration
-and a controlled real CIFAR-10 64/32 subset run are implemented, tested, and
-executed. Full CIFAR-10 multi-epoch training is deferred because the current
-manual NumPy convolution runtime is not practical for that run. WP6 is now
-completed. WP7 FGSM implementation is completed; PGD, black-box attacks, and
-Grad-CAM have not started.
+PARTIALLY COMPLETE, because all functional infrastructure exists but full
+50k/10k training has not been run.
 
 ---
 
@@ -581,92 +363,56 @@ Grad-CAM have not started.
 
 Goal:
 
-Identify the most expensive implementation components, such as convolution
-forward or backward computation. Select one optimization or backend path, for
-example CuPy or a selected vectorized implementation. The goal is to understand
-and improve the main bottleneck rather than compare many frameworks.
+Identify and improve one measured runtime bottleneck without broad backend
+comparison.
 
-Expected deliverables:
+Implemented functionality:
 
-* one selected implementation path rather than a broad NumPy, CuPy, JAX, and
-  PyTorch comparison,
-* runtime measurements focused on understanding computational bottlenecks,
-* short bottleneck discussion.
+* Inspection-only runtime profiling.
+* `Conv2D.backward` selected as the focused bottleneck.
+* `Conv2D.backward` optimized with `np.einsum`-based gradient accumulation.
+* Before/after benchmark and runtime figure documented.
 
-Relevant folders/files:
+Recorded benchmark:
+
+```text
+Conv2D.forward: 0.000068569 -> 0.000066375 seconds
+Conv2D.backward: 0.043458736 -> 0.000209222 seconds
+train_step: 0.070350708 -> 0.001886028 seconds
+```
+
+Current local profiler output from the latest audit:
+
+```text
+conv2d_forward_seconds=0.000115542
+conv2d_backward_seconds=0.000345306
+train_step_seconds=0.003370375
+```
+
+Remaining work:
+
+* None for the original WP6 scope.
+* GPU acceleration is handled as an Extended Work Package, not as missing WP6
+  work.
+
+Relevant files:
 
 ```text
 src/layers/forward.py
-src/models/compact_cnn.py
-src/training.py
 experiments/runtime/profile_wp6.py
-tests/test_forward.py
-tests/test_layers.py
-tests/test_gradient_check.py
-tests/test_backward.py
-tests/test_integration.py
-deliverables/WP6/runtime_profile_initial.md
-deliverables/WP6/bottleneck_decision.md
-deliverables/WP6/runtime_benchmark_after.md
-deliverables/WP6/wp6_summary.md
+deliverables/WP6/
+results/WP6/conv2d_backward_runtime_comparison.png
 ```
 
-Suggested implementation order:
-
-1. Profile `Conv2D.forward`, `Conv2D.backward`, and one `train_step` with a
-   fixed seed, fixed input shapes, and fixed iteration counts — 3h.
-2. Use the measurements to choose one implementation path — 2h.
-3. Optimize the selected operation or backend path — 8h.
-4. Perform basic runtime measurements — 3h.
-5. Write a short bottleneck discussion — 2h.
-
-Validation:
-
-* Initial profiling uses documented fixed seeds, input shapes, warm-up policy,
-  and iteration counts.
-* `Conv2D.forward`, `Conv2D.backward`, and one `train_step` are measured before
-  an optimization path is selected.
-* Only one optimization path is selected after the initial measurements.
-* Before/after measurements use the same inputs and measurement procedure.
-* The focused optimization preserves numerical behavior and passes:
+Tests:
 
 ```bash
-.venv/bin/python -m pytest tests/test_layers.py -v -k conv2d_backward
-.venv/bin/python -m pytest tests/test_gradient_check.py -v -k 'conv2d or compact_cnn_input_gradient'
-.venv/bin/python -m pytest tests/test_backward.py -v
-.venv/bin/python -m pytest tests/test_integration.py -v
+.venv/bin/python -m pytest tests/test_layers.py tests/test_gradient_check.py tests/test_backward.py tests/test_integration.py -v
 ```
-
-* The final WP6 note records the identified bottleneck, selected path,
-  before/after measurements, correctness checks, and limitations.
-
-Dependencies:
-
-* WP2 forward implementation is completed and validated.
-* WP3 backward implementation is completed and validated.
-* WP4 numerical gradient checks are completed and provide correctness
-  protection for later optimization.
-* WP5 provides a deterministic `train_step` and controlled baseline shapes for
-  profiling.
-* Full CIFAR-10 training is not required for WP6 profiling or validation.
-
-Explicit non-goals:
-
-* no adversarial attacks or Grad-CAM,
-* no full CIFAR-10 training,
-* no broad comparison of NumPy, CuPy, JAX, and PyTorch,
-* no GPU, CuPy, CUDA, cluster, or SLURM work in the initial profiling step,
-* no optimization before the initial profiling evidence is recorded.
-
-Estimated duration:
-
-18h total (9h per participant).
 
 Status:
 
-Completed. Initial profiling identified `Conv2D.backward` as the single
-bottleneck target. The focused NumPy optimization and fixed before/after
-measurements are complete, and the scoped correctness tests pass.
+COMPLETE.
 
 ---
 
@@ -674,96 +420,51 @@ measurements are complete, and the scoped correctness tests pass.
 
 Goal:
 
-Implement the first gradient-based adversarial attack using FGSM. Compute
-gradients of the loss with respect to input images, visualize those gradients,
-and use them to generate adversarial examples in the style of Lecture 04
-Example 8.
+Implement FGSM using input gradients and save qualitative clean/adversarial
+visualizations.
 
-Expected deliverables:
+Implemented functionality:
 
-* input-gradient maps,
-* FGSM adversarial examples,
-* perturbation visualizations.
+* Deterministic input-gradient computation.
+* Normalized input-gradient maps.
+* Untargeted FGSM:
 
-Relevant folders/files:
+```python
+np.clip(images + epsilon * np.sign(grad_input), 0.0, 1.0)
+```
+
+* `L_inf` perturbation behavior and clipping validation.
+* Clean/adversarial/gradient/perturbation PNG saving.
+* Controlled one-example CIFAR-10 runner.
+
+Remaining work:
+
+* None for the original WP7 scope.
+
+Relevant files:
 
 ```text
-src/models/compact_cnn.py
-src/losses/cross_entropy.py
 src/input_gradients.py
-src/attacks/__init__.py
 src/attacks/fgsm.py
 src/visualization.py
-src/checkpointing.py
-experiments/fgsm/__init__.py
 experiments/fgsm/generate_examples.py
-tests/test_backward.py
-tests/test_gradient_check.py
-tests/test_fgsm.py
 tests/test_input_gradients.py
+tests/test_fgsm.py
 tests/test_visualization.py
 tests/test_fgsm_examples.py
 results/WP7/qualitative/
 deliverables/WP7/wp7_summary.md
 ```
 
-Suggested implementation order:
+Tests:
 
-1. Compute loss gradients with respect to input images — 5h.
-2. Visualize input gradients — 5h.
-3. Implement the FGSM attack — 8h.
-4. Generate controlled qualitative adversarial examples with a fixed
-   demonstration epsilon — 7h.
-5. Save adversarial examples and perturbation maps — 5h.
-6. Debug and validate FGSM behavior — 4h.
-
-Validation:
-
-* Loss gradients with respect to input images have the same shape as the
-  inputs and contain only finite values.
-* Input-gradient computation does not update model parameters.
-* Minimal FGSM preserves the input shape and returns finite values.
-* Perturbations satisfy the configured `L_inf` bound within floating-point
-  tolerance.
-* Adversarial images are clipped to the project image range `[0, 1]`.
-* `epsilon=0` leaves the input unchanged.
-* A fixed input, label, model, and epsilon produce deterministic output.
-* A small number of clean images, adversarial images, input-gradient maps, and
-  perturbation maps can be saved for qualitative inspection.
-* Existing backward and input-gradient tests continue to pass.
-* Full robustness evaluation, epsilon sweeps, accuracy-versus-epsilon plots,
-  attack success-rate aggregation, and large batch evaluation are deferred to
-  WP8.
-
-Dependencies:
-
-* WP3 provides `SoftmaxCrossEntropyLoss.backward` and
-  `CompactCNN.backward`.
-* WP4 validates finite, nonzero input gradients.
-* WP5 provides model checkpoint and clean evaluation infrastructure.
-* WP6 improves backward runtime and is completed.
-* The controlled runner uses the ground-truth class label and defaults to one
-  example with `epsilon=8/255`.
-
-Explicit non-goals:
-
-* no full-dataset or large-scale FGSM robustness evaluation,
-* no accuracy-versus-epsilon sweep or attack success-rate aggregation,
-* no PGD, black-box attack, or Grad-CAM implementation,
-* no adversarial training,
-* no automatic GPU, CUDA, CuPy, JAX, PyTorch, Slurm, or cluster workflow.
-
-Estimated duration:
-
-34h total (17h per participant).
+```bash
+.venv/bin/python -m pytest tests/test_input_gradients.py tests/test_fgsm.py tests/test_visualization.py tests/test_fgsm_examples.py -v
+```
 
 Status:
 
-Completed. Input-gradient computation and maps, minimal FGSM, qualitative
-visualization saving, and the controlled one-example runner are implemented
-and validated. The runner requires an existing local CIFAR-10 test batch and
-checkpoint and never downloads data or trains a model. Quantitative
-robustness evaluation remains deferred to WP8.
+COMPLETE.
 
 ---
 
@@ -771,137 +472,68 @@ robustness evaluation remains deferred to WP8.
 
 Goal:
 
-Evaluate the trained CNN under FGSM attacks with different perturbation
-strengths. Compare clean and adversarial accuracy, plot accuracy against epsilon
-values, and select representative successful and failed attacks.
+Evaluate clean and FGSM predictions across epsilon values, aggregate metrics,
+plot robustness curves, and select representative examples.
 
-Scope boundary:
+Implemented functionality:
 
-WP8 owns quantitative and larger-scale FGSM evaluation, including epsilon
-sweeps, accuracy-versus-epsilon plots, attack success-rate aggregation,
-representative success/failure selection, and evaluation over larger batches or
-subsets. WP7 only implements FGSM and produces a small number of qualitative
-examples and visualizations.
+* `evaluate_fgsm_batch`
+* `evaluate_fgsm_batches`
+* `evaluate_fgsm_epsilon_sweep`
+* `select_fgsm_representative_examples`
+* Controlled WP8 smoke runner with persisted metrics and plot.
+* 1024-sample quantitative FGSM evaluation with a stronger baseline checkpoint.
+* FGSM plots for adversarial accuracy, attack success rate, and accuracy drop.
 
-Expected deliverables:
-
-* clean-versus-FGSM accuracy table,
-* accuracy-versus-epsilon plot,
-* representative FGSM example metadata when eligible clean-correct samples
-  exist.
-
-Relevant folders/files:
+Current FGSM quantitative configuration:
 
 ```text
-src/attacks/fgsm.py                    # reuse; do not reimplement FGSM
-src/input_gradients.py                 # reuse batch input gradients
-src/data/cifar10_loader.py             # reuse local CIFAR-10 loading
-src/data/batching.py                   # reuse deterministic mini-batches
-src/checkpointing.py                   # reuse model checkpoint loading
-src/metrics.py                         # reuse JSON persistence
-src/plotting.py                        # accuracy-versus-epsilon plotting
-src/robustness.py                      # batch, sweep, and selection helpers
-experiments/fgsm/evaluate_robustness.py  # controlled runner
-tests/test_fgsm_evaluation.py          # focused evaluation tests
-tests/test_fgsm_robustness_runner.py   # controlled runner tests
-tests/test_plotting.py                 # FGSM plotting tests
-results/WP8/
-deliverables/WP8/
+checkpoint: results/baseline/portfolio_baseline_best.npz
+eval_samples: 1024
+batch_size: 32
+seed: 42
+epsilons: [0, 2/255, 4/255, 8/255, 16/255]
 ```
 
-Controlled local smoke configuration:
+Current historical WP8 smoke configuration:
 
 ```text
 eval_samples: 32
 batch_size: 8
 seed: 42
-epsilon_values: [0, 2/255, 4/255, 8/255, 16/255]
+epsilon_values: [0/255, 1/255, ..., 16/255]
 ```
 
-Metrics:
+Remaining work:
+
+* None for the original WP8 scope.
+* Larger GPU/cluster FGSM evaluation is an extension and should not be treated
+  as incomplete WP8 work.
+
+Relevant files:
 
 ```text
-clean_accuracy = clean_correct / total_samples
-adversarial_accuracy = adversarial_correct / total_samples
-accuracy_drop = clean_accuracy - adversarial_accuracy
-attack_success_rate = successful_attacks / clean_correct_samples
+src/robustness.py
+src/plotting.py
+experiments/fgsm/evaluate_robustness.py
+experiments/fgsm/evaluate_quantitative.py
+tests/test_fgsm_evaluation.py
+tests/test_fgsm_robustness_runner.py
+tests/test_fgsm_quantitative_runner.py
+results/WP8/
+results/fgsm/
+deliverables/WP8/
 ```
 
-A successful attack is a sample whose clean prediction is correct and whose
-adversarial prediction is incorrect. The attack-success-rate denominator is
-therefore limited to clean-correct samples.
+Tests:
 
-Suggested implementation order:
-
-1. Evaluate clean versus FGSM accuracy — 5h.
-2. Test multiple epsilon values — 5h.
-3. Plot accuracy against epsilon — 4h.
-4. Select representative successful and failed attacks — 2h.
-5. Summarize FGSM findings — 2h.
-
-Validation:
-
-* Add deterministic unit tests for a single-batch FGSM evaluation helper.
-* Add deterministic unit tests for sample-weighted multi-batch aggregation,
-  including batches with different sizes.
-* Verify the `epsilon=0` sanity case: adversarial inputs and predictions match
-  the clean case, and adversarial accuracy equals clean accuracy.
-* Verify clean accuracy, adversarial accuracy, accuracy drop, and attack
-  success rate against hand-checkable synthetic predictions.
-* Verify evaluation does not update model parameters.
-* Run a controlled local smoke evaluation with 32 CIFAR-10 evaluation samples,
-  `batch_size=8`, `seed=42`, and the fixed epsilon list.
-* Save metrics and plots under `results/WP8/` and document the controlled
-  result under `deliverables/WP8/`.
-* Do not interpret the controlled subset result as a strong CIFAR-10
-  robustness conclusion.
-
-Dependencies:
-
-* WP7 minimal FGSM, input-gradient computation, and qualitative validation are
-  completed.
-* Reuse the existing FGSM, input-gradient, batching, checkpointing, metrics,
-  plotting, and CIFAR-10 loader code; do not reimplement FGSM.
-* The existing checkpoint was produced by a weak 64/32 controlled baseline
-  with approximately `0.15625` evaluation accuracy. It is suitable for
-  pipeline validation, not for a strong robustness claim.
-* Local execution is approved only for documentation, unit tests, helper
-  implementation, and the 32-sample tiny smoke evaluation.
-* Before any larger formal evaluation, expanded subset, or repeated-seed run,
-  ask the user whether to use the university-provided ZITI cluster.
-
-Explicit non-goals and deferred work:
-
-* no larger or repeated-seed robustness evaluation,
-* no model retraining or stronger checkpoint production,
-* no PGD, black-box attack, or Grad-CAM work,
-* no automatic GPU, CUDA, CuPy, JAX, PyTorch, Slurm, or cluster workflow.
-
-Estimated duration:
-
-18h total (9h per participant).
+```bash
+.venv/bin/python -m pytest tests/test_fgsm_evaluation.py tests/test_fgsm_robustness_runner.py tests/test_fgsm_quantitative_runner.py tests/test_plotting.py -v
+```
 
 Status:
 
-Completed for the controlled pipeline-validation scope. The implementation
-includes `evaluate_fgsm_batch`, `evaluate_fgsm_batches`,
-`evaluate_fgsm_epsilon_sweep`, `plot_fgsm_accuracy_vs_epsilon`,
-`select_fgsm_representative_examples`, `WP8FGSMRobustnessConfig`,
-`run_fgsm_robustness_pipeline`, and `run_cifar10_fgsm_robustness`.
-
-The committed smoke artifacts are:
-
-```text
-results/WP8/fgsm_robustness_metrics.json
-results/WP8/fgsm_accuracy_vs_epsilon.png
-deliverables/WP8/wp8_smoke_review.md
-```
-
-Focused WP8 tests and the full suite pass. The smoke run used existing local
-CIFAR-10 data and an existing checkpoint; it did not download data, train the
-model, modify the checkpoint, or use ZITI. A larger formal evaluation remains
-deferred until a stronger checkpoint exists and the user gives explicit
-approval.
+COMPLETE.
 
 ---
 
@@ -909,46 +541,20 @@ approval.
 
 Goal:
 
-Implement PGD as a stronger iterative gradient-based white-box attack. Include
-the iterative attack loop, projection back to the allowed epsilon-ball,
-clipping to the valid image range, and parameter handling for step size and
-iteration count.
+Implement a small-scale PGD white-box attack.
 
-Expected deliverables:
+Implemented functionality:
 
-* PGD attack implementation,
-* working adversarial examples from the iterative attack.
+* None.
 
-Relevant folders/files:
+Remaining work:
 
-```text
-TBD — not specified in source spreadsheet.
-```
-
-Suggested implementation order:
-
-1. Implement the iterative attack loop — 8h.
-2. Implement projection to the epsilon-ball — 6h.
-3. Add clipping to the valid image range — 4h.
-4. Add parameter handling for step size and number of steps — 4h.
-5. Debug PGD on selected examples — 4h.
-6. Document differences from FGSM — 2h.
-
-Validation:
-
-TBD — not specified in source spreadsheet.
-
-Dependencies:
-
-TBD — not specified in source spreadsheet.
-
-Estimated duration:
-
-28h total (14h per participant).
+* PGD implementation, projection, clipping, parameter handling, examples, and
+  documentation are not part of the current active development cycle.
 
 Status:
 
-Planned.
+DEFERRED.
 
 ---
 
@@ -956,47 +562,20 @@ Planned.
 
 Goal:
 
-Evaluate PGD on a selected test subset or the full test set, depending on
-runtime. Compare FGSM and PGD in terms of accuracy drop and attack strength to
-obtain a quantitative comparison between one-step and iterative
-gradient-based attacks.
+Evaluate PGD and compare it with FGSM.
 
-Expected deliverables:
+Implemented functionality:
 
-* FGSM-versus-PGD comparison,
-* robustness curves,
-* short gradient-based attack discussion.
+* None.
 
-Relevant folders/files:
+Remaining work:
 
-```text
-TBD — not specified in source spreadsheet.
-```
-
-Suggested implementation order:
-
-1. Evaluate PGD on a selected test subset or the full test set — 5h.
-2. Compare FGSM and PGD accuracy drop — 4h.
-3. Plot robustness curves — 3h.
-4. Select representative PGD examples — 2h.
-5. Summarize the gradient-based attack comparison — 2h.
-
-Validation:
-
-TBD — not specified in source spreadsheet.
-
-Dependencies:
-
-TBD — not specified in source spreadsheet.
-
-Estimated duration:
-
-16h total (8h per participant).
+* PGD evaluation, comparison plots, and PGD representative examples are not
+  part of the current active development cycle.
 
 Status:
 
-Planned. This Work Package covers small-scale PGD evaluation, not large-scale
-adversarial training.
+DEFERRED.
 
 ---
 
@@ -1004,47 +583,21 @@ adversarial training.
 
 Goal:
 
-Implement one non-gradient-based black-box adversarial attack. The selected
-candidate in the source plan is a simplified square-based random-search attack
-that perturbs random image regions and keeps changes that reduce model
-confidence or increase loss.
+Implement one non-gradient black-box attack, historically scoped as a
+simplified square-based random-search attack.
 
-Expected deliverables:
+Implemented functionality:
 
-* non-gradient black-box attack implementation,
-* black-box adversarial examples.
+* None.
 
-Relevant folders/files:
+Remaining work:
 
-```text
-TBD — not specified in source spreadsheet.
-```
-
-Suggested implementation order:
-
-1. Select the final non-gradient method from the literature — 4h.
-2. Define the black-box access setting — 3h.
-3. Implement square-based random perturbation search — 10h.
-4. Implement the score-based accept/reject criterion — 5h.
-5. Define the query budget and stopping criteria — 4h.
-6. Generate black-box adversarial examples — 4h.
-7. Debug and validate attack behavior — 2h.
-
-Validation:
-
-TBD — not specified in source spreadsheet.
-
-Dependencies:
-
-TBD — not specified in source spreadsheet.
-
-Estimated duration:
-
-32h total (16h per participant).
+* Black-box attack implementation is not part of the current active
+  development cycle.
 
 Status:
 
-Planned.
+DEFERRED.
 
 ---
 
@@ -1052,49 +605,21 @@ Planned.
 
 Goal:
 
-Evaluate the non-gradient-based attack using attack success rate and average
-model-query count. Compare its behavior qualitatively with FGSM and PGD while
-noting that it does not use internal gradients. Optionally test a small
-one-pixel-style experiment if time permits.
+Evaluate the deferred black-box attack using attack success rate and query
+count.
 
-Expected deliverables:
+Implemented functionality:
 
-* attack success rate,
-* average query count,
-* black-box attack examples,
-* short comparison with gradient-based attacks.
+* None.
 
-Relevant folders/files:
+Remaining work:
 
-```text
-TBD — not specified in source spreadsheet.
-```
-
-Suggested implementation order:
-
-1. Measure attack success rate — 5h.
-2. Measure the average number of queries — 4h.
-3. Compare the black-box attack qualitatively with FGSM and PGD — 4h.
-4. Select representative black-box examples — 3h.
-5. Summarize limitations of the non-gradient attack — duration TBD; the source
-   lists `2h---4h`.
-6. Optionally run a small one-pixel attack test if time permits — 2h.
-
-Validation:
-
-TBD — not specified in source spreadsheet.
-
-Dependencies:
-
-TBD — not specified in source spreadsheet.
-
-Estimated duration:
-
-20h total (10h per participant).
+* Query-count evaluation and black-box comparisons are not part of the current
+  active development cycle.
 
 Status:
 
-Planned.
+DEFERRED.
 
 ---
 
@@ -1102,47 +627,42 @@ Planned.
 
 Goal:
 
-Implement Grad-CAM as a qualitative explainability tool. Store the final
-convolutional feature maps, compute target-class gradients with respect to
-those maps, calculate channel weights using global average pooling, and
-generate normalized heatmaps that can be resized and overlaid on CIFAR-10
-images.
+Implement Grad-CAM heatmap computation for the CompactCNN.
 
-Expected deliverables:
+Implemented functionality:
 
-* Grad-CAM heatmaps,
-* Grad-CAM overlays for selected images.
+* `CompactCNN` stores the `relu2` activation before `pool2`.
+* `compute_gradcam` computes target-class gradients with respect to that
+  activation path.
+* Channel weights are produced by global average pooling of activation
+  gradients.
+* Heatmaps are ReLU-filtered and normalized per sample.
+* Helper functions resize heatmaps and create overlays.
 
-Relevant folders/files:
+Remaining work:
+
+* Write formal WP13 closeout documentation under `deliverables/WP13/`.
+* Record the chosen target activation and limitations explicitly.
+
+Relevant files:
 
 ```text
-TBD — not specified in source spreadsheet.
+src/models/compact_cnn.py
+src/gradcam.py
+src/gradcam_visualization.py
+tests/test_gradcam.py
+tests/test_gradcam_visualization.py
 ```
 
-Suggested implementation order:
+Tests:
 
-1. Store the final convolutional feature maps — 4h.
-2. Compute target-class gradients with respect to feature maps — 6h.
-3. Compute channel weights using global average pooling — 4h.
-4. Generate and normalize Grad-CAM heatmaps — 5h.
-5. Resize and overlay heatmaps on CIFAR-10 images — 5h.
-6. Test Grad-CAM on selected examples — 4h.
-
-Validation:
-
-TBD — not specified in source spreadsheet.
-
-Dependencies:
-
-TBD — not specified in source spreadsheet.
-
-Estimated duration:
-
-28h total (14h per participant).
+```bash
+.venv/bin/python -m pytest tests/test_gradcam.py tests/test_gradcam_visualization.py -v
+```
 
 Status:
 
-Planned.
+NEEDS DOCUMENTATION.
 
 ---
 
@@ -1150,48 +670,46 @@ Planned.
 
 Goal:
 
-Use Grad-CAM to inspect how the model's focus changes before and after
-adversarial perturbations. Analyze correctly classified clean examples,
-misclassified clean examples, and adversarial examples generated by FGSM, PGD,
-and the black-box attack. Use Grad-CAM qualitatively rather than as a
-quantitative model-comparison metric.
+Use Grad-CAM qualitatively to inspect focus changes before and after attacks.
 
-Expected deliverables:
+Implemented functionality:
 
-* clean-versus-adversarial Grad-CAM comparison,
-* qualitative case studies,
-* visualization figures for the final report or poster.
+* Clean-vs-FGSM adversarial Grad-CAM comparison runner.
+* Deterministic scan of CIFAR-10 test samples.
+* Selection of clean-correct FGSM successes and attack-resisted controls.
+* Prediction-aligned Grad-CAM figures.
+* Fixed-original-target comparison figures.
+* Metadata persistence.
 
-Relevant folders/files:
+Current boundary:
+
+* WP14 currently covers FGSM only.
+* PGD and black-box Grad-CAM analysis are absent because WP9-WP12 are deferred.
+
+Remaining work:
+
+* Document WP14 as FGSM-only analysis.
+* If PGD/black-box work is ever resumed, extend WP14 only after those attack
+  work packages are implemented and validated.
+
+Relevant files:
 
 ```text
-TBD — not specified in source spreadsheet.
+experiments/gradcam/generate_adversarial_comparisons.py
+src/gradcam.py
+src/gradcam_visualization.py
+results/gradcam/
 ```
 
-Suggested implementation order:
+Tests:
 
-1. Generate Grad-CAM for correctly classified clean examples — 5h.
-2. Generate Grad-CAM for misclassified clean examples — 4h.
-3. Generate Grad-CAM after FGSM and PGD attacks — 6h.
-4. Generate Grad-CAM after the black-box attack — 5h.
-5. Compare focus regions before and after attacks — 4h.
-6. Prepare qualitative visualization figures — 4h.
-
-Validation:
-
-TBD — not specified in source spreadsheet.
-
-Dependencies:
-
-TBD — not specified in source spreadsheet.
-
-Estimated duration:
-
-28h total (14h per participant).
+```bash
+.venv/bin/python -m pytest tests/test_gradcam.py tests/test_gradcam_visualization.py -v
+```
 
 Status:
 
-Planned.
+PARTIALLY COMPLETE.
 
 ---
 
@@ -1199,67 +717,193 @@ Planned.
 
 Goal:
 
-Integrate all components into a reproducible project package, preferably using
-the Git repository. Organize final plots, analysis results, accuracy tables,
-attack success-rate summaries, query-count summaries, Grad-CAM visualizations,
-and README instructions. Perform final reproducibility checks and document the
-limitations of the implemented methods.
+Organize final code, documentation, tests, results, and reproducibility
+instructions.
 
-Expected deliverables:
+Implemented functionality:
 
-* complete reproducible codebase,
-* final evaluation tables,
-* final visualizations,
-* robustness and explainability summary.
+* README summarizes current implementation, tests, results, and run commands.
+* GitHub Actions runs the offline test suite.
+* Result figures and metrics are organized under `results/`.
+* Deliverables exist for completed historical WPs.
 
-Relevant folders/files:
+Remaining work:
 
-```text
-TBD — not specified in source spreadsheet.
-```
-
-Suggested implementation order:
-
-1. Prepare final clean and attacked accuracy tables — 5h.
-2. Prepare the attack success-rate summary — 4h.
-3. Prepare the query-efficiency summary for the black-box attack — 4h.
-4. Prepare final plots and visualizations — 5h.
-5. Clean up code and integrate modules — 4h.
-6. Complete README and run instructions — 3h.
-7. Perform reproducibility checks — 3h.
-8. Write the final limitations discussion — 2h.
-
-Validation:
-
-TBD — not specified in source spreadsheet.
-
-Dependencies:
-
-TBD — not specified in source spreadsheet.
-
-Estimated duration:
-
-30h total (15h per participant).
+* Finish documentation for WP13 and WP14.
+* Decide the checkpoint artifact policy for ignored `.npz` files.
+* Add extension documentation after CuPy/cluster work is completed.
+* Final report/poster tables remain outside the current repository state.
 
 Status:
 
-Planned.
+PARTIALLY COMPLETE.
+
+## Current Active Development Direction
+
+The active development cycle is:
+
+```text
+NumPy reference
+-> CuPy acceleration
+-> CPU/GPU numerical equivalence
+-> cluster execution
+-> large-scale FGSM evaluation
+-> runtime/robustness analysis
+```
+
+PGD and black-box attacks are intentionally outside this active cycle. They
+remain in the original plan as deferred historical Work Packages.
+
+Before any large-scale data processing, expanded evaluation subset,
+repeated-seed run, or cluster experiment, ask the user whether to use the
+university-provided ZITI cluster. Do not introduce GPU, CUDA, CuPy, Slurm, or
+ZITI workflows without explicit user approval.
+
+## Extended Work Packages
+
+### EWP1: CuPy Backend
+
+Goal:
+
+Add optional GPU acceleration while preserving NumPy as the reference backend.
+
+Scope:
+
+* Keep NumPy behavior as the default and reference implementation.
+* Introduce a minimal backend boundary only where it improves correctness,
+  performance, or maintainability.
+* Do not replace every `numpy` import mechanically.
+* Keep plotting, JSON metrics, and public artifact generation CPU-side.
+
+Status:
+
+PLANNED.
+
+---
+
+### EWP2: NumPy/CuPy Numerical Equivalence
+
+Goal:
+
+Verify that the CuPy path matches the NumPy reference for the computation paths
+used by training, FGSM, and robustness evaluation.
+
+Candidate reference tests:
+
+```text
+tests/test_forward.py
+tests/test_layers.py
+tests/test_losses.py
+tests/test_backward.py
+tests/test_integration.py
+tests/test_gradient_check.py
+tests/test_input_gradients.py
+tests/test_fgsm.py
+tests/test_fgsm_evaluation.py
+```
+
+Scope:
+
+* Forward outputs.
+* Backward gradients.
+* Loss values and loss gradients.
+* Input gradients.
+* FGSM adversarial examples.
+* Robustness metrics.
+
+Status:
+
+PLANNED. No CuPy tests exist yet.
+
+---
+
+### EWP3: Cluster Experiment Infrastructure
+
+Goal:
+
+Prepare configurable, reproducible cluster execution for larger experiments.
+
+Scope:
+
+* Add scheduler-neutral Python runners/configuration first.
+* Avoid hard-coded local paths.
+* Require explicit data and checkpoint paths.
+* Save outputs under structured result/log directories.
+* Record seeds, backend, device, batch size, sample count, checkpoint, runtime,
+  and memory-related metadata.
+* Add Slurm or scheduler-specific scripts only after the scheduler is
+  confirmed.
+
+Status:
+
+PLANNED.
+
+---
+
+### EWP4: Large-scale FGSM Evaluation
+
+Goal:
+
+Scale the validated WP8 FGSM sweep to larger CIFAR-10 evaluation sets.
+
+Scope:
+
+* Reuse the existing FGSM implementation and robustness metrics.
+* Increase evaluation sample count only through explicit configuration.
+* Preserve batched evaluation.
+* Keep PGD and black-box attacks out of scope.
+
+Status:
+
+PLANNED.
+
+---
+
+### EWP5: Runtime and Robustness Analysis
+
+Goal:
+
+Analyze CPU/GPU runtime, scalability, adversarial accuracy, attack success
+rate, and memory use.
+
+Scope:
+
+* Compare NumPy and CuPy runtimes for the same architecture and evaluation
+  settings.
+* Report clean accuracy, adversarial accuracy, accuracy drop, and attack
+  success rate.
+* Track runtime by sample count, batch size, epsilon count, and backend.
+* Document memory limitations and CPU/GPU transfer points.
+
+Status:
+
+PLANNED.
+
+## Artifact Policy Note
+
+The repository ignores large binary arrays and checkpoints through `.gitignore`
+patterns such as `*.npz`, `*.npy`, and `results/checkpoints/*`. The README
+references `results/baseline/portfolio_baseline_best.npz`, but this checkpoint
+is a local/regenerable artifact and is not tracked by Git.
+
+Current policy recommendation:
+
+* Do not force-add large checkpoints during documentation cleanup.
+* Keep JSON metrics and PNG figures tracked when they are lightweight and
+  useful for review.
+* For future cluster experiments, store large checkpoints externally or publish
+  them through an explicit release/artifact mechanism.
+* Document the exact command and configuration needed to regenerate each
+  ignored checkpoint.
 
 ## Rule for Moving Between Work Packages
 
-Before moving from one Work Package to the next:
+Before starting implementation for a new original or extended Work Package:
 
-1. Check the source-defined goal, subtasks, and expected deliverables.
-2. Define or confirm validation criteria when the source spreadsheet lists
-   them as `TBD`.
-3. Run the relevant tests or reproducibility checks.
-4. Fix blocking failures before proceeding.
-5. Update the status table and the detailed Work Package status.
-6. Make a Git commit when the repository is in a stable state.
-7. Do not start later training, attack, explainability, or integration Work
-   Packages before their prerequisites are implemented and validated.
-8. Before large-scale data processing, full-dataset runs, many-image
-   evaluation, epsilon sweeps, repeated seeds, PGD-style multi-step
-   evaluation, or large-batch evaluation, ask the user whether to use the
-   university-provided ZITI cluster. Do not introduce GPU, Slurm, CUDA, or
-   ZITI workflows without explicit approval.
+1. Review `WP_PLAN.md`, `TESTING.md`, relevant source files, tests, and
+   existing results.
+2. Define relevant files, validation commands, and dependencies.
+3. Run focused tests before and after the change.
+4. Preserve the NumPy reference behavior unless the task explicitly changes it.
+5. Do not start PGD, black-box attacks, or large-scale cluster experiments
+   without explicit user approval.

@@ -1,4 +1,4 @@
-"""Portfolio baseline training for Day 1 Bosch application preparation."""
+"""Reproducible CIFAR-10 baseline training."""
 
 from __future__ import annotations
 
@@ -26,7 +26,7 @@ from src.training import evaluate_batches, train_batches
 
 @dataclass(frozen=True)
 class PortfolioBaselineConfig:
-    """Deterministic local portfolio-baseline configuration."""
+    """Deterministic local baseline configuration."""
 
     train_samples: int = 4096
     validation_samples: int = 1024
@@ -149,7 +149,7 @@ def run_portfolio_baseline(
     config: PortfolioBaselineConfig = PORTFOLIO_BASELINE_CONFIG,
     data_dir: str | Path = DATA_DIR,
 ) -> dict[str, Any]:
-    """Train a deterministic clean CIFAR-10 portfolio baseline."""
+    """Train a deterministic clean CIFAR-10 baseline."""
     train_images, train_labels, test_images, test_labels, class_names = load_cifar10(
         Path(data_dir)
     )

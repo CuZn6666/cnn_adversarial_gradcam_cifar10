@@ -1,4 +1,4 @@
-"""Portfolio FGSM quantitative robustness evaluation."""
+"""FGSM quantitative robustness evaluation."""
 
 from __future__ import annotations
 
@@ -30,25 +30,31 @@ from src.plotting import (
 from src.robustness import FGSMSweepResult, evaluate_fgsm_epsilon_sweep
 
 
-DAY2_EPSILON_VALUES = (
+FGSM_QUANTITATIVE_EPSILON_VALUES = (
     0.0,
     2.0 / 255.0,
     4.0 / 255.0,
     8.0 / 255.0,
     16.0 / 255.0,
 )
-DAY2_EPSILON_LABELS = ("0", "2/255", "4/255", "8/255", "16/255")
+FGSM_QUANTITATIVE_EPSILON_LABELS = (
+    "0",
+    "2/255",
+    "4/255",
+    "8/255",
+    "16/255",
+)
 
 
 @dataclass(frozen=True)
 class PortfolioFGSMQuantitativeConfig:
-    """Deterministic Day 2 portfolio FGSM evaluation configuration."""
+    """Deterministic FGSM quantitative evaluation configuration."""
 
     eval_samples: int = 1024
     batch_size: int = 32
     seed: int = SEED
-    epsilon_values: tuple[float, ...] = DAY2_EPSILON_VALUES
-    epsilon_labels: tuple[str, ...] = DAY2_EPSILON_LABELS
+    epsilon_values: tuple[float, ...] = FGSM_QUANTITATIVE_EPSILON_VALUES
+    epsilon_labels: tuple[str, ...] = FGSM_QUANTITATIVE_EPSILON_LABELS
     checkpoint_path: Path | str = (
         PROJECT_ROOT / "results" / "baseline" / "portfolio_baseline_best.npz"
     )
@@ -93,7 +99,7 @@ PORTFOLIO_FGSM_QUANTITATIVE_CONFIG = PortfolioFGSMQuantitativeConfig()
 
 
 class PortfolioFGSMQuantitativeResult(TypedDict):
-    """Artifacts and metrics from one Day 2 FGSM quantitative run."""
+    """Artifacts and metrics from one FGSM quantitative run."""
 
     metrics_path: Path
     accuracy_plot_path: Path
@@ -126,7 +132,7 @@ def run_portfolio_fgsm_quantitative_pipeline(
         PORTFOLIO_FGSM_QUANTITATIVE_CONFIG
     ),
 ) -> PortfolioFGSMQuantitativeResult:
-    """Run FGSM epsilon sweep, persist metrics, and create Day 2 figures."""
+    """Run FGSM epsilon sweep, persist metrics, and create figures."""
     batch_values = tuple(batches)
     sweep_results = evaluate_fgsm_epsilon_sweep(
         model,
@@ -208,7 +214,7 @@ def run_portfolio_cifar10_fgsm_quantitative(
     ),
     data_dir: str | Path = DATA_DIR,
 ) -> PortfolioFGSMQuantitativeResult:
-    """Run Day 2 FGSM quantitative evaluation on local CIFAR-10 test data."""
+    """Run FGSM quantitative evaluation on local CIFAR-10 test data."""
     if not config.checkpoint_path.is_file():
         raise FileNotFoundError(
             f"Model checkpoint is not available at {config.checkpoint_path}."

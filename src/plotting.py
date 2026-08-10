@@ -269,7 +269,7 @@ def plot_fgsm_portfolio_accuracy_vs_epsilon(
     output_path: str | Path,
     epsilon_labels: list[str] | tuple[str, ...] | None = None,
 ) -> Path:
-    """Save portfolio-ready FGSM adversarial accuracy vs epsilon."""
+    """Save report-ready FGSM adversarial accuracy vs epsilon."""
     return _save_fgsm_percentage_curve(
         sweep_results,
         output_path,
@@ -286,7 +286,7 @@ def plot_fgsm_attack_success_rate_vs_epsilon(
     output_path: str | Path,
     epsilon_labels: list[str] | tuple[str, ...] | None = None,
 ) -> Path:
-    """Save portfolio-ready FGSM attack success rate vs epsilon."""
+    """Save report-ready FGSM attack success rate vs epsilon."""
     return _save_fgsm_percentage_curve(
         sweep_results,
         output_path,
@@ -302,7 +302,7 @@ def plot_fgsm_accuracy_drop_vs_epsilon(
     output_path: str | Path,
     epsilon_labels: list[str] | tuple[str, ...] | None = None,
 ) -> Path:
-    """Save portfolio-ready FGSM accuracy drop in percentage points."""
+    """Save report-ready FGSM accuracy drop in percentage points."""
     return _save_fgsm_percentage_curve(
         sweep_results,
         output_path,
