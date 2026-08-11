@@ -299,17 +299,26 @@ The expected archive MD5 is:
 c58f30108f718f92721af3b95e74349a
 ```
 
+The Hawaii cluster staging has been validated with archive size
+`170498071` bytes, matching MD5, extracted train/test splits of
+`50000`/`10000` images, and 10 class names. The validated environment was
+`NVIDIA GeForce RTX 2080 Ti`, CuPy `14.1.1`, Python `3.12.13`, and NumPy
+`2.4.6`.
+
 Validate the Python/CuPy environment and staged dataset before running
 data-dependent cluster tests or experiments:
 
 ```bash
-python scripts/validate_cluster_environment.py --backend cupy --data-dir data/raw --extract-if-needed --json-output results/cluster_validation/cifar10_environment.json
+python scripts/validate_cluster_environment.py --backend numpy --data-dir data/raw --json-output results/cluster_validation/cifar10_environment_numpy.json
+python scripts/validate_cluster_environment.py --backend cupy --data-dir data/raw --extract-if-needed --json-output results/cluster_validation/cifar10_environment_cupy.json
 python -m pytest -q -m requires_data
 ```
 
 The validation utility reports environment metadata and dataset status in
-human-readable form and can save a JSON report. It does not run training,
-robustness sweeps, or benchmarks.
+human-readable form and can save JSON reports. It does not run training,
+robustness sweeps, or benchmarks. Run-specific files under
+`results/cluster_validation/` are ignored by Git; keep the verified summary in
+documentation unless a report artifact is intentionally curated.
 
 ## Numerical Gradient Checking
 

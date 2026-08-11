@@ -102,6 +102,25 @@ Non-data cluster regression: 236 passed, 3 deselected in 8.96s
 NumPy remains the authoritative correctness reference. Compatibility is
 recorded only for the tested GPU/CUDA/CuPy/Python configuration above.
 
+Latest verified real cluster EWP3-A state:
+
+```text
+GPU: NVIDIA GeForce RTX 2080 Ti
+CuPy: 14.1.1
+Python: 3.12.13
+NumPy: 2.4.6
+CUDA-capable device count: 1
+Slurm allocation: 1 GPU
+CIFAR-10 archive size: 170498071 bytes
+CIFAR-10 MD5: c58f30108f718f92721af3b95e74349a
+CIFAR-10 checksum validation: PASS
+NumPy environment/dataset validation: PASS
+CuPy environment/dataset validation: PASS
+requires_data suite: 3 passed, 240 deselected in 3.34s
+```
+
+EWP3-A validation is recorded only for the tested cluster environment above.
+
 Standard offline CI command:
 
 ```bash
@@ -552,7 +571,7 @@ CuPy `14.1.1`, Python `3.12`, with one GPU allocated through Slurm.
 
 ## Cluster CIFAR-10 Dataset Staging
 
-The current cluster CIFAR-10 archive is not a valid data-test signal:
+The previous cluster CIFAR-10 archive was not a valid data-test signal:
 
 ```text
 path: data/raw/cifar-10-python.tar.gz
@@ -561,11 +580,31 @@ observed MD5: 352dcf059b8b606c932d1db9b8c351a9
 expected MD5: c58f30108f718f92721af3b95e74349a
 ```
 
-The `requires_data` tests fail on the cluster before any CuPy numerical path is
-exercised. Do not change the expected checksum, disable archive validation,
-weaken data tests, or modify the CIFAR-10 loader to hide this issue. Restage
-the dataset before treating data-dependent cluster tests or experiments as
-valid.
+This issue is resolved for the validated Hawaii cluster environment. The
+current staged archive is:
+
+```text
+path: data/raw/cifar-10-python.tar.gz
+size: 170498071 bytes
+expected MD5: c58f30108f718f92721af3b95e74349a
+observed MD5: c58f30108f718f92721af3b95e74349a
+checksum: PASS
+extracted directory: data/raw/cifar-10-batches-py
+```
+
+Validated data shape checks:
+
+```text
+train images: (50000, 3, 32, 32)
+train labels: (50000,)
+test images: (10000, 3, 32, 32)
+test labels: (10000,)
+class count: 10
+```
+
+Checksum validation remains authoritative. Do not change the expected
+checksum, disable archive validation, weaken data tests, or modify the CIFAR-10
+loader to hide future staging issues.
 
 ## EWP3-A Cluster Environment and Dataset Staging Validation
 
@@ -575,7 +614,7 @@ The scheduler-neutral validation utility is:
 scripts/validate_cluster_environment.py
 ```
 
-Status: IMPLEMENTED / REAL CLUSTER DATA VALIDATION PENDING.
+Status: COMPLETE.
 
 It validates:
 
@@ -609,15 +648,46 @@ MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -
 MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -m "not requires_cupy"
 ```
 
-Suggested cluster validation after staging a checksum-valid CIFAR-10 archive:
+Validated cluster environment:
+
+```text
+GPU: NVIDIA GeForce RTX 2080 Ti
+CuPy: 14.1.1
+Python: 3.12.13
+NumPy: 2.4.6
+CUDA-capable device count: 1
+Slurm allocation: 1 GPU
+```
+
+Cluster validation artifacts generated:
+
+```text
+results/cluster_validation/cifar10_environment_numpy.json
+results/cluster_validation/cifar10_environment_cupy.json
+```
+
+Both reports had `status = passed`. The CuPy report recorded environment
+status `passed`, dataset status `passed`, CuPy `14.1.1`, device count `1`, and
+GPU name `NVIDIA GeForce RTX 2080 Ti`.
+
+These JSON files are run-specific cluster/environment outputs and are ignored
+by Git. Keep the validation utility and tests tracked, but record verified
+summary results in documentation unless a specific report artifact is curated
+for publication.
+
+Validated cluster commands:
 
 ```bash
-python scripts/validate_cluster_environment.py --backend cupy --data-dir data/raw --extract-if-needed --json-output results/cluster_validation/cifar10_environment.json
+python scripts/validate_cluster_environment.py --backend numpy --data-dir data/raw --json-output results/cluster_validation/cifar10_environment_numpy.json
+python scripts/validate_cluster_environment.py --backend cupy --data-dir data/raw --extract-if-needed --json-output results/cluster_validation/cifar10_environment_cupy.json
 python -m pytest -q -m requires_data
 ```
 
-Passing the utility and `requires_data` tests on the real cluster is required
-before EWP3-A can be marked complete.
+Validated result:
+
+```text
+requires_data suite: 3 passed, 240 deselected in 3.34s
+```
 
 ## NumPy Reference Tests for Future CuPy Equivalence
 
