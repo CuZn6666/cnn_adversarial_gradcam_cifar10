@@ -4,7 +4,12 @@ from __future__ import annotations
 
 import numpy as np
 
-from src.backend import ensure_backend_array, get_array_module, isfinite_all
+from src.backend import (
+    divide_where,
+    ensure_backend_array,
+    get_array_module,
+    isfinite_all,
+)
 from src.losses import SoftmaxCrossEntropyLoss
 from src.models import CompactCNN
 
@@ -28,7 +33,7 @@ def input_gradient_map(
 
     maxima = gradient_map.max(axis=(1, 2), keepdims=True)
     normalized_map = xp.zeros_like(gradient_map)
-    xp.divide(
+    divide_where(
         gradient_map,
         maxima,
         out=normalized_map,

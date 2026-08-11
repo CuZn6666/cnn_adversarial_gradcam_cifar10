@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from src.backend import (
+    divide_where,
     isfinite_all,
     sliding_window_view,
     to_backend,
@@ -85,7 +86,7 @@ def test_cupy_backend_array_primitives_match_numpy(cp) -> None:
     numerator_cp = cp.asarray([1.0, 2.0, 0.0], dtype=cp.float32)
     denominator_cp = cp.asarray([2.0, 4.0, 0.0], dtype=cp.float32)
     divided_cp = cp.zeros_like(numerator_cp)
-    cp.divide(
+    divide_where(
         numerator_cp,
         denominator_cp,
         out=divided_cp,
