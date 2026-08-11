@@ -18,11 +18,26 @@ visible CUDA GPU is unavailable.
 Latest verified local state:
 
 ```text
-Offline CI-compatible suite: 216 passed, 6 skipped, 3 deselected
+Offline CI-compatible suite: 217 passed, 6 skipped, 3 deselected
 Data-marked suite: 3 passed, 222 deselected
-Full local suite: 219 passed, 6 skipped
+Full local suite: 220 passed, 6 skipped
 CuPy runtime slice on this machine: 6 skipped because cupy is not installed
 ```
+
+Latest verified real GPU EWP1-B state:
+
+```text
+GPU: NVIDIA GeForce RTX 2080 Ti
+CUDA Toolkit: 12.5
+CuPy: 14.1.1
+Python: 3.12
+Slurm allocation: 1 GPU
+CuPy runtime slice: 6 passed
+Non-data cluster regression: 223 passed, 3 deselected in 8.20s
+```
+
+Compatibility is recorded only for the tested GPU/CUDA/CuPy/Python
+configuration above.
 
 Standard offline CI command:
 
@@ -453,13 +468,41 @@ They validate:
   allocation/computation.
 * Backend primitive compatibility for the tensor operations used by the
   migrated path.
-* `sliding_window_view`, `einsum(..., optimize=True)`, and `cupy.add.at`.
+* `sliding_window_view`, `einsum(..., optimize=True)`, `cupy.add.at`, and
+  `divide_where(...)`.
 * First Conv2D forward/backward NumPy/CuPy equivalence slice with `rtol=1e-5`
   and `atol=1e-6`, matching the expected float32 scale of the tested
   operations.
 
 These tests are not cluster integration and do not run large CIFAR-10
 experiments.
+
+Verified EWP1-B GPU results:
+
+```text
+python -m pytest -q tests/test_cupy_backend_runtime.py -rs
+6 passed
+```
+
+The tested environment was `NVIDIA GeForce RTX 2080 Ti`, CUDA Toolkit `12.5`,
+CuPy `14.1.1`, Python `3.12`, with one GPU allocated through Slurm.
+
+## Cluster CIFAR-10 Dataset Staging
+
+The current cluster CIFAR-10 archive is not a valid data-test signal:
+
+```text
+path: data/raw/cifar-10-python.tar.gz
+size: 37M
+observed MD5: 352dcf059b8b606c932d1db9b8c351a9
+expected MD5: c58f30108f718f92721af3b95e74349a
+```
+
+The `requires_data` tests fail on the cluster before any CuPy numerical path is
+exercised. Do not change the expected checksum, disable archive validation,
+weaken data tests, or modify the CIFAR-10 loader to hide this issue. Restage
+the dataset before treating data-dependent cluster tests or experiments as
+valid.
 
 ## NumPy Reference Tests for Future CuPy Equivalence
 

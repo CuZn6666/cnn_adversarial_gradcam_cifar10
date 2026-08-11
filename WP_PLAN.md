@@ -156,7 +156,7 @@ requires_data tests pass when local CIFAR-10 data is present
 
 Status:
 
-COMPLETE.
+PARTIALLY COMPLETE.
 
 ---
 
@@ -736,7 +736,7 @@ Remaining work:
 
 Status:
 
-PARTIALLY COMPLETE.
+COMPLETE.
 
 ## Current Active Development Direction
 
@@ -777,7 +777,7 @@ Scope:
 
 Status:
 
-PARTIALLY COMPLETE.
+COMPLETE.
 
 EWP1-A: Backend abstraction
 
@@ -791,7 +791,7 @@ Status: COMPLETE.
 
 EWP1-B: CuPy runtime compatibility validation
 
-Status: NEEDS GPU RUNTIME.
+Status: COMPLETE.
 
 * Optional CuPy test infrastructure is available and skips cleanly when CuPy,
   CUDA runtime access, or a visible CUDA GPU is unavailable.
@@ -801,8 +801,22 @@ Status: NEEDS GPU RUNTIME.
   conversion helpers, and `sliding_window_view`.
 * First equivalence slice covers `Conv2D.forward` and `Conv2D.backward`
   outputs/gradients with explicit float32 tolerances.
-* Local runtime validation is blocked until CuPy and a usable CUDA GPU are
-  available.
+* Real GPU validation passed on the tested environment:
+
+```text
+GPU: NVIDIA GeForce RTX 2080 Ti
+CUDA Toolkit: 12.5
+CuPy: 14.1.1
+Python: 3.12
+Slurm allocation: 1 GPU
+```
+
+* `sliding_window_view`, `einsum(..., optimize=True)`, `cupy.add.at`,
+  `divide_where(...)`, `Conv2D.forward`, and `Conv2D.backward` `dx/dw/db`
+  equivalence are validated on that environment.
+* No CPU fallback was introduced in the tested tensor path.
+* Compatibility is claimed only for the tested environment above, not for
+  untested GPU/CUDA/CuPy configurations.
 * Broader EWP2 numerical-equivalence validation has not started yet.
 
 Relevant folders/files:
@@ -831,12 +845,30 @@ Validation:
 * Run the full local NumPy test suite after each slice.
 * CuPy-specific tests must skip cleanly when the GPU backend is unavailable.
 * Do not require CuPy in the local development environment.
+* GPU cluster validation:
+
+```text
+python -m pytest -q tests/test_cupy_backend_runtime.py -rs
+6 passed
+
+python -m pytest -q -m "not requires_data"
+223 passed, 3 deselected in 8.20s
+```
 
 Dependencies:
 
 * NumPy remains required.
 * CuPy is optional and must not be added as a hard dependency in EWP1.
 * CIFAR-10 loading, plotting, JSON artifacts, and image output remain CPU-side.
+
+Known cluster issue:
+
+Cluster CIFAR-10 dataset staging remains unresolved. The current cluster
+archive `data/raw/cifar-10-python.tar.gz` has size `37M` and MD5
+`352dcf059b8b606c932d1db9b8c351a9`, but the project expects
+`c58f30108f718f92721af3b95e74349a`. Replace or restage the archive before
+using data-dependent cluster tests or experiments. This is not an EWP1 backend
+failure.
 
 ---
 

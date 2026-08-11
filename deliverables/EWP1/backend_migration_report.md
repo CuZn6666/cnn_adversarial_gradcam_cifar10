@@ -2,7 +2,7 @@
 
 ## Status
 
-PARTIALLY COMPLETE.
+COMPLETE.
 
 EWP1-A: COMPLETE.
 
@@ -10,12 +10,24 @@ The first slice introduced a minimal NumPy-first backend boundary and migrated
 the main tensor path to use that boundary. NumPy remains the default and
 reference backend. CuPy remains optional and is not a required dependency.
 
-EWP1-B: NEEDS GPU RUNTIME.
+EWP1-B: COMPLETE.
 
 The second slice adds optional CuPy runtime-compatibility tests and environment
-checks. The local development environment does not have CuPy installed and does
-not expose CUDA tooling, so actual GPU execution remains unverified locally.
-The tests skip cleanly and can be run later on a CUDA GPU node.
+checks. These tests now pass on a real CUDA GPU environment. NumPy remains the
+default backend and the authoritative correctness reference.
+
+Validated environment:
+
+```text
+GPU: NVIDIA GeForce RTX 2080 Ti
+CUDA Toolkit: 12.5
+CuPy: 14.1.1
+Python: 3.12
+Slurm allocation: 1 GPU
+```
+
+Compatibility is claimed only for this tested environment, not for untested
+GPU/CUDA/CuPy configurations.
 
 No PGD implementation, PGD refactor, or PGD experiment was added.
 
@@ -60,6 +72,8 @@ Validation and planning:
 * `to_python_bool`, `to_python_float`, and `to_python_int` mark scalar
   synchronization points.
 * `isfinite_all(array)` centralizes finite-value validation.
+* `divide_where(numerator, denominator, out=..., where=...)` provides
+  NumPy-compatible masked divide semantics across NumPy and CuPy.
 * `sliding_window_view(...)` dispatches to NumPy or CuPy stride-trick support.
 
 The model and layer constructors now accept `backend="numpy"` by default.
@@ -127,6 +141,7 @@ CuPy equivalence testing should pay special attention to:
 * `cupy.add.at` behavior in `MaxPool2D.backward`, especially tie handling.
 * Scalar synchronization from `to_python_*` helpers.
 * Validation checks that call `isfinite_all(...)`.
+* Masked division via `divide_where(...)`.
 * Checkpoint load/save transfers between CPU `.npz` archives and device
   tensors.
 * Any future experiment runner that mixes CPU data loader output with a CuPy
@@ -142,7 +157,7 @@ The optional CuPy runtime tests cover:
 * Simple CuPy allocation, computation, and synchronization.
 * Array creation/conversion through `to_backend(...)` and `to_numpy(...)`.
 * `zeros`, `zeros_like`, `maximum`, `max`, `argmax`, `sum`, `mean`, `abs`,
-  `exp`, `log`, `divide`, `clip`, `sign`, `matmul`, and finite checks.
+  `exp`, `log`, `divide_where`, `clip`, `sign`, `matmul`, and finite checks.
 * Scalar conversions through `to_python_bool`, `to_python_float`, and
   `to_python_int`.
 * `einsum(..., optimize=True)`.
@@ -163,6 +178,16 @@ These tolerances are chosen for small float32 tensor operations. They are not
 weakened to mask runtime differences; they should be revisited only if an
 actual CuPy run demonstrates a numerically justified difference.
 
+GPU validation findings:
+
+* `sliding_window_view`: validated on the real CuPy GPU.
+* `einsum(..., optimize=True)`: validated.
+* `cupy.add.at`: validated.
+* `divide_where(...)`: compatibility fix validated.
+* `Conv2D.forward`: NumPy/CuPy equivalence validated.
+* `Conv2D.backward`: NumPy/CuPy equivalence validated for `dx`, `dw`, and `db`.
+* No CPU fallback was introduced in the tested tensor path.
+
 ## Current Local Environment
 
 Observed on the current local development machine:
@@ -177,14 +202,14 @@ Simple CuPy allocation/computation: not testable because cupy is not installed
 ```
 
 Because no CuPy runtime is available locally, the following risky primitives
-remain runtime-unverified:
+cannot be rerun locally:
 
 * `sliding_window_view`
 * `einsum(..., optimize=True)`
 * `cupy.add.at`
 
 They are covered by optional tests and should be run on a CUDA GPU node before
-claiming EWP1-B complete.
+changing the backend implementation.
 
 ## Validation
 
@@ -216,16 +241,44 @@ Post-change full suite: 219 passed, 6 skipped
 CuPy runtime slice: 6 skipped because cupy is not installed
 ```
 
+Observed real GPU EWP1-B results:
+
+```text
+python -m pytest -q tests/test_cupy_backend_runtime.py -rs
+6 passed
+
+python -m pytest -q -m "not requires_data"
+223 passed, 3 deselected in 8.20s
+
+git diff --check
+passed
+```
+
+## Cluster CIFAR-10 Dataset Staging
+
+The current cluster CIFAR-10 archive is a separate staging issue and is not an
+EWP1 backend failure:
+
+```text
+path: data/raw/cifar-10-python.tar.gz
+size: 37M
+observed MD5: 352dcf059b8b606c932d1db9b8c351a9
+expected MD5: c58f30108f718f92721af3b95e74349a
+```
+
+The three `requires_data` tests fail on the cluster during CIFAR-10 archive
+validation before any CuPy numerical path is exercised. Do not change the
+expected checksum, disable archive validation, weaken the data tests, or modify
+the CIFAR-10 loader to hide this issue. Restage the dataset before using
+data-dependent cluster tests or experiments.
+
 ## Risks Before CuPy Equivalence Testing
 
-* CuPy is not installed or exercised in the current local validation.
 * `Conv2D` still uses a stride-trick window representation, which may be memory
   intensive on GPU for larger batches.
-* `MaxPool2D.backward` uses `add.at`; correctness should be checked before
-  performance tuning.
 * Metrics and representative-example selection intentionally synchronize to
   CPU and are not designed as fully device-resident pipelines.
 * Grad-CAM remains NumPy-only and should be migrated separately only if GPU
   explainability becomes part of the active scope.
-* EWP1-B cannot be marked complete until the optional CuPy runtime tests run on
-  an environment with CuPy, CUDA runtime access, and a visible CUDA GPU.
+* Broader EWP2 equivalence has not started; EWP1 validates runtime primitives
+  and the first Conv2D equivalence slice only.
