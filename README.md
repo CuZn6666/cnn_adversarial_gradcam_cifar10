@@ -376,6 +376,38 @@ performance benchmark. Run-specific files under `results/runs/` are ignored by
 Git. Later curated benchmark summaries and plots can be committed separately
 when they are intentionally prepared for final reporting.
 
+### Curate a medium-scale FGSM run
+
+After a completed runner execution, create small review-ready artifacts from
+the saved `metrics`, `timing`, `summary`, and `environment` files:
+
+```bash
+python -m experiments.fgsm.plot_fgsm_run --run-dir results/runs/<run_id> --output-root results/curated/ewp3c --expected-sample-count 1000 --expected-epsilons 0,1/255,2/255,4/255,8/255
+```
+
+The planned EWP3-C cluster sanity workload is:
+
+```bash
+python -m experiments.fgsm.run_fgsm_experiment --backend cupy --data-dir data/raw --checkpoint results/checkpoints/portfolio_baseline_best.npz --split test --max-samples 1000 --batch-size 32 --epsilons 0,1/255,2/255,4/255,8/255 --output-root results/runs
+```
+
+Curated outputs are written to:
+
+```text
+results/curated/ewp3c/<run_id>/
+  robustness_summary.csv
+  timing_summary.json
+  run_metadata.json
+  accuracy_vs_epsilon.png
+  attack_success_rate_vs_epsilon.png
+  accuracy_drop_vs_epsilon.png
+  runtime_throughput_summary.png
+```
+
+These figures and summaries are derived from saved runner artifacts. The
+1000-sample run is a medium-scale sanity check, not the final full CIFAR-10
+evaluation or CPU/GPU scaling benchmark.
+
 ## Numerical Gradient Checking
 
 Manual backpropagation is validated against numerical finite differences.

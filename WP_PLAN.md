@@ -1186,7 +1186,8 @@ Status:
 
 PARTIALLY COMPLETE. EWP3-A environment and dataset-staging validation is
 complete. EWP3-B scheduler-neutral experiment-runner infrastructure is
-complete. EWP3-C scaling and benchmark preparation has not started.
+complete. EWP3-C local plotting/curation support is implemented and pending a
+real 1000-sample GPU run.
 
 #### EWP3-A: Cluster Environment and CIFAR-10 Dataset Staging
 
@@ -1473,6 +1474,112 @@ Artifact policy:
   under a separate final/curated artifact convention.
 
 Large-scale FGSM evaluation belongs to later phases.
+
+#### EWP3-C: Medium-Scale GPU FGSM Sanity Experiment
+
+Status:
+
+IMPLEMENTED LOCALLY / REAL 1000-SAMPLE GPU RUN PENDING.
+
+Goal:
+
+Validate that the production EWP3-B runner remains stable on a nontrivial
+real CIFAR-10 subset and that its saved artifacts can produce curated
+quantitative evidence. This is not the full 10k evaluation, not the CPU/GPU
+scaling benchmark, and not PGD.
+
+Implemented local analysis support:
+
+* Curated plotting/analysis script:
+
+```text
+python -m experiments.fgsm.plot_fgsm_run
+```
+
+* Reads saved runner artifacts from `results/runs/<run_id>/`.
+* Validates `status = COMPLETED`, expected sample count, expected epsilon
+  order, dataset checksum metadata, finite metrics, positive timing values,
+  and artifact readability.
+* Reuses existing FGSM plotting helpers from `src.plotting` for robustness
+  figures.
+* Adds a concise runtime/throughput summary plot derived from `timing.json`.
+* Does not load CIFAR-10, run the model, import CuPy, or alter the numerical
+  path.
+
+Planned medium-scale workload:
+
+```text
+backend: cupy
+split: test
+sample_count: 1000
+batch_size: 32
+seed: 42
+epsilons: [0, 1/255, 2/255, 4/255, 8/255]
+checkpoint: results/checkpoints/portfolio_baseline_best.npz
+data_dir: data/raw
+```
+
+Raw runner outputs remain under the ignored location:
+
+```text
+results/runs/<run_id>/
+  config.json
+  environment.json
+  metrics.csv
+  metrics.json
+  timing.json
+  summary.json
+  status.json
+```
+
+Curated EWP3-C outputs are written separately:
+
+```text
+results/curated/ewp3c/<run_id>/
+  robustness_summary.csv
+  timing_summary.json
+  run_metadata.json
+  accuracy_vs_epsilon.png
+  attack_success_rate_vs_epsilon.png
+  accuracy_drop_vs_epsilon.png
+  runtime_throughput_summary.png
+```
+
+Curated metadata preserves run ID, backend, GPU, CuPy version, Python version,
+NumPy version, checkpoint path, dataset split, sample count, batch size,
+epsilon values, timing methodology, Git commit/dirty state, and seed.
+
+Required cluster commands:
+
+```bash
+python -m experiments.fgsm.run_fgsm_experiment --backend cupy --data-dir data/raw --checkpoint results/checkpoints/portfolio_baseline_best.npz --split test --max-samples 1000 --batch-size 32 --epsilons 0,1/255,2/255,4/255,8/255 --output-root results/runs
+python -m experiments.fgsm.plot_fgsm_run --run-dir results/runs/<run_id> --output-root results/curated/ewp3c --expected-sample-count 1000 --expected-epsilons 0,1/255,2/255,4/255,8/255
+```
+
+Validation criteria before EWP3-C closeout:
+
+* Runner `status.json` is `COMPLETED`.
+* All five epsilon rows are present in order.
+* No metric is `NaN` or `Inf`.
+* Each metric row reports `total_samples = 1000`.
+* CIFAR-10 checksum metadata remains valid.
+* Timing values are positive.
+* Curated CSV, JSON summaries, and four PNG figures are generated from saved
+  artifacts.
+* `results/runs/` remains ignored and no raw run directory is accidentally
+  committed.
+* No CPU fallback occurs in the CuPy run.
+
+Local validation:
+
+```text
+tests/test_fgsm_run_curation.py
+```
+
+The local tests use synthetic artifact directories and validate loading,
+epsilon ordering, curated summary generation, plotting, overwrite behavior,
+and missing/invalid artifact failures. They do not require CIFAR-10 data or a
+GPU.
 
 ---
 

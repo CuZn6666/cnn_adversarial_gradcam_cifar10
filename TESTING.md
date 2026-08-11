@@ -18,10 +18,11 @@ visible CUDA GPU is unavailable.
 Latest verified local state:
 
 ```text
-Non-CuPy local regression: 231 passed, 19 deselected
-Full local suite: 231 passed, 19 skipped
+Non-CuPy local regression: 238 passed, 19 deselected
+Full local suite: 238 passed, 19 skipped
 EWP3-A local staging validation tests: 4 passed
 EWP3-B local runner infrastructure tests: 7 passed
+EWP3-C local run-curation tests: 7 passed
 EWP2-B local slice on this machine: 2 skipped because cupy is not installed
 EWP2-C local slice on this machine: 2 skipped because cupy is not installed
 EWP2-D local slice on this machine: 3 skipped because cupy is not installed
@@ -819,6 +820,81 @@ policy.
 
 This smoke command is intentionally small. Do not treat it as the large-scale
 FGSM evaluation, a robustness conclusion, or a final CPU/GPU benchmark.
+
+## EWP3-C Medium-Scale FGSM Run Curation
+
+The curated analysis script is:
+
+```text
+experiments/fgsm/plot_fgsm_run.py
+```
+
+Status: IMPLEMENTED LOCALLY / REAL 1000-SAMPLE GPU RUN PENDING.
+
+It reads a completed raw runner directory from:
+
+```text
+results/runs/<run_id>/
+```
+
+and writes curated outputs under:
+
+```text
+results/curated/ewp3c/<run_id>/
+```
+
+Curated outputs:
+
+```text
+robustness_summary.csv
+timing_summary.json
+run_metadata.json
+accuracy_vs_epsilon.png
+attack_success_rate_vs_epsilon.png
+accuracy_drop_vs_epsilon.png
+runtime_throughput_summary.png
+```
+
+Validation checks:
+
+* `status.json` must report `COMPLETED`.
+* `config.json`, `environment.json`, `metrics.csv`, `metrics.json`,
+  `timing.json`, `summary.json`, and `status.json` must be readable.
+* Epsilon order must match the run config and any expected epsilon list.
+* Optional expected sample count must match all metric rows.
+* Dataset checksum metadata must be valid.
+* Metrics must be finite.
+* Timing values must be positive.
+
+Focused local tests:
+
+```text
+tests/test_fgsm_run_curation.py
+```
+
+These tests use synthetic run artifacts and temporary output directories. They
+cover artifact loading, epsilon ordering, curated CSV/JSON/PNG generation,
+overwrite behavior, missing required artifacts, invalid run status, non-finite
+metrics, and invalid checksum metadata. They do not require CIFAR-10 data,
+CuPy, or a GPU.
+
+Suggested local validation:
+
+```bash
+MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q tests/test_fgsm_run_curation.py
+MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -m "not requires_cupy"
+```
+
+Planned 1000-sample cluster run:
+
+```bash
+python -m experiments.fgsm.run_fgsm_experiment --backend cupy --data-dir data/raw --checkpoint results/checkpoints/portfolio_baseline_best.npz --split test --max-samples 1000 --batch-size 32 --epsilons 0,1/255,2/255,4/255,8/255 --output-root results/runs
+python -m experiments.fgsm.plot_fgsm_run --run-dir results/runs/<run_id> --output-root results/curated/ewp3c --expected-sample-count 1000 --expected-epsilons 0,1/255,2/255,4/255,8/255
+```
+
+EWP3-C should not be marked complete until the real 1000-sample CuPy run
+finishes with `status = COMPLETED`, all curated artifacts are generated, and
+no raw `results/runs/` artifacts are accidentally staged.
 
 ## NumPy Reference Tests for Future CuPy Equivalence
 
