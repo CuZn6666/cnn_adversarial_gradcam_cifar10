@@ -894,6 +894,7 @@ tests/test_fgsm_evaluation.py
 tests/test_cupy_layer_loss_equivalence.py
 tests/test_cupy_model_training_equivalence.py
 tests/test_cupy_fgsm_equivalence.py
+tests/test_cupy_robustness_equivalence.py
 ```
 
 Scope:
@@ -907,7 +908,34 @@ Scope:
 
 Status:
 
-PARTIALLY COMPLETE.
+COMPLETE.
+
+Validated coverage summary:
+
+* EWP2-A: `ReLU`, `MaxPool2D`, `Flatten`, `Linear`, and
+  `SoftmaxCrossEntropyLoss` forward/backward numerical equivalence.
+* EWP2-B: `CompactCNN` forward logits, scalar loss, loss gradient, full model
+  backward, all trainable parameter gradients, one real `SGD.step()`, and
+  `train_step(...)` numerical equivalence.
+* EWP2-C: input gradients, `epsilon=0` FGSM, nonzero-epsilon FGSM, clipping,
+  adversarial images, adversarial logits, predictions, and the complete
+  clean-input-to-adversarial-forward path.
+* EWP2-D: single-batch robustness metrics, raw counts, multi-batch
+  aggregation, epsilon-zero invariants, epsilon ordering, epsilon-sweep
+  metrics, and parameter preservation.
+
+Validated environment:
+
+```text
+GPU: NVIDIA GeForce RTX 2080 Ti
+CUDA Toolkit: 12.5
+CuPy: 14.1.1
+Python: 3.12
+```
+
+NumPy remains the authoritative correctness reference. Compatibility is
+claimed only for the tested environment above, not for untested
+GPU/CUDA/CuPy/Python configurations.
 
 EWP2-A: Remaining layer and loss numerical equivalence
 
@@ -949,10 +977,7 @@ python -m pytest -q -m "not requires_data"
 * NumPy remains the authoritative correctness reference.
 * Compatibility is claimed only for the tested environment above, not for
   untested GPU/CUDA/CuPy configurations.
-* EWP2 is not complete; CompactCNN training-path equivalence is complete in
-  EWP2-B, input-gradient and FGSM equivalence are complete in EWP2-C, and
-  robustness metrics, epsilon sweeps, checkpoint, and broader equivalence
-  remain future EWP2 work.
+* EWP2 is complete for the planned NumPy/CuPy numerical-equivalence scope.
 
 EWP2-B: CompactCNN end-to-end training-path numerical equivalence
 
@@ -1071,6 +1096,70 @@ python -m pytest -q -m "not requires_data"
   untested GPU/CUDA/CuPy configurations.
 * This slice does not cover robustness metric or epsilon-sweep equivalence,
   checkpoint equivalence, PGD, or cluster-runner infrastructure.
+
+EWP2-D: Robustness evaluation and epsilon-sweep numerical equivalence
+
+Status: COMPLETE.
+
+Validated coverage:
+
+* Deterministic in-memory synchronization of NumPy and CuPy `CompactCNN`
+  parameters using the same strategy as earlier EWP2 slices.
+* Deterministic synthetic NCHW batches, labels, batch partitioning, epsilon
+  values, and clipping behavior without CIFAR-10 data.
+* Production `evaluate_fgsm_batch(...)` single-batch metric equivalence.
+* Production `evaluate_fgsm_batches(...)` multi-batch raw-count aggregation
+  equivalence across different batch sizes.
+* Production `evaluate_fgsm_epsilon_sweep(...)` epsilon-order and metric
+  equivalence for `0/255`, `4/255`, and `8/255`.
+* Exact comparison for raw counts and epsilon ordering.
+* Clean-correct, adversarial-correct, and successful-attack counts.
+* Scalar robustness-metric comparison for clean accuracy, adversarial
+  accuracy, accuracy drop, and attack success rate.
+* `epsilon=0` invariants for clean/adversarial accuracy, zero successful
+  attacks, clean/adversarial images, and clean/adversarial predictions.
+* Parameter preservation after single-batch evaluation, multi-batch
+  aggregation, and epsilon sweep.
+
+Validation boundary:
+
+* The tests are implemented in `tests/test_cupy_robustness_equivalence.py`.
+* They use deterministic synthetic inputs and do not require CIFAR-10 data.
+* They skip cleanly on systems without CuPy/CUDA.
+* Count fields, predicted classes, and epsilon ordering are exact comparisons.
+* Scalar robustness metrics use `rtol=1e-6` and `atol=1e-7`.
+* Any tensor comparisons used for epsilon-zero invariants use `rtol=1e-5` and
+  `atol=1e-6`.
+* Local non-CuPy validation passed with `220 passed, 19 deselected` for
+  `-m "not requires_cupy"` and `220 passed, 19 skipped` for the full suite;
+  the EWP2-D module skipped cleanly with `3 skipped` because CuPy is not
+  installed locally.
+* Real GPU validation passed on the tested environment:
+
+```text
+GPU: NVIDIA GeForce RTX 2080 Ti
+CUDA Toolkit: 12.5
+CuPy: 14.1.1
+Python: 3.12
+Slurm allocation: 1 GPU
+```
+
+* GPU validation result:
+
+```text
+python -m pytest -q tests/test_cupy_robustness_equivalence.py -rs
+3 passed in 4.25s
+
+python -m pytest -q -m "not requires_data"
+236 passed, 3 deselected in 8.96s
+```
+
+* NumPy remains the authoritative correctness reference.
+* Compatibility is claimed only for the tested environment above, not for
+  untested GPU/CUDA/CuPy configurations.
+* This slice does not cover large-scale CIFAR-10 runs, checkpoint equivalence,
+  representative-example metadata equivalence, PGD, or cluster-runner
+  infrastructure.
 
 ---
 

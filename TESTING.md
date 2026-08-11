@@ -18,11 +18,12 @@ visible CUDA GPU is unavailable.
 Latest verified local state:
 
 ```text
-Non-CuPy local regression: 220 passed, 16 deselected
-Full local suite: 220 passed, 16 skipped
+Non-CuPy local regression: 220 passed, 19 deselected
+Full local suite: 220 passed, 19 skipped
 EWP2-B local slice on this machine: 2 skipped because cupy is not installed
 EWP2-C local slice on this machine: 2 skipped because cupy is not installed
-CuPy runtime/equivalence slices on this machine: 16 skipped because cupy is not installed
+EWP2-D local slice on this machine: 3 skipped because cupy is not installed
+CuPy runtime/equivalence slices on this machine: 19 skipped because cupy is not installed
 ```
 
 Latest verified real GPU EWP1-B state:
@@ -80,6 +81,21 @@ Python: 3.12
 Slurm allocation: 1 GPU
 EWP2-C input-gradient/FGSM equivalence: 2 passed in 1.14s
 Non-data cluster regression: 233 passed, 3 deselected in 8.29s
+```
+
+NumPy remains the authoritative correctness reference. Compatibility is
+recorded only for the tested GPU/CUDA/CuPy/Python configuration above.
+
+Latest verified real GPU EWP2-D and EWP2 closeout state:
+
+```text
+GPU: NVIDIA GeForce RTX 2080 Ti
+CUDA Toolkit: 12.5
+CuPy: 14.1.1
+Python: 3.12
+Slurm allocation: 1 GPU
+EWP2-D robustness/sweep equivalence: 3 passed in 4.25s
+Non-data cluster regression: 236 passed, 3 deselected in 8.96s
 ```
 
 NumPy remains the authoritative correctness reference. Compatibility is
@@ -571,6 +587,7 @@ tests/test_backend.py
 tests/test_cupy_layer_loss_equivalence.py
 tests/test_cupy_model_training_equivalence.py
 tests/test_cupy_fgsm_equivalence.py
+tests/test_cupy_robustness_equivalence.py
 ```
 
 Recommended future equivalence coverage:
@@ -581,7 +598,7 @@ Recommended future equivalence coverage:
 * CompactCNN training-step logits, loss, parameter gradients, and one SGD
   update.
 * Model loss-to-input gradients and FGSM adversarial examples.
-* FGSM robustness metrics.
+* FGSM robustness metrics and epsilon sweeps.
 * Checkpoint load into NumPy and CuPy model instances.
 
 ## EWP2-A Layer and Loss Equivalence Tests
@@ -616,9 +633,22 @@ python -m pytest -q -m "not requires_data"
 229 passed, 3 deselected in 7.86s
 ```
 
-EWP2 is not complete. CompactCNN training-path equivalence is complete in
-EWP2-B, and FGSM, input-gradient, robustness, checkpoint, and broader
-equivalence remain future EWP2 work.
+EWP2 is complete for the planned NumPy/CuPy numerical-equivalence scope.
+
+Full EWP2 validated equivalence matrix:
+
+* EWP2-A: `ReLU.forward/backward`, `MaxPool2D.forward/backward`,
+  `Flatten.forward/backward`, `Linear.forward/backward`, and
+  `SoftmaxCrossEntropyLoss.forward/backward`.
+* EWP2-B: `CompactCNN.forward`, scalar loss, loss gradient, full model
+  backward, all trainable parameter gradients, one real `SGD.step()`, and
+  `train_step(...)`.
+* EWP2-C: input gradients, `epsilon=0` FGSM, nonzero-epsilon FGSM, clipping,
+  adversarial images, adversarial logits, predictions, and the full
+  clean-input-to-adversarial-forward path.
+* EWP2-D: single-batch robustness metrics, raw counts, multi-batch
+  aggregation, epsilon-zero invariants, epsilon ordering, epsilon-sweep
+  metrics, and parameter preservation.
 
 ## EWP2-B CompactCNN Training-Path Equivalence Tests
 
@@ -749,6 +779,72 @@ The validated environment was `NVIDIA GeForce RTX 2080 Ti`, CUDA Toolkit
 `12.5`, CuPy `14.1.1`, Python `3.12`, with one GPU allocated through Slurm.
 This is not robustness metric or epsilon-sweep equivalence; those remain
 future EWP2-D work.
+
+## EWP2-D Robustness and Epsilon-Sweep Equivalence Tests
+
+The optional EWP2-D tests are:
+
+```text
+tests/test_cupy_robustness_equivalence.py
+```
+
+Status: COMPLETE.
+
+They validate NumPy/CuPy equivalence for:
+
+* Production `evaluate_fgsm_batch(...)` single-batch metrics and raw counts.
+* Production `evaluate_fgsm_batches(...)` multi-batch raw-count aggregation
+  across different batch sizes.
+* Production `evaluate_fgsm_epsilon_sweep(...)` using ordered epsilons
+  `0/255`, `4/255`, and `8/255`.
+* Exact sample counts, clean-correct counts, adversarial-correct counts,
+  clean-correct sample counts, successful-attack counts, and epsilon ordering.
+* Clean accuracy, adversarial accuracy, accuracy drop, and attack success rate.
+* `epsilon=0` invariants for clean/adversarial accuracy, zero successful
+  attacks, clean/adversarial images, and clean/adversarial predictions.
+* Parameter preservation after single-batch evaluation, multi-batch
+  aggregation, and epsilon sweep.
+
+The tests use deterministic synthetic inputs, labels, and batch partitioning.
+They do not require CIFAR-10 data, large-scale runs, checkpoint files, PGD, or
+cluster-runner infrastructure. Representative-example metadata is not coupled
+to the evaluated metric/sweep API and is not covered by this slice.
+
+Count fields, predicted classes, and epsilon ordering are compared exactly.
+Scalar robustness metrics use `rtol=1e-6` and `atol=1e-7`. Tensor comparisons
+used for epsilon-zero invariants use `rtol=1e-5` and `atol=1e-6`.
+
+Local non-CuPy validation command:
+
+```bash
+MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q tests/test_cupy_robustness_equivalence.py -rs
+```
+
+Expected local result on machines without CuPy/CUDA:
+
+```text
+3 skipped
+```
+
+GPU validation command:
+
+```bash
+python -m pytest -q tests/test_cupy_robustness_equivalence.py -rs
+```
+
+Validated on the GPU cluster with:
+
+```text
+python -m pytest -q tests/test_cupy_robustness_equivalence.py -rs
+3 passed in 4.25s
+
+python -m pytest -q -m "not requires_data"
+236 passed, 3 deselected in 8.96s
+```
+
+The validated environment was `NVIDIA GeForce RTX 2080 Ti`, CUDA Toolkit
+`12.5`, CuPy `14.1.1`, Python `3.12`, with one GPU allocated through Slurm.
+This completes the planned EWP2 NumPy/CuPy numerical-equivalence scope.
 
 ## Cluster / GPU Validation Boundary
 
