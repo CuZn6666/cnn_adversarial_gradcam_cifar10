@@ -1187,8 +1187,8 @@ Status:
 PARTIALLY COMPLETE. EWP3-A environment and dataset-staging validation is
 complete. EWP3-B scheduler-neutral experiment-runner infrastructure is
 complete. EWP3-C medium-scale GPU FGSM sanity validation is complete. EWP3-D
-matched batch-size benchmark extension is implemented locally and pending the
-real cluster validation run. Later full-evaluation work has not started.
+CPU/GPU scaling and performance benchmarking is complete. Later
+full-evaluation work has not started.
 
 #### EWP3-A: Cluster Environment and CIFAR-10 Dataset Staging
 
@@ -1638,8 +1638,7 @@ GPU.
 
 Status:
 
-MATCHED BATCH-SIZE EXTENSION IMPLEMENTED LOCALLY / REAL CLUSTER VALIDATION
-PENDING.
+COMPLETE.
 
 Goal:
 
@@ -1827,7 +1826,7 @@ matched batch-size workload generation, batch-size crossover detection,
 partial failure preservation, and plotting from synthetic benchmark summaries.
 They do not require CIFAR-10 data, CuPy, or a GPU.
 
-Planned cluster benchmark command:
+Validated cluster benchmark command:
 
 ```bash
 python -m experiments.fgsm.run_fgsm_benchmark --data-dir data/raw --checkpoint results/checkpoints/portfolio_baseline_best.npz --split test --sample-counts 100,250,500,1000,2000 --sample-scaling-backends numpy,cupy --sample-scaling-batch-size 32 --batch-sizes 8,16,32,64,128 --batch-scaling-backend cupy --batch-scaling-sample-count 1000 --epsilons 0,4/255 --repeats 3 --warmup-runs 1 --raw-run-output-root results/runs --benchmark-output-root results/benchmarks
@@ -1839,10 +1838,77 @@ Planned matched batch-size validation command:
 python -m experiments.fgsm.run_fgsm_benchmark --data-dir data/raw --checkpoint results/checkpoints/portfolio_baseline_best.npz --split test --skip-sample-scaling --batch-sizes 8,16,32,64,128 --batch-scaling-backends numpy,cupy --batch-scaling-sample-count 1000 --epsilons 0,4/255 --repeats 3 --warmup-runs 1 --raw-run-output-root results/runs --benchmark-output-root results/benchmarks
 ```
 
-EWP3-D must not be marked complete until the matched batch-size validation
-finishes on the real cluster, aggregate artifacts and plots are validated,
-crossover analysis is recorded, failed configurations if any are documented,
-and no raw `results/runs/` directories are accidentally staged.
+Validated matched batch-size benchmark:
+
+```text
+benchmark_id: 20260811T185420645969Z_fgsm_benchmark
+status: COMPLETED
+GPU: NVIDIA GeForce RTX 2080 Ti
+CuPy: 14.1.1
+NumPy: 2.4.6
+Python: 3.12.13
+sample_count: 1000
+epsilons: [0, 4/255]
+batch_sizes: [8, 16, 32, 64, 128]
+repeats: 3
+warmup_runs: 1
+completed_repeats: 3 for every measured configuration
+failed_repeats: 0 for every measured configuration
+```
+
+Median evaluation-wall speedup:
+
+| Batch Size | CPU/GPU Speedup |
+| ---------- | --------------- |
+| 8 | 0.25152078941245753 |
+| 16 | 0.4203870515032853 |
+| 32 | 0.7614486302511735 |
+| 64 | 1.467427603695772 |
+| 128 | 2.8822301436224573 |
+
+Throughput summary, in sample-epsilon pairs per second:
+
+| Batch Size | NumPy Mean Throughput | CuPy Mean Throughput |
+| ---------- | --------------------- | -------------------- |
+| 8 | ~491.67 | ~123.69 |
+| 16 | ~577.79 | ~242.77 |
+| 32 | ~622.71 | ~474.55 |
+| 64 | ~643.74 | ~945.14 |
+| 128 | ~644.50 | ~1855.80 |
+
+Engineering interpretation:
+
+* At `batch_size = 32`, CuPy remained slower than NumPy.
+* The first tested GPU-faster batch size was `64`, with median evaluation
+  speedup `1.467427603695772`.
+* The maximum tested speedup was `2.8822301436224573` at batch size `128`.
+* Batch size `128` is the best tested batch size in this benchmark, not a
+  global optimum claim.
+* CuPy throughput scaled strongly through batch size `128`; NumPy throughput
+  approached a plateau around the tested higher batch sizes.
+* The earlier sample-count benchmark showed no CPU/GPU crossover at matched
+  `batch_size = 32` for sample counts `100`, `250`, `500`, `1000`, and
+  `2000`. This supports the conclusion that batch size / GPU utilization, not
+  sample count alone, drove the crossover in the current implementation.
+* Speedup values are evaluation-wall-time speedups, not kernel-only speedups.
+* No custom CUDA kernel or GPU-specific Conv2D optimization has been applied.
+
+Curated EWP3-D evidence:
+
+```text
+results/curated/ewp3d/20260811T185420645969Z_fgsm_benchmark/
+  benchmark_summary.csv
+  speedup_summary.csv
+  crossover_analysis.json
+  benchmark_metadata.json
+  runtime_vs_batch_size.png
+  throughput_vs_batch_size.png
+  speedup_vs_batch_size.png
+```
+
+Raw `results/runs/` and raw `results/benchmarks/` outputs are runtime-specific
+and ignored by Git. Curated EWP3-D evidence may be intentionally tracked after
+validation.
 
 ---
 

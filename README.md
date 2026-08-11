@@ -518,6 +518,49 @@ python -m experiments.fgsm.run_fgsm_benchmark --data-dir data/raw --checkpoint r
 evaluation speedup exceeds `1.0`, plus the maximum tested speedup and its
 batch size.
 
+Validated RTX 2080 Ti benchmark evidence:
+
+```text
+benchmark_id: 20260811T185420645969Z_fgsm_benchmark
+backend pair: numpy / cupy
+sample_count: 1000
+epsilons: 0, 4/255
+repeats: 3
+warmup_runs: 1
+```
+
+On the validated RTX 2080 Ti benchmark, CuPy was slower than NumPy at small
+batches, crossed the CPU/GPU break-even at the first tested batch size of
+`64`, and reached a median `2.88x` evaluation-wall-time speedup at batch size
+`128`. Batch size `128` is the best tested batch size in this benchmark, not a
+global optimum claim.
+
+| Batch Size | Median CPU/GPU Evaluation Speedup | NumPy Mean Throughput | CuPy Mean Throughput |
+| ---------- | --------------------------------- | --------------------- | -------------------- |
+| 8 | 0.252x | ~491.67 pairs/s | ~123.69 pairs/s |
+| 16 | 0.420x | ~577.79 pairs/s | ~242.77 pairs/s |
+| 32 | 0.761x | ~622.71 pairs/s | ~474.55 pairs/s |
+| 64 | 1.467x | ~643.74 pairs/s | ~945.14 pairs/s |
+| 128 | 2.882x | ~644.50 pairs/s | ~1855.80 pairs/s |
+
+The earlier sample-count benchmark at matched batch size `32` did not show a
+CPU/GPU crossover for sample counts `100`, `250`, `500`, `1000`, or `2000`.
+Together, these measurements indicate that batch size and GPU utilization are
+the key crossover factors for the current implementation. No custom CUDA
+kernel or GPU-specific Conv2D optimization has been applied.
+
+Curated EWP3-D evidence is tracked under:
+
+```text
+results/curated/ewp3d/20260811T185420645969Z_fgsm_benchmark/
+```
+
+Key plots:
+
+* [Runtime vs batch size](results/curated/ewp3d/20260811T185420645969Z_fgsm_benchmark/runtime_vs_batch_size.png)
+* [Throughput vs batch size](results/curated/ewp3d/20260811T185420645969Z_fgsm_benchmark/throughput_vs_batch_size.png)
+* [Speedup vs batch size](results/curated/ewp3d/20260811T185420645969Z_fgsm_benchmark/speedup_vs_batch_size.png)
+
 ## Numerical Gradient Checking
 
 Manual backpropagation is validated against numerical finite differences.

@@ -1,0 +1,114 @@
+{
+  "artifact_type": "curated_ewp3d_matched_batch_benchmark",
+  "backends": [
+    "numpy",
+    "cupy"
+  ],
+  "batch_sizes": [
+    8,
+    16,
+    32,
+    64,
+    128
+  ],
+  "benchmark_git_commit": "b14c11519cea363ffa8ca6f511b3f0ecd4a850b7",
+  "benchmark_id": "20260811T185420645969Z_fgsm_benchmark",
+  "checkpoint_path": "results/checkpoints/portfolio_baseline_best.npz",
+  "crossover_analysis": {
+    "break_even_speedup": 1.0,
+    "first_gpu_faster_batch_size": 64,
+    "first_gpu_faster_speedup": 1.467427603695772,
+    "max_speedup": 2.8822301436224573,
+    "max_speedup_batch_size": 128,
+    "schema_version": 1,
+    "speedup_metric": "evaluation_speedup_median",
+    "suite": "batch_size_scaling",
+    "tested_batch_sizes": [
+      8,
+      16,
+      32,
+      64,
+      128
+    ]
+  },
+  "curated_directory": "results/curated/ewp3d/20260811T185420645969Z_fgsm_benchmark",
+  "curated_files": [
+    "benchmark_summary.csv",
+    "crossover_analysis.json",
+    "runtime_vs_batch_size.png",
+    "speedup_summary.csv",
+    "speedup_vs_batch_size.png",
+    "throughput_vs_batch_size.png",
+    "benchmark_metadata.json"
+  ],
+  "data_dir": "data/raw",
+  "dataset_split": "test",
+  "epsilon_labels": [
+    "0",
+    "4/255"
+  ],
+  "epsilon_values": [
+    0.0,
+    0.01568627450980392
+  ],
+  "interpretation": {
+    "best_tested_batch_size": "Batch size 128 has the maximum tested median evaluation speedup in this benchmark; this is not a global optimum claim.",
+    "crossover_result": "The first tested GPU-faster batch size is 64.",
+    "optimization_status": "No custom CUDA kernel or Conv2D optimization for GPU execution has been applied yet.",
+    "scope": "Matched batch-size CPU/GPU benchmark for this implementation and validated RTX 2080 Ti environment only.",
+    "small_batch_result": "CuPy is slower than NumPy for tested batch sizes 8, 16, and 32."
+  },
+  "mean_throughput_sample_epsilon_pairs_per_second": {
+    "cupy": {
+      "128": 1855.7952127321576,
+      "16": 242.76810413372803,
+      "32": 474.54507709639716,
+      "64": 945.1391022983793,
+      "8": 123.68593537927599
+    },
+    "numpy": {
+      "128": 644.5024390358138,
+      "16": 577.7920986339301,
+      "32": 622.7082938764343,
+      "64": 643.7418780251203,
+      "8": 491.67012637749735
+    }
+  },
+  "median_evaluation_speedup_by_batch_size": {
+    "128": 2.8822301436224573,
+    "16": 0.4203870515032853,
+    "32": 0.7614486302511735,
+    "64": 1.467427603695772,
+    "8": 0.25152078941245753
+  },
+  "repeat_stability": {
+    "completed_repeats_per_configuration": 3,
+    "failed_repeats_per_configuration": 0,
+    "interpretation": "Three repeats provide an engineering stability signal, not high-confidence statistical certainty."
+  },
+  "repeats": 3,
+  "sample_count": 1000,
+  "schema_version": 1,
+  "seed": 42,
+  "source_raw_directory": "results/benchmarks/20260811T185420645969Z_fgsm_benchmark",
+  "speedup_definition": "CPU evaluation_wall_seconds / GPU evaluation_wall_seconds for matched workloads",
+  "status": "COMPLETED",
+  "timing_methodology": {
+    "gpu_synchronization": "CuPy Stream.null synchronized before and after evaluation in the production runner",
+    "kernel_only_timing": false,
+    "timed_region": "FGSM evaluation wall time from production runner timing.json",
+    "timing_method": "time.perf_counter"
+  },
+  "validated_environment": {
+    "backend_pair": [
+      "numpy",
+      "cupy"
+    ],
+    "cluster": "Hawaii university GPU cluster",
+    "cupy_version": "14.1.1",
+    "gpu": "NVIDIA GeForce RTX 2080 Ti",
+    "numpy_version": "2.4.6",
+    "python_version": "3.12.13"
+  },
+  "warmup_runs": 1
+}

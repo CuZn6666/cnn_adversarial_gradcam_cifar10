@@ -949,8 +949,7 @@ The benchmark driver is:
 experiments/fgsm/run_fgsm_benchmark.py
 ```
 
-Status: MATCHED BATCH-SIZE EXTENSION IMPLEMENTED LOCALLY / REAL CLUSTER
-VALIDATION PENDING.
+Status: COMPLETE.
 
 It launches the existing production FGSM runner for each benchmark point and
 does not duplicate the numerical evaluation path.
@@ -1059,15 +1058,54 @@ Planned real cluster benchmark command:
 python -m experiments.fgsm.run_fgsm_benchmark --data-dir data/raw --checkpoint results/checkpoints/portfolio_baseline_best.npz --split test --sample-counts 100,250,500,1000,2000 --sample-scaling-backends numpy,cupy --sample-scaling-batch-size 32 --batch-sizes 8,16,32,64,128 --batch-scaling-backend cupy --batch-scaling-sample-count 1000 --epsilons 0,4/255 --repeats 3 --warmup-runs 1 --raw-run-output-root results/runs --benchmark-output-root results/benchmarks
 ```
 
-Matched batch-size validation command:
+Validated matched batch-size command:
 
 ```bash
 python -m experiments.fgsm.run_fgsm_benchmark --data-dir data/raw --checkpoint results/checkpoints/portfolio_baseline_best.npz --split test --skip-sample-scaling --batch-sizes 8,16,32,64,128 --batch-scaling-backends numpy,cupy --batch-scaling-sample-count 1000 --epsilons 0,4/255 --repeats 3 --warmup-runs 1 --raw-run-output-root results/runs --benchmark-output-root results/benchmarks
 ```
 
-EWP3-D should not be marked complete until the matched batch-size validation is
-run on the real cluster, aggregate artifacts and plots are validated,
-crossover analysis is recorded, and failures if any are documented.
+Validated real cluster result:
+
+```text
+benchmark_id: 20260811T185420645969Z_fgsm_benchmark
+status: COMPLETED
+GPU: NVIDIA GeForce RTX 2080 Ti
+CuPy: 14.1.1
+NumPy: 2.4.6
+Python: 3.12.13
+sample_count: 1000
+epsilons: [0, 4/255]
+batch_sizes: [8, 16, 32, 64, 128]
+repeats: 3
+warmup_runs: 1
+completed_repeats: 3 for every measured configuration
+failed_repeats: 0 for every measured configuration
+```
+
+Validated median evaluation speedups:
+
+```text
+batch 8: 0.25152078941245753
+batch 16: 0.4203870515032853
+batch 32: 0.7614486302511735
+batch 64: 1.467427603695772
+batch 128: 2.8822301436224573
+```
+
+`crossover_analysis.json` reports first tested GPU-faster batch size `64` and
+maximum tested speedup `2.8822301436224573` at batch size `128`. The values
+are evaluation-wall-time speedups, not kernel-only speedups.
+
+Curated evidence:
+
+```text
+results/curated/ewp3d/20260811T185420645969Z_fgsm_benchmark/
+```
+
+The curated directory contains `benchmark_summary.csv`, `speedup_summary.csv`,
+`crossover_analysis.json`, `benchmark_metadata.json`, and three matched
+batch-size PNG plots. Raw `results/benchmarks/` and `results/runs/` outputs
+remain ignored.
 
 ## NumPy Reference Tests for Future CuPy Equivalence
 
