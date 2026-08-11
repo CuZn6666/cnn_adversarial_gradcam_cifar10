@@ -905,11 +905,11 @@ Scope:
 
 Status:
 
-IMPLEMENTED LOCALLY / GPU VALIDATION PENDING.
+PARTIALLY COMPLETE.
 
 EWP2-A: Remaining layer and loss numerical equivalence
 
-Status: IMPLEMENTED LOCALLY / GPU VALIDATION PENDING.
+Status: COMPLETE.
 
 Implemented coverage:
 
@@ -924,8 +924,29 @@ Validation boundary:
 
 * The tests are implemented in `tests/test_cupy_layer_loss_equivalence.py`.
 * They skip cleanly on systems without CuPy/CUDA.
-* Local implementation is complete, but real GPU validation has not been run
-  yet.
+* Real GPU validation passed on the tested environment:
+
+```text
+GPU: NVIDIA GeForce RTX 2080 Ti
+CUDA Toolkit: 12.5
+CuPy: 14.1.1
+Python: 3.12
+Slurm allocation: 1 GPU
+```
+
+* GPU validation result:
+
+```text
+python -m pytest -q tests/test_cupy_layer_loss_equivalence.py -rs
+6 passed in 0.67s
+
+python -m pytest -q -m "not requires_data"
+229 passed, 3 deselected in 7.86s
+```
+
+* NumPy remains the authoritative correctness reference.
+* Compatibility is claimed only for the tested environment above, not for
+  untested GPU/CUDA/CuPy configurations.
 * EWP2 is not complete; FGSM, input-gradient, robustness, checkpoint, and
   broader model-level equivalence remain future EWP2 work.
 

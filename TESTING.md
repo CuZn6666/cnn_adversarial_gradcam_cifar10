@@ -39,6 +39,21 @@ Non-data cluster regression: 223 passed, 3 deselected in 8.20s
 Compatibility is recorded only for the tested GPU/CUDA/CuPy/Python
 configuration above.
 
+Latest verified real GPU EWP2-A state:
+
+```text
+GPU: NVIDIA GeForce RTX 2080 Ti
+CUDA Toolkit: 12.5
+CuPy: 14.1.1
+Python: 3.12
+Slurm allocation: 1 GPU
+EWP2-A layer/loss equivalence: 6 passed in 0.67s
+Non-data cluster regression: 229 passed, 3 deselected in 7.86s
+```
+
+NumPy remains the authoritative correctness reference. Compatibility is
+recorded only for the tested GPU/CUDA/CuPy/Python configuration above.
+
 Standard offline CI command:
 
 ```bash
@@ -543,7 +558,7 @@ The optional EWP2-A tests are:
 tests/test_cupy_layer_loss_equivalence.py
 ```
 
-Status: IMPLEMENTED LOCALLY / GPU VALIDATION PENDING.
+Status: COMPLETE.
 
 They validate NumPy/CuPy equivalence for:
 
@@ -557,10 +572,14 @@ They validate NumPy/CuPy equivalence for:
 The tests use `rtol=1e-5` and `atol=1e-6` for float32 tensor comparisons, and
 `rtol=1e-6` and `atol=1e-7` for the scalar softmax cross-entropy loss.
 
-Run on the GPU cluster with:
+Validated on the GPU cluster with:
 
-```bash
+```text
 python -m pytest -q tests/test_cupy_layer_loss_equivalence.py -rs
+6 passed in 0.67s
+
+python -m pytest -q -m "not requires_data"
+229 passed, 3 deselected in 7.86s
 ```
 
 EWP2 is not complete. FGSM, input-gradient, robustness, checkpoint, and broader
