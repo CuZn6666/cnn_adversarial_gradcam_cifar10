@@ -57,21 +57,20 @@ The project is organized by Work Packages. Codex must follow `WP_PLAN.md` before
 
 ## Current Development Priority
 
-WP7 and WP8 are closed for their documented controlled scopes. No later Work
-Package has started.
+EWP1 and EWP2 are complete. NumPy remains the default backend and
+authoritative correctness reference. The next engineering phase is cluster
+preparation:
 
-WP8 remains a pipeline-validation result. ZITI is not needed for the completed
-32-sample smoke validation. Before any larger formal evaluation,
-repeated-seed experiment, or expanded evaluation subset, ask the user whether
-to use the university-provided ZITI cluster. Defer that evaluation until a
-stronger baseline checkpoint is available and the user gives explicit
-approval.
+1. Correct CIFAR-10 dataset staging on the cluster.
+2. Add scheduler-neutral cluster experiment infrastructure.
+3. Run a small GPU FGSM smoke experiment.
+4. Scale to medium-size evaluation.
+5. Run full CIFAR-10 test-set FGSM evaluation.
+6. Produce CPU/GPU runtime, scaling, robustness, and artifact analysis.
 
-WP7 remains limited to the completed FGSM implementation, input-gradient
-visualization, and a small number of qualitative
-clean/adversarial/perturbation examples. WP8 owns epsilon sweeps, attack
-success-rate aggregation, accuracy-versus-epsilon experiments, and the
-completed controlled robustness pipeline validation.
+PGD remains deferred. Do not start cluster runners, large-scale FGSM,
+full-dataset evaluation, PGD, or scheduler-specific workflows without an
+explicit user request for that phase.
 
 ## General Working Rules
 
@@ -171,6 +170,55 @@ docs: add project workflow files
 * Never store cluster passwords in scripts, README files, AGENTS.md, WP_PLAN.md, TESTING.md, or prompts.
 * Use placeholders such as `<username>`, `<host>`, or `<path>` in documentation.
 * SSH passwords must be entered manually by the user when needed.
+
+## Experimental Evidence and Visualization
+
+Future quantitative work should preserve enough structured evidence to support
+later review, debugging, and reproducibility. Prefer machine-readable outputs
+such as `CSV`, `JSON`, and `NPZ` where appropriate. Plots must not be the only
+representation of experimental results; keep the underlying numerical data
+whenever practical.
+
+For substantial experimental results, explicitly decide whether plots or tables
+help interpretation. Generate meaningful figures when they explain runtime,
+throughput, speedup, scaling, robustness, attack behavior, accuracy
+degradation, resource use, or model behavior. Do not create decorative or
+redundant figures merely to increase plot count.
+
+Important figures should be reproducible from saved experiment outputs where
+practical. Prefer the workflow:
+
+```text
+experiment -> structured raw results -> analysis/plotting script -> figure/table
+```
+
+Keep numerical computation, experiment execution, metrics collection, result
+serialization, and plotting reasonably separated. Plotting must not contaminate
+the CuPy GPU numerical path or introduce unnecessary host/device transfers
+inside core computation.
+
+Important figures should use descriptive titles, labeled axes, units, legends
+when needed, epsilon/sample-size/batch-size context, clear file names,
+consistent terminology, and sufficient resolution for README/report use. Avoid
+misleading axes or visual encodings.
+
+Important results should record relevant metadata such as backend, CPU/GPU,
+CUDA version, CuPy version, Python version, checkpoint, dataset split, sample
+count, batch size, epsilon, seed, and timing methodology.
+
+CPU/GPU performance claims must use defensible timing methodology: synchronize
+GPU work around timed regions when required, include warm-up runs, repeat
+measurements where practical, report median/mean and variability when useful,
+use identical CPU/GPU workloads, record batch size and sample count,
+distinguish end-to-end runtime from model-only or kernel-only runtime, and
+avoid timing asynchronous GPU execution incorrectly. Derive speedup from
+recorded raw timings rather than manually entered values.
+
+Final deliverables should make important engineering claims quantitatively
+verifiable. Do not invent results before experiments are run; support claims
+such as NumPy/CuPy equivalence, CPU/GPU speedup, throughput, robustness across
+FGSM epsilon values, and scaling across dataset or batch sizes with saved
+evidence.
 
 ## Cluster / GPU Rules
 

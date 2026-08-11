@@ -1177,6 +1177,8 @@ Scope:
 * Save outputs under structured result/log directories.
 * Record seeds, backend, device, batch size, sample count, checkpoint, runtime,
   and memory-related metadata.
+* Preserve machine-readable experiment outputs so plots and tables can be
+  regenerated.
 * Add Slurm or scheduler-specific scripts only after the scheduler is
   confirmed.
 
@@ -1197,6 +1199,9 @@ Scope:
 * Reuse the existing FGSM implementation and robustness metrics.
 * Increase evaluation sample count only through explicit configuration.
 * Preserve batched evaluation.
+* Save raw per-epsilon metrics and run metadata before creating summary plots.
+* Treat successful execution alone as insufficient; large-scale runs should
+  produce quantitative artifacts that support robustness interpretation.
 * Keep PGD and black-box attacks out of scope.
 
 Status:
@@ -1220,10 +1225,106 @@ Scope:
   success rate.
 * Track runtime by sample count, batch size, epsilon count, and backend.
 * Document memory limitations and CPU/GPU transfer points.
+* Produce human-readable plots or tables from saved quantitative results when
+  they materially improve analysis or communication.
 
 Status:
 
 PLANNED.
+
+## Cluster and Large-Scale Experiment Evidence Requirements
+
+Successful execution is not enough for the upcoming cluster and large-scale
+experimental phases. Future quantitative work should produce both:
+
+1. Machine-readable quantitative results.
+2. Human-readable plots or tables derived from those results when they improve
+   interpretation.
+
+Do not generate decorative or redundant plots merely to increase artifact
+count. The goal is to make performance, scaling, robustness, resource use, and
+model-behavior claims quantitatively verifiable.
+
+Current roadmap:
+
+```text
+EWP1 -> COMPLETE
+EWP2 -> COMPLETE
+Next -> cluster preparation
+     -> correct CIFAR-10 staging
+     -> cluster experiment runner
+     -> small GPU FGSM smoke experiment
+     -> medium-scale evaluation
+     -> full CIFAR-10 test-set FGSM evaluation
+     -> runtime / robustness analysis
+     -> visualization / final experiment artifacts
+```
+
+PGD remains deferred.
+
+### Planned Visualization and Artifact Matrix
+
+The following artifacts are planned or candidate deliverables for future
+cluster and large-scale evaluation work. They should be generated only when
+supported by saved numerical results.
+
+| Area | Planned artifacts | Source data |
+| --- | --- | --- |
+| Performance / systems | CPU vs GPU runtime, CPU vs GPU speedup, throughput in samples/sec, runtime vs sample count, runtime vs batch size, throughput vs batch size, optional GPU memory/resource utilization if reliable measurement is available | `timing.csv`, `summary.json`, `environment.json` |
+| Robustness | FGSM epsilon vs adversarial accuracy, FGSM epsilon vs attack success rate, clean vs adversarial accuracy, robustness degradation relative to epsilon `0`, per-epsilon quantitative summary table | `metrics.csv`, `summary.json`, epsilon sweep outputs |
+| Model behavior | Clean confusion matrix, adversarial confusion matrix, representative clean/adversarial image pairs, perturbation visualization, Grad-CAM clean vs adversarial comparisons where existing project functionality supports them | saved predictions, selected example metadata, existing visualization outputs |
+
+Do not add new model functionality solely to produce a figure.
+
+### Preferred Experiment Artifact Organization
+
+Future cluster runs should follow a structure close to the existing
+`results/` convention without creating unnecessary directories in advance:
+
+```text
+results/
+  <experiment-id>/
+    config.json
+    environment.json
+    metrics.csv
+    summary.json
+    timing.csv
+    figures/
+      accuracy_vs_epsilon.png
+      attack_success_rate_vs_epsilon.png
+      runtime_comparison.png
+      throughput_scaling.png
+    tables/
+      epsilon_summary.csv
+      runtime_summary.csv
+```
+
+Use `deliverables/` for concise human-facing summaries when a work package or
+extension phase is closed. Large checkpoints and binary arrays should remain
+external or ignored unless an explicit artifact policy says otherwise.
+
+### Benchmarking Quality Requirements
+
+Future CPU/GPU performance claims must use defensible measurement methodology:
+
+* Synchronize GPU work around timed regions when required.
+* Run warm-up iterations before benchmark measurement.
+* Repeat measurements where practical.
+* Report median/mean and variability when useful.
+* Use identical workloads for CPU/GPU comparisons.
+* Record backend, device, CUDA version, CuPy version, Python version, batch
+  size, sample count, epsilon values, seed, checkpoint, and timing method.
+* Distinguish end-to-end runtime from model-only or kernel-only runtime.
+* Avoid timing asynchronous GPU execution incorrectly.
+* Derive speedup from recorded raw timings rather than manually entered
+  numbers.
+
+Every important plot or table should be reproducible from saved experiment
+outputs where practical:
+
+```text
+experiment -> structured raw results -> analysis/plotting script -> figure/table
+```
 
 ## Artifact Policy Note
 
