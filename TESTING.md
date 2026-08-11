@@ -3,22 +3,41 @@
 ## Purpose
 
 This file defines the validation procedure for the current NumPy reference
-implementation, the original Work Packages, and the first backend-abstraction
-slice. It also records which existing tests should later serve as the NumPy
-reference for CuPy numerical-equivalence testing.
+implementation, the original Work Packages, EWP1 backend abstraction, and
+optional CuPy runtime-compatibility checks. It also records which existing
+tests should later serve as the NumPy reference for broader CuPy
+numerical-equivalence testing.
 
-No CuPy numerical-equivalence tests exist yet. `tests/test_backend.py` is
-NumPy-only smoke coverage for the backend abstraction.
+`tests/test_backend.py` is NumPy-only smoke coverage for the backend
+abstraction. `tests/test_cupy_backend_runtime.py` contains optional CuPy
+runtime tests and must skip cleanly when CuPy, CUDA runtime access, or a
+visible CUDA GPU is unavailable.
 
 ## Current Test State
 
 Latest verified local state:
 
 ```text
-Offline CI-compatible suite: 216 passed, 3 deselected
-Data-marked suite: 3 passed, 216 deselected
-Full local suite: 219 passed
+Offline CI-compatible suite: 217 passed, 6 skipped, 3 deselected
+Data-marked suite: 3 passed, 222 deselected
+Full local suite: 220 passed, 6 skipped
+CuPy runtime slice on this machine: 6 skipped because cupy is not installed
 ```
+
+Latest verified real GPU EWP1-B state:
+
+```text
+GPU: NVIDIA GeForce RTX 2080 Ti
+CUDA Toolkit: 12.5
+CuPy: 14.1.1
+Python: 3.12
+Slurm allocation: 1 GPU
+CuPy runtime slice: 6 passed
+Non-data cluster regression: 223 passed, 3 deselected in 8.20s
+```
+
+Compatibility is recorded only for the tested GPU/CUDA/CuPy/Python
+configuration above.
 
 Standard offline CI command:
 
@@ -36,6 +55,12 @@ Data-only command:
 
 ```bash
 MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -m requires_data
+```
+
+CuPy runtime-compatibility command:
+
+```bash
+MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q tests/test_cupy_backend_runtime.py -rs
 ```
 
 The GitHub Actions workflow in `.github/workflows/ci.yml` runs the offline
@@ -427,10 +452,62 @@ Expected results:
 * Documentation links match tracked or explicitly documented local artifacts.
 * Large ignored artifacts are clearly documented as regenerable or external.
 
+## CuPy Runtime Compatibility Tests
+
+The optional EWP1-B runtime tests are:
+
+```text
+tests/cupy_test_utils.py
+tests/conftest.py
+tests/test_cupy_backend_runtime.py
+```
+
+They validate:
+
+* CuPy import, CUDA runtime query, visible GPU count, GPU name, and simple
+  allocation/computation.
+* Backend primitive compatibility for the tensor operations used by the
+  migrated path.
+* `sliding_window_view`, `einsum(..., optimize=True)`, `cupy.add.at`, and
+  `divide_where(...)`.
+* First Conv2D forward/backward NumPy/CuPy equivalence slice with `rtol=1e-5`
+  and `atol=1e-6`, matching the expected float32 scale of the tested
+  operations.
+
+These tests are not cluster integration and do not run large CIFAR-10
+experiments.
+
+Verified EWP1-B GPU results:
+
+```text
+python -m pytest -q tests/test_cupy_backend_runtime.py -rs
+6 passed
+```
+
+The tested environment was `NVIDIA GeForce RTX 2080 Ti`, CUDA Toolkit `12.5`,
+CuPy `14.1.1`, Python `3.12`, with one GPU allocated through Slurm.
+
+## Cluster CIFAR-10 Dataset Staging
+
+The current cluster CIFAR-10 archive is not a valid data-test signal:
+
+```text
+path: data/raw/cifar-10-python.tar.gz
+size: 37M
+observed MD5: 352dcf059b8b606c932d1db9b8c351a9
+expected MD5: c58f30108f718f92721af3b95e74349a
+```
+
+The `requires_data` tests fail on the cluster before any CuPy numerical path is
+exercised. Do not change the expected checksum, disable archive validation,
+weaken data tests, or modify the CIFAR-10 loader to hide this issue. Restage
+the dataset before treating data-dependent cluster tests or experiments as
+valid.
+
 ## NumPy Reference Tests for Future CuPy Equivalence
 
-The following existing tests should serve as the NumPy reference before any
-CuPy tests are introduced:
+The following existing tests should serve as the NumPy reference before broader
+EWP2 CuPy equivalence tests are introduced:
 
 ```text
 tests/test_forward.py

@@ -158,6 +158,31 @@ def isfinite_all(array: Any) -> bool:
     return to_python_bool(xp.isfinite(array).all())
 
 
+def divide_where(
+    numerator: Any,
+    denominator: Any,
+    *,
+    out: Any | None = None,
+    where: Any,
+) -> Any:
+    """Divide with NumPy-compatible where semantics across backends."""
+    arrays = [numerator, denominator, where]
+    if out is not None:
+        arrays.append(out)
+    xp = ensure_same_backend(*arrays)
+    if out is None:
+        out = xp.zeros_like(numerator)
+
+    if xp is np:
+        xp.divide(numerator, denominator, out=out, where=where)
+        return out
+
+    safe_denominator = xp.where(where, denominator, xp.ones_like(denominator))
+    quotient = numerator / safe_denominator
+    out[...] = xp.where(where, quotient, out)
+    return out
+
+
 def sliding_window_view(
     array: Any,
     window_shape: int | tuple[int, ...],

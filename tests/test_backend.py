@@ -2,6 +2,7 @@ import numpy as np
 
 from src.backend import (
     backend_name,
+    divide_where,
     get_array_module,
     resolve_backend,
     to_backend,
@@ -23,6 +24,26 @@ def test_to_backend_numpy_round_trip_preserves_values() -> None:
 
     assert get_array_module(backend_values) is np
     np.testing.assert_array_equal(to_numpy(backend_values), values)
+
+
+def test_divide_where_numpy_preserves_dtype_and_masked_output() -> None:
+    numerator = np.array([1.0, 2.0, 0.0], dtype=np.float32)
+    denominator = np.array([2.0, 4.0, 0.0], dtype=np.float32)
+    output = np.zeros_like(numerator)
+
+    result = divide_where(
+        numerator,
+        denominator,
+        out=output,
+        where=denominator > 0,
+    )
+
+    assert result is output
+    assert result.dtype == np.float32
+    np.testing.assert_array_equal(
+        result,
+        np.array([0.5, 0.5, 0.0], dtype=np.float32),
+    )
 
 
 def test_compact_cnn_numpy_backend_matches_default_initialization() -> None:
