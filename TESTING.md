@@ -18,10 +18,10 @@ visible CUDA GPU is unavailable.
 Latest verified local state:
 
 ```text
-Offline CI-compatible suite: 217 passed, 6 skipped, 3 deselected
-Data-marked suite: 3 passed, 222 deselected
-Full local suite: 220 passed, 6 skipped
-CuPy runtime slice on this machine: 6 skipped because cupy is not installed
+Offline CI-compatible suite: 217 passed, 12 skipped, 3 deselected
+Data-marked suite: 3 passed, 229 deselected
+Full local suite: 220 passed, 12 skipped
+CuPy runtime slices on this machine: 12 skipped because cupy is not installed
 ```
 
 Latest verified real GPU EWP1-B state:
@@ -522,6 +522,7 @@ tests/test_fgsm_evaluation.py
 tests/test_fgsm_quantitative_runner.py
 tests/test_gradcam.py
 tests/test_backend.py
+tests/test_cupy_layer_loss_equivalence.py
 ```
 
 Recommended future equivalence coverage:
@@ -534,8 +535,36 @@ Recommended future equivalence coverage:
 * FGSM robustness metrics.
 * Checkpoint load into NumPy and CuPy model instances.
 
-Do not add CuPy equivalence tests until the optional CuPy environment is
-available and the NumPy backend path is stable.
+## EWP2-A Layer and Loss Equivalence Tests
+
+The optional EWP2-A tests are:
+
+```text
+tests/test_cupy_layer_loss_equivalence.py
+```
+
+Status: IMPLEMENTED LOCALLY / GPU VALIDATION PENDING.
+
+They validate NumPy/CuPy equivalence for:
+
+* `ReLU.forward` and `ReLU.backward`.
+* `MaxPool2D.forward` and `MaxPool2D.backward`, including `add.at` and
+  first-maximum tie semantics.
+* `Flatten.forward` and `Flatten.backward`.
+* `Linear.forward` and `Linear.backward`, including `dx`, `dw`, and `db`.
+* `SoftmaxCrossEntropyLoss.forward` and `SoftmaxCrossEntropyLoss.backward`.
+
+The tests use `rtol=1e-5` and `atol=1e-6` for float32 tensor comparisons, and
+`rtol=1e-6` and `atol=1e-7` for the scalar softmax cross-entropy loss.
+
+Run on the GPU cluster with:
+
+```bash
+python -m pytest -q tests/test_cupy_layer_loss_equivalence.py -rs
+```
+
+EWP2 is not complete. FGSM, input-gradient, robustness, checkpoint, and broader
+model-level equivalence remain future EWP2 work.
 
 ## Cluster / GPU Validation Boundary
 

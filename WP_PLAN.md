@@ -891,6 +891,7 @@ tests/test_gradient_check.py
 tests/test_input_gradients.py
 tests/test_fgsm.py
 tests/test_fgsm_evaluation.py
+tests/test_cupy_layer_loss_equivalence.py
 ```
 
 Scope:
@@ -904,7 +905,29 @@ Scope:
 
 Status:
 
-PLANNED. No CuPy tests exist yet.
+IMPLEMENTED LOCALLY / GPU VALIDATION PENDING.
+
+EWP2-A: Remaining layer and loss numerical equivalence
+
+Status: IMPLEMENTED LOCALLY / GPU VALIDATION PENDING.
+
+Implemented coverage:
+
+* `ReLU.forward` and `ReLU.backward`.
+* `MaxPool2D.forward` and `MaxPool2D.backward`, including `add.at` backward
+  execution and first-maximum tie semantics.
+* `Flatten.forward` and `Flatten.backward`.
+* `Linear.forward` and `Linear.backward`, including `dx`, `dw`, and `db`.
+* `SoftmaxCrossEntropyLoss.forward` and `SoftmaxCrossEntropyLoss.backward`.
+
+Validation boundary:
+
+* The tests are implemented in `tests/test_cupy_layer_loss_equivalence.py`.
+* They skip cleanly on systems without CuPy/CUDA.
+* Local implementation is complete, but real GPU validation has not been run
+  yet.
+* EWP2 is not complete; FGSM, input-gradient, robustness, checkpoint, and
+  broader model-level equivalence remain future EWP2 work.
 
 ---
 
