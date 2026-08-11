@@ -893,6 +893,7 @@ tests/test_fgsm.py
 tests/test_fgsm_evaluation.py
 tests/test_cupy_layer_loss_equivalence.py
 tests/test_cupy_model_training_equivalence.py
+tests/test_cupy_fgsm_equivalence.py
 ```
 
 Scope:
@@ -949,8 +950,9 @@ python -m pytest -q -m "not requires_data"
 * Compatibility is claimed only for the tested environment above, not for
   untested GPU/CUDA/CuPy configurations.
 * EWP2 is not complete; CompactCNN training-path equivalence is complete in
-  EWP2-B, and FGSM, input-gradient, robustness, checkpoint, and broader
-  equivalence remain future EWP2 work.
+  EWP2-B, input-gradient and FGSM equivalence are complete in EWP2-C, and
+  robustness metrics, epsilon sweeps, checkpoint, and broader equivalence
+  remain future EWP2 work.
 
 EWP2-B: CompactCNN end-to-end training-path numerical equivalence
 
@@ -1010,6 +1012,65 @@ python -m pytest -q -m "not requires_data"
   untested GPU/CUDA/CuPy configurations.
 * This slice does not cover model input-gradient, FGSM, robustness,
   checkpoint, or cluster-runner equivalence.
+
+EWP2-C: Input-gradient and FGSM numerical equivalence
+
+Status: COMPLETE.
+
+Validated coverage:
+
+* Deterministic in-memory synchronization of NumPy and CuPy `CompactCNN`
+  parameters using the same strategy as EWP2-B.
+* Identical deterministic clean NCHW inputs, labels, epsilon, and clipping
+  bounds without CIFAR-10 data.
+* Production `compute_input_gradient(...)` equivalence for loss-to-input
+  gradients.
+* Production `fgsm_attack(...)` equivalence for `epsilon=0` and a nonzero
+  epsilon.
+* FGSM shape, `L_inf` perturbation bound, and `[0, 1]` clipping semantics.
+* Adversarial images.
+* Adversarial `CompactCNN.forward` logits and predicted classes.
+* End-to-end attack path:
+  `clean input -> input gradient -> FGSM image -> adversarial forward`.
+* Parameter preservation after input-gradient computation, FGSM generation,
+  and adversarial forward evaluation.
+
+Validation boundary:
+
+* The tests are implemented in `tests/test_cupy_fgsm_equivalence.py`.
+* They use deterministic synthetic inputs and do not require CIFAR-10 data.
+* They skip cleanly on systems without CuPy/CUDA.
+* Input-gradient, adversarial-image, and adversarial-logit comparisons use
+  `rtol=1e-5` and `atol=1e-6`.
+* Local non-CuPy validation passed with `220 passed, 16 deselected` for
+  `-m "not requires_cupy"` and `220 passed, 16 skipped` for the full suite;
+  the EWP2-C module skipped cleanly with `2 skipped` because CuPy is not
+  installed locally.
+* Real GPU validation passed on the tested environment:
+
+```text
+GPU: NVIDIA GeForce RTX 2080 Ti
+CUDA Toolkit: 12.5
+CuPy: 14.1.1
+Python: 3.12
+Slurm allocation: 1 GPU
+```
+
+* GPU validation result:
+
+```text
+python -m pytest -q tests/test_cupy_fgsm_equivalence.py -rs
+2 passed in 1.14s
+
+python -m pytest -q -m "not requires_data"
+233 passed, 3 deselected in 8.29s
+```
+
+* NumPy remains the authoritative correctness reference.
+* Compatibility is claimed only for the tested environment above, not for
+  untested GPU/CUDA/CuPy configurations.
+* This slice does not cover robustness metric or epsilon-sweep equivalence,
+  checkpoint equivalence, PGD, or cluster-runner infrastructure.
 
 ---
 
