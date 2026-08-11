@@ -283,6 +283,34 @@ dataset is already available locally:
 .venv/bin/python -m pytest -q -m requires_data
 ```
 
+### Validate staged CIFAR-10 data for cluster use
+
+Cluster experiments should consume an explicitly staged CIFAR-10 copy instead
+of downloading data inside GPU jobs. The expected staged layout is:
+
+```text
+data/raw/cifar-10-python.tar.gz
+data/raw/cifar-10-batches-py/
+```
+
+The expected archive MD5 is:
+
+```text
+c58f30108f718f92721af3b95e74349a
+```
+
+Validate the Python/CuPy environment and staged dataset before running
+data-dependent cluster tests or experiments:
+
+```bash
+python scripts/validate_cluster_environment.py --backend cupy --data-dir data/raw --extract-if-needed --json-output results/cluster_validation/cifar10_environment.json
+python -m pytest -q -m requires_data
+```
+
+The validation utility reports environment metadata and dataset status in
+human-readable form and can save a JSON report. It does not run training,
+robustness sweeps, or benchmarks.
+
 ## Numerical Gradient Checking
 
 Manual backpropagation is validated against numerical finite differences.

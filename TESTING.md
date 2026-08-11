@@ -18,8 +18,9 @@ visible CUDA GPU is unavailable.
 Latest verified local state:
 
 ```text
-Non-CuPy local regression: 220 passed, 19 deselected
-Full local suite: 220 passed, 19 skipped
+Non-CuPy local regression: 224 passed, 19 deselected
+Full local suite: 224 passed, 19 skipped
+EWP3-A local staging validation tests: 4 passed
 EWP2-B local slice on this machine: 2 skipped because cupy is not installed
 EWP2-C local slice on this machine: 2 skipped because cupy is not installed
 EWP2-D local slice on this machine: 3 skipped because cupy is not installed
@@ -565,6 +566,58 @@ exercised. Do not change the expected checksum, disable archive validation,
 weaken data tests, or modify the CIFAR-10 loader to hide this issue. Restage
 the dataset before treating data-dependent cluster tests or experiments as
 valid.
+
+## EWP3-A Cluster Environment and Dataset Staging Validation
+
+The scheduler-neutral validation utility is:
+
+```text
+scripts/validate_cluster_environment.py
+```
+
+Status: IMPLEMENTED / REAL CLUSTER DATA VALIDATION PENDING.
+
+It validates:
+
+* Python and NumPy versions.
+* Requested backend availability.
+* CuPy version, CUDA runtime query, visible CUDA device count, and GPU name
+  when CuPy is installed.
+* Staged CIFAR-10 archive presence, size, and MD5 checksum.
+* Extracted CIFAR-10 directory presence.
+* Train/test split loading through the repository's CIFAR-10 batch parser.
+* Expected train/test shapes and class count.
+* Human-readable output and optional JSON validation output.
+
+The utility does not auto-download CIFAR-10. It may extract an already staged
+archive only when `--extract-if-needed` is provided and the archive matches the
+expected checksum.
+
+Focused local tests:
+
+```text
+tests/test_cluster_environment_validation.py
+```
+
+These tests use temporary filesystem state, do not require CIFAR-10 data, and
+do not require a real GPU.
+
+Suggested local validation:
+
+```bash
+MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q tests/test_cluster_environment_validation.py
+MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -m "not requires_cupy"
+```
+
+Suggested cluster validation after staging a checksum-valid CIFAR-10 archive:
+
+```bash
+python scripts/validate_cluster_environment.py --backend cupy --data-dir data/raw --extract-if-needed --json-output results/cluster_validation/cifar10_environment.json
+python -m pytest -q -m requires_data
+```
+
+Passing the utility and `requires_data` tests on the real cluster is required
+before EWP3-A can be marked complete.
 
 ## NumPy Reference Tests for Future CuPy Equivalence
 
