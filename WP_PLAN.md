@@ -948,18 +948,19 @@ python -m pytest -q -m "not requires_data"
 * NumPy remains the authoritative correctness reference.
 * Compatibility is claimed only for the tested environment above, not for
   untested GPU/CUDA/CuPy configurations.
-* EWP2 is not complete; CompactCNN training-path equivalence is tracked
-  separately in EWP2-B, and FGSM, input-gradient, robustness, checkpoint, and
-  broader equivalence remain future EWP2 work.
+* EWP2 is not complete; CompactCNN training-path equivalence is complete in
+  EWP2-B, and FGSM, input-gradient, robustness, checkpoint, and broader
+  equivalence remain future EWP2 work.
 
 EWP2-B: CompactCNN end-to-end training-path numerical equivalence
 
-Status: IMPLEMENTED LOCALLY / GPU VALIDATION PENDING.
+Status: COMPLETE.
 
-Implemented local coverage:
+Validated coverage:
 
 * Deterministic in-memory synchronization of NumPy and CuPy `CompactCNN`
   parameters without relying on independent random initialization.
+* Identical deterministic input tensors, labels, and optimizer settings.
 * Full `CompactCNN.forward` logits comparison on a deterministic synthetic
   batch.
 * `SoftmaxCrossEntropyLoss.forward` scalar loss comparison and loss
@@ -984,7 +985,29 @@ Validation boundary:
   `-m "not requires_cupy"` and `220 passed, 14 skipped` for the full suite;
   the EWP2-B module skipped cleanly with `2 skipped` because CuPy is not
   installed locally.
-* GPU validation on the RTX 2080 Ti environment is still pending.
+* Real GPU validation passed on the tested environment:
+
+```text
+GPU: NVIDIA GeForce RTX 2080 Ti
+CUDA Toolkit: 12.5
+CuPy: 14.1.1
+Python: 3.12
+Slurm allocation: 1 GPU
+```
+
+* GPU validation result:
+
+```text
+python -m pytest -q tests/test_cupy_model_training_equivalence.py -rs
+2 passed
+
+python -m pytest -q -m "not requires_data"
+231 passed, 3 deselected in 9.23s
+```
+
+* NumPy remains the authoritative correctness reference.
+* Compatibility is claimed only for the tested environment above, not for
+  untested GPU/CUDA/CuPy configurations.
 * This slice does not cover model input-gradient, FGSM, robustness,
   checkpoint, or cluster-runner equivalence.
 

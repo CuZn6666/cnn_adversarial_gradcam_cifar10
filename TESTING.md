@@ -54,6 +54,21 @@ Non-data cluster regression: 229 passed, 3 deselected in 7.86s
 NumPy remains the authoritative correctness reference. Compatibility is
 recorded only for the tested GPU/CUDA/CuPy/Python configuration above.
 
+Latest verified real GPU EWP2-B state:
+
+```text
+GPU: NVIDIA GeForce RTX 2080 Ti
+CUDA Toolkit: 12.5
+CuPy: 14.1.1
+Python: 3.12
+Slurm allocation: 1 GPU
+EWP2-B full-model training equivalence: 2 passed
+Non-data cluster regression: 231 passed, 3 deselected in 9.23s
+```
+
+NumPy remains the authoritative correctness reference. Compatibility is
+recorded only for the tested GPU/CUDA/CuPy/Python configuration above.
+
 Standard offline CI command:
 
 ```bash
@@ -585,7 +600,7 @@ python -m pytest -q -m "not requires_data"
 229 passed, 3 deselected in 7.86s
 ```
 
-EWP2 is not complete. CompactCNN training-path equivalence is tracked in
+EWP2 is not complete. CompactCNN training-path equivalence is complete in
 EWP2-B, and FGSM, input-gradient, robustness, checkpoint, and broader
 equivalence remain future EWP2 work.
 
@@ -597,11 +612,12 @@ The optional EWP2-B tests are:
 tests/test_cupy_model_training_equivalence.py
 ```
 
-Status: IMPLEMENTED LOCALLY / GPU VALIDATION PENDING.
+Status: COMPLETE.
 
 They validate NumPy/CuPy equivalence for:
 
 * Deterministic `CompactCNN` parameter synchronization before comparison.
+* Identical deterministic input tensors, labels, and optimizer settings.
 * Full-model logits from `CompactCNN.forward`.
 * `SoftmaxCrossEntropyLoss.forward` scalar loss and `backward` logits
   gradient.
@@ -637,9 +653,20 @@ GPU validation command:
 python -m pytest -q tests/test_cupy_model_training_equivalence.py -rs
 ```
 
-EWP2-B must not be marked complete until this command passes on the validated
-RTX 2080 Ti cluster environment and the non-data cluster regression remains
-green.
+Validated on the GPU cluster with:
+
+```text
+python -m pytest -q tests/test_cupy_model_training_equivalence.py -rs
+2 passed
+
+python -m pytest -q -m "not requires_data"
+231 passed, 3 deselected in 9.23s
+```
+
+The validated environment was `NVIDIA GeForce RTX 2080 Ti`, CUDA Toolkit
+`12.5`, CuPy `14.1.1`, Python `3.12`, with one GPU allocated through Slurm.
+This is not input-gradient or FGSM equivalence; those remain future EWP2-C
+work.
 
 ## Cluster / GPU Validation Boundary
 
