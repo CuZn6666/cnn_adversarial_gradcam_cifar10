@@ -18,9 +18,10 @@ visible CUDA GPU is unavailable.
 Latest verified local state:
 
 ```text
-Non-CuPy local regression: 224 passed, 19 deselected
-Full local suite: 224 passed, 19 skipped
+Non-CuPy local regression: 231 passed, 19 deselected
+Full local suite: 231 passed, 19 skipped
 EWP3-A local staging validation tests: 4 passed
+EWP3-B local runner infrastructure tests: 7 passed
 EWP2-B local slice on this machine: 2 skipped because cupy is not installed
 EWP2-C local slice on this machine: 2 skipped because cupy is not installed
 EWP2-D local slice on this machine: 3 skipped because cupy is not installed
@@ -688,6 +689,61 @@ Validated result:
 ```text
 requires_data suite: 3 passed, 240 deselected in 3.34s
 ```
+
+## EWP3-B FGSM Experiment Runner Infrastructure
+
+The scheduler-neutral FGSM experiment runner is:
+
+```text
+experiments/fgsm/run_fgsm_experiment.py
+```
+
+Status: IMPLEMENTED LOCALLY / CLUSTER SMOKE PENDING.
+
+It validates and records:
+
+* Backend selection: `numpy` or `cupy`, with no silent CuPy-to-NumPy fallback.
+* Explicit data directory, checkpoint path, split, sample count, batch size,
+  epsilon list, seed, output root, and run identifier.
+* Staged CIFAR-10 archive presence, checksum, and extracted directory before
+  loading data.
+* Isolated run directory creation and collision rejection.
+* Run status artifacts: `RUNNING`, `COMPLETED`, or `FAILED`.
+* Environment metadata including Python, NumPy, optional CuPy/CUDA/GPU,
+  hostname, Git commit, and dirty state.
+* Machine-readable `config.json`, `environment.json`, `metrics.json`,
+  `metrics.csv`, `timing.json`, `summary.json`, and `status.json`.
+* CPU timing with `time.perf_counter`.
+* CuPy timing with CUDA stream synchronization around the timed evaluation
+  region.
+
+Focused local tests:
+
+```text
+tests/test_fgsm_experiment_runner.py
+```
+
+These tests cover CLI/config parsing, epsilon parsing, invalid config
+rejection, run-directory collision behavior, environment metadata, metric
+serialization, tiny NumPy execution using monkeypatched CIFAR-10 loading, and
+failed-run status artifacts. They do not require real CIFAR-10 data, CuPy, or
+a GPU.
+
+Suggested local validation:
+
+```bash
+MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q tests/test_fgsm_experiment_runner.py
+MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -m "not requires_cupy"
+```
+
+Small cluster smoke command before EWP3-B closeout:
+
+```bash
+python -m experiments.fgsm.run_fgsm_experiment --backend cupy --data-dir data/raw --checkpoint results/baseline/portfolio_baseline_best.npz --split test --max-samples 8 --batch-size 2 --epsilons 0,1/255 --output-root results/runs
+```
+
+This smoke command is intentionally small. Do not treat it as the large-scale
+FGSM evaluation or final CPU/GPU benchmark.
 
 ## NumPy Reference Tests for Future CuPy Equivalence
 

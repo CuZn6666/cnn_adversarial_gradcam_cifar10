@@ -1185,8 +1185,8 @@ Scope:
 Status:
 
 PARTIALLY COMPLETE. EWP3-A environment and dataset-staging validation is
-complete. EWP3-B scheduler-neutral experiment-runner infrastructure has not
-started.
+complete. EWP3-B scheduler-neutral experiment-runner infrastructure is
+implemented locally and pending a real cluster smoke run.
 
 #### EWP3-A: Cluster Environment and CIFAR-10 Dataset Staging
 
@@ -1305,6 +1305,99 @@ cluster environment above, not for untested hardware/software combinations.
 
 EWP3-A does not implement the cluster experiment runner, large-scale FGSM
 evaluation, benchmarking plots, or PGD.
+
+#### EWP3-B: Reproducible FGSM Experiment Runner
+
+Status:
+
+IMPLEMENTED LOCALLY / CLUSTER SMOKE PENDING.
+
+Implemented infrastructure:
+
+* Scheduler-neutral FGSM experiment CLI:
+
+```text
+python -m experiments.fgsm.run_fgsm_experiment
+```
+
+* Explicit configuration for backend, data directory, checkpoint, CIFAR-10
+  split, maximum sample count, batch size, epsilon list, seed, output root,
+  and run identifier.
+* Isolated run directory per run:
+
+```text
+results/runs/<run_id>/
+```
+
+* Stable machine-readable artifacts:
+
+```text
+config.json
+environment.json
+metrics.csv
+metrics.json
+timing.json
+summary.json
+status.json
+```
+
+* `status.json` records `RUNNING`, `COMPLETED`, or `FAILED` so partial runs
+  are identifiable.
+* Existing project numerical APIs are reused: `load_cifar10(...)`,
+  `load_checkpoint(...)`, `CompactCNN(..., backend=...)`,
+  `SoftmaxCrossEntropyLoss(..., backend=...)`, and
+  `evaluate_fgsm_epsilon_sweep(...)`.
+* No plotting is performed inside the runner.
+* No PGD, scheduler-specific Slurm wrapper, full CIFAR-10 sweep, custom CUDA
+  kernel, or Conv2D optimization is included in this slice.
+
+Artifact policy:
+
+* `config.json` stores the exact effective workload.
+* `environment.json` stores Python, NumPy, optional CuPy/CUDA/GPU, hostname,
+  and Git commit/dirty-state metadata.
+* `metrics.json` and `metrics.csv` store one row per epsilon with raw counts,
+  clean accuracy, adversarial accuracy, accuracy drop, and attack success
+  rate using the existing `src.robustness` semantics.
+* `timing.json` stores total wall time, evaluation wall time, sample count,
+  epsilon count, sample-epsilon pairs, and throughput-like evaluation rate.
+* `summary.json` stores a compact run summary and dataset validation metadata.
+
+Timing policy:
+
+* CPU timing uses `time.perf_counter`.
+* CuPy timing synchronizes `cupy.cuda.Stream.null` before and after the
+  evaluation timed region to avoid measuring asynchronous launch time only.
+* The runner records end-to-end wall time and evaluation wall time. It does
+  not claim kernel-level timing precision.
+
+Failure and overwrite policy:
+
+* Invalid config values fail before execution.
+* Missing checkpoints, invalid CIFAR-10 archive checksum, missing extracted
+  data, invalid sample counts, and unavailable CuPy/GPU fail clearly.
+* CuPy requests never silently fall back to NumPy.
+* Existing run directories are not overwritten.
+
+Local validation:
+
+```text
+tests/test_fgsm_experiment_runner.py
+```
+
+The local tests cover CLI/config parsing, run-directory collision behavior,
+environment metadata, metric serialization, tiny NumPy execution on synthetic
+data via monkeypatched CIFAR-10 loading, and failed-run status artifacts.
+
+Required cluster validation before closeout:
+
+```bash
+python -m experiments.fgsm.run_fgsm_experiment --backend cupy --data-dir data/raw --checkpoint results/baseline/portfolio_baseline_best.npz --split test --max-samples 8 --batch-size 2 --epsilons 0,1/255 --output-root results/runs
+```
+
+EWP3-B should remain pending until a small real-cluster smoke run succeeds and
+its artifacts are inspected. Large-scale FGSM evaluation belongs to later
+phases.
 
 ---
 
