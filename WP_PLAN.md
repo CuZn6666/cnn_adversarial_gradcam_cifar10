@@ -892,6 +892,7 @@ tests/test_input_gradients.py
 tests/test_fgsm.py
 tests/test_fgsm_evaluation.py
 tests/test_cupy_layer_loss_equivalence.py
+tests/test_cupy_model_training_equivalence.py
 ```
 
 Scope:
@@ -947,8 +948,45 @@ python -m pytest -q -m "not requires_data"
 * NumPy remains the authoritative correctness reference.
 * Compatibility is claimed only for the tested environment above, not for
   untested GPU/CUDA/CuPy configurations.
-* EWP2 is not complete; FGSM, input-gradient, robustness, checkpoint, and
-  broader model-level equivalence remain future EWP2 work.
+* EWP2 is not complete; CompactCNN training-path equivalence is tracked
+  separately in EWP2-B, and FGSM, input-gradient, robustness, checkpoint, and
+  broader equivalence remain future EWP2 work.
+
+EWP2-B: CompactCNN end-to-end training-path numerical equivalence
+
+Status: IMPLEMENTED LOCALLY / GPU VALIDATION PENDING.
+
+Implemented local coverage:
+
+* Deterministic in-memory synchronization of NumPy and CuPy `CompactCNN`
+  parameters without relying on independent random initialization.
+* Full `CompactCNN.forward` logits comparison on a deterministic synthetic
+  batch.
+* `SoftmaxCrossEntropyLoss.forward` scalar loss comparison and loss
+  `backward` logits-gradient comparison.
+* Full `CompactCNN.backward` gradient comparison for every trainable
+  parameter exposed by `named_parameters_and_gradients()`:
+  `conv1.weights`, `conv1.bias`, `conv2.weights`, `conv2.bias`,
+  `classifier.weights`, and `classifier.bias`.
+* One real `SGD.step()` update comparison for every trainable parameter.
+* Public `train_step(...)` helper coverage for the same
+  `forward -> loss -> backward -> SGD` path.
+
+Validation boundary:
+
+* The tests are implemented in
+  `tests/test_cupy_model_training_equivalence.py`.
+* They use deterministic synthetic inputs and do not require CIFAR-10 data.
+* They skip cleanly on systems without CuPy/CUDA.
+* Tensor comparisons use `rtol=1e-5` and `atol=1e-6`; scalar loss comparisons
+  use `rtol=1e-6` and `atol=1e-7`, matching the EWP2-A tolerance policy.
+* Local non-CuPy validation passed with `220 passed, 14 deselected` for
+  `-m "not requires_cupy"` and `220 passed, 14 skipped` for the full suite;
+  the EWP2-B module skipped cleanly with `2 skipped` because CuPy is not
+  installed locally.
+* GPU validation on the RTX 2080 Ti environment is still pending.
+* This slice does not cover model input-gradient, FGSM, robustness,
+  checkpoint, or cluster-runner equivalence.
 
 ---
 
