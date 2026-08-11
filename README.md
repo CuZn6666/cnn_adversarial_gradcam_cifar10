@@ -320,6 +320,62 @@ robustness sweeps, or benchmarks. Run-specific files under
 `results/cluster_validation/` are ignored by Git; keep the verified summary in
 documentation unless a report artifact is intentionally curated.
 
+### Run a small reproducible FGSM experiment
+
+The scheduler-neutral experiment runner writes machine-readable artifacts for
+later robustness and runtime analysis. It does not generate plots and does not
+implement scheduler submission:
+
+```bash
+python -m experiments.fgsm.run_fgsm_experiment --backend numpy --data-dir data/raw --checkpoint results/baseline/portfolio_baseline_best.npz --split test --max-samples 8 --batch-size 2 --epsilons 0,1/255 --output-root results/runs
+```
+
+On the validated Hawaii GPU environment, use `--backend cupy` for a small
+smoke run:
+
+```bash
+python -m experiments.fgsm.run_fgsm_experiment --backend cupy --data-dir data/raw --checkpoint results/checkpoints/portfolio_baseline_best.npz --split test --max-samples 8 --batch-size 2 --epsilons 0,1/255 --output-root results/runs
+```
+
+Each run creates an isolated directory:
+
+```text
+results/runs/<run_id>/
+  config.json
+  environment.json
+  metrics.csv
+  metrics.json
+  timing.json
+  summary.json
+  status.json
+```
+
+The runner records raw FGSM metrics per epsilon, run configuration,
+environment metadata, Git commit/dirty state, and timing information. Existing
+run directories are not overwritten. Large-scale sweeps and final plots should
+be run only after the small smoke path has been validated.
+
+The Hawaii cluster smoke run has been validated for:
+
+```text
+run_id: 20260811T171313482022Z_fgsm_cupy
+GPU: NVIDIA GeForce RTX 2080 Ti
+CuPy: 14.1.1
+Python: 3.12.13
+NumPy: 2.4.6
+hostname: csg-brook01
+status: COMPLETED
+max_samples: 8
+batch_size: 2
+epsilons: [0.0, 1/255]
+```
+
+It produced the complete artifact schema above. The tiny 8-sample smoke run
+validates runner integration only; it is not a robustness conclusion or a
+performance benchmark. Run-specific files under `results/runs/` are ignored by
+Git. Later curated benchmark summaries and plots can be committed separately
+when they are intentionally prepared for final reporting.
+
 ## Numerical Gradient Checking
 
 Manual backpropagation is validated against numerical finite differences.

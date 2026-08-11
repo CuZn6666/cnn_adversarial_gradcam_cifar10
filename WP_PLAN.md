@@ -1185,8 +1185,8 @@ Scope:
 Status:
 
 PARTIALLY COMPLETE. EWP3-A environment and dataset-staging validation is
-complete. EWP3-B scheduler-neutral experiment-runner infrastructure has not
-started.
+complete. EWP3-B scheduler-neutral experiment-runner infrastructure is
+complete. EWP3-C scaling and benchmark preparation has not started.
 
 #### EWP3-A: Cluster Environment and CIFAR-10 Dataset Staging
 
@@ -1305,6 +1305,174 @@ cluster environment above, not for untested hardware/software combinations.
 
 EWP3-A does not implement the cluster experiment runner, large-scale FGSM
 evaluation, benchmarking plots, or PGD.
+
+#### EWP3-B: Reproducible FGSM Experiment Runner
+
+Status:
+
+COMPLETE.
+
+Implemented infrastructure:
+
+* Scheduler-neutral FGSM experiment CLI:
+
+```text
+python -m experiments.fgsm.run_fgsm_experiment
+```
+
+* Explicit configuration for backend, data directory, checkpoint, CIFAR-10
+  split, maximum sample count, batch size, epsilon list, seed, output root,
+  and run identifier.
+* Isolated run directory per run:
+
+```text
+results/runs/<run_id>/
+```
+
+* Stable machine-readable artifacts:
+
+```text
+config.json
+environment.json
+metrics.csv
+metrics.json
+timing.json
+summary.json
+status.json
+```
+
+* `status.json` records `RUNNING`, `COMPLETED`, or `FAILED` so partial runs
+  are identifiable.
+* Existing project numerical APIs are reused: `load_cifar10(...)`,
+  `load_checkpoint(...)`, `CompactCNN(..., backend=...)`,
+  `SoftmaxCrossEntropyLoss(..., backend=...)`, and
+  `evaluate_fgsm_epsilon_sweep(...)`.
+* No plotting is performed inside the runner.
+* No PGD, scheduler-specific Slurm wrapper, full CIFAR-10 sweep, custom CUDA
+  kernel, or Conv2D optimization is included in this slice.
+
+Artifact policy:
+
+* `config.json` stores the exact effective workload.
+* `environment.json` stores Python, NumPy, optional CuPy/CUDA/GPU, hostname,
+  and Git commit/dirty-state metadata.
+* `metrics.json` and `metrics.csv` store one row per epsilon with raw counts,
+  clean accuracy, adversarial accuracy, accuracy drop, and attack success
+  rate using the existing `src.robustness` semantics.
+* `timing.json` stores total wall time, evaluation wall time, sample count,
+  epsilon count, sample-epsilon pairs, and throughput-like evaluation rate.
+* `summary.json` stores a compact run summary and dataset validation metadata.
+
+Timing policy:
+
+* CPU timing uses `time.perf_counter`.
+* CuPy timing synchronizes `cupy.cuda.Stream.null` before and after the
+  evaluation timed region to avoid measuring asynchronous launch time only.
+* The runner records end-to-end wall time and evaluation wall time. It does
+  not claim kernel-level timing precision.
+
+Failure and overwrite policy:
+
+* Invalid config values fail before execution.
+* Missing checkpoints, invalid CIFAR-10 archive checksum, missing extracted
+  data, invalid sample counts, and unavailable CuPy/GPU fail clearly.
+* CuPy requests never silently fall back to NumPy.
+* Existing run directories are not overwritten.
+
+Local validation:
+
+```text
+tests/test_fgsm_experiment_runner.py
+```
+
+The local tests cover CLI/config parsing, run-directory collision behavior,
+environment metadata, metric serialization, tiny NumPy execution on synthetic
+data via monkeypatched CIFAR-10 loading, and failed-run status artifacts.
+
+Required cluster validation before closeout:
+
+```bash
+python -m experiments.fgsm.run_fgsm_experiment --backend cupy --data-dir data/raw --checkpoint results/checkpoints/portfolio_baseline_best.npz --split test --max-samples 8 --batch-size 2 --epsilons 0,1/255 --output-root results/runs
+```
+
+Validated Hawaii cluster smoke:
+
+```text
+run_id: 20260811T171313482022Z_fgsm_cupy
+hostname: csg-brook01
+GPU: NVIDIA GeForce RTX 2080 Ti
+CuPy: 14.1.1
+NumPy: 2.4.6
+Python: 3.12.13
+device_count: 1
+Slurm allocation: 1 GPU
+backend: cupy
+split: test
+max_samples: 8
+batch_size: 2
+seed: 42
+epsilons: [0.0, 0.00392156862745098]
+checkpoint: results/checkpoints/portfolio_baseline_best.npz
+data_dir: data/raw
+status: COMPLETED
+```
+
+Generated artifact schema:
+
+```text
+config.json
+environment.json
+metrics.csv
+metrics.json
+timing.json
+summary.json
+status.json
+```
+
+Smoke metrics:
+
+```text
+epsilon 0.0:
+  total_samples: 8
+  clean_correct: 3
+  adversarial_correct: 3
+  clean_accuracy: 0.375
+  adversarial_accuracy: 0.375
+  successful_attacks: 0
+  attack_success_rate: 0.0
+
+epsilon 1/255:
+  total_samples: 8
+  clean_correct: 3
+  adversarial_correct: 3
+  clean_accuracy: 0.375
+  adversarial_accuracy: 0.375
+  successful_attacks: 0
+  attack_success_rate: 0.0
+```
+
+Timing:
+
+```text
+evaluation_wall_seconds: 0.7688142889965093
+total_wall_seconds: 1.6952154820028227
+sample_epsilon_pairs: 16
+evaluation_sample_epsilon_pairs_per_second: 20.811267726155187
+```
+
+CuPy `Stream.null` synchronization was performed before and after the timed
+evaluation region. This tiny 8-sample run validates runner integration only;
+it is not a robustness conclusion and not a performance benchmark.
+
+Artifact policy:
+
+* `results/runs/` contains run-specific experiment outputs and is ignored by
+  Git.
+* Runner code, schemas, tests, and verified summary documentation are tracked.
+* Later curated benchmark summaries or plots may be intentionally committed
+  under a separate final/curated artifact convention.
+
+Large-scale FGSM evaluation belongs to later phases.
 
 ---
 
