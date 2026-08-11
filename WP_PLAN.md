@@ -894,6 +894,7 @@ tests/test_fgsm_evaluation.py
 tests/test_cupy_layer_loss_equivalence.py
 tests/test_cupy_model_training_equivalence.py
 tests/test_cupy_fgsm_equivalence.py
+tests/test_cupy_robustness_equivalence.py
 ```
 
 Scope:
@@ -1071,6 +1072,47 @@ python -m pytest -q -m "not requires_data"
   untested GPU/CUDA/CuPy configurations.
 * This slice does not cover robustness metric or epsilon-sweep equivalence,
   checkpoint equivalence, PGD, or cluster-runner infrastructure.
+
+EWP2-D: Robustness evaluation and epsilon-sweep numerical equivalence
+
+Status: IMPLEMENTED LOCALLY / GPU VALIDATION PENDING.
+
+Implemented local coverage:
+
+* Deterministic in-memory synchronization of NumPy and CuPy `CompactCNN`
+  parameters using the same strategy as earlier EWP2 slices.
+* Deterministic synthetic NCHW batches, labels, batch partitioning, epsilon
+  values, and clipping behavior without CIFAR-10 data.
+* Production `evaluate_fgsm_batch(...)` single-batch metric equivalence.
+* Production `evaluate_fgsm_batches(...)` multi-batch raw-count aggregation
+  equivalence across different batch sizes.
+* Production `evaluate_fgsm_epsilon_sweep(...)` epsilon-order and metric
+  equivalence for `0/255`, `4/255`, and `8/255`.
+* Exact comparison for raw counts and epsilon ordering.
+* Scalar robustness-metric comparison for clean accuracy, adversarial
+  accuracy, accuracy drop, and attack success rate.
+* `epsilon=0` invariants for clean/adversarial accuracy, zero successful
+  attacks, clean/adversarial images, and clean/adversarial predictions.
+* Parameter preservation after single-batch evaluation, multi-batch
+  aggregation, and epsilon sweep.
+
+Validation boundary:
+
+* The tests are implemented in `tests/test_cupy_robustness_equivalence.py`.
+* They use deterministic synthetic inputs and do not require CIFAR-10 data.
+* They skip cleanly on systems without CuPy/CUDA.
+* Count fields, predicted classes, and epsilon ordering are exact comparisons.
+* Scalar robustness metrics use `rtol=1e-6` and `atol=1e-7`.
+* Any tensor comparisons used for epsilon-zero invariants use `rtol=1e-5` and
+  `atol=1e-6`.
+* Local non-CuPy validation passed with `220 passed, 19 deselected` for
+  `-m "not requires_cupy"` and `220 passed, 19 skipped` for the full suite;
+  the EWP2-D module skipped cleanly with `3 skipped` because CuPy is not
+  installed locally.
+* GPU validation on the RTX 2080 Ti environment is still pending.
+* This slice does not cover large-scale CIFAR-10 runs, checkpoint equivalence,
+  representative-example metadata equivalence, PGD, or cluster-runner
+  infrastructure.
 
 ---
 
