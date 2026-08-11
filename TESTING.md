@@ -23,6 +23,7 @@ Full local suite: 238 passed, 19 skipped
 EWP3-A local staging validation tests: 4 passed
 EWP3-B local runner infrastructure tests: 7 passed
 EWP3-C local run-curation tests: 7 passed
+EWP3-C real 1000-sample CuPy sanity run: completed and curated
 EWP2-B local slice on this machine: 2 skipped because cupy is not installed
 EWP2-C local slice on this machine: 2 skipped because cupy is not installed
 EWP2-D local slice on this machine: 3 skipped because cupy is not installed
@@ -829,7 +830,7 @@ The curated analysis script is:
 experiments/fgsm/plot_fgsm_run.py
 ```
 
-Status: IMPLEMENTED LOCALLY / REAL 1000-SAMPLE GPU RUN PENDING.
+Status: COMPLETE.
 
 It reads a completed raw runner directory from:
 
@@ -885,16 +886,59 @@ MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -
 MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -m "not requires_cupy"
 ```
 
-Planned 1000-sample cluster run:
+Validated 1000-sample cluster run:
 
 ```bash
 python -m experiments.fgsm.run_fgsm_experiment --backend cupy --data-dir data/raw --checkpoint results/checkpoints/portfolio_baseline_best.npz --split test --max-samples 1000 --batch-size 32 --epsilons 0,1/255,2/255,4/255,8/255 --output-root results/runs
 python -m experiments.fgsm.plot_fgsm_run --run-dir results/runs/<run_id> --output-root results/curated/ewp3c --expected-sample-count 1000 --expected-epsilons 0,1/255,2/255,4/255,8/255
 ```
 
-EWP3-C should not be marked complete until the real 1000-sample CuPy run
-finishes with `status = COMPLETED`, all curated artifacts are generated, and
-no raw `results/runs/` artifacts are accidentally staged.
+Validated environment and run:
+
+```text
+run_id: 20260811T173256700165Z_fgsm_cupy
+backend: cupy
+GPU: NVIDIA GeForce RTX 2080 Ti
+CuPy: 14.1.1
+NumPy: 2.4.6
+Python: 3.12.13
+sample_count: 1000
+batch_size: 32
+epsilons: [0, 1/255, 2/255, 4/255, 8/255]
+status: COMPLETED
+```
+
+Validated metrics:
+
+```text
+epsilon 0:     clean_accuracy 0.481, adversarial_accuracy 0.481, accuracy_drop 0.000, attack_success_rate 0.000000000000000
+epsilon 1/255: clean_accuracy 0.481, adversarial_accuracy 0.317, accuracy_drop 0.164, attack_success_rate 0.340956340956341
+epsilon 2/255: clean_accuracy 0.481, adversarial_accuracy 0.202, accuracy_drop 0.279, attack_success_rate 0.580041580041580
+epsilon 4/255: clean_accuracy 0.481, adversarial_accuracy 0.090, accuracy_drop 0.391, attack_success_rate 0.812889812889813
+epsilon 8/255: clean_accuracy 0.481, adversarial_accuracy 0.009, accuracy_drop 0.472, attack_success_rate 0.981288981288981
+```
+
+Validated timing:
+
+```text
+evaluation_wall_seconds: 10.670563029998448
+total_wall_seconds: 11.60283667499607
+sample_epsilon_pairs: 5000
+evaluation_sample_epsilon_pairs_per_second: 468.5788356193916
+gpu_synchronization: CuPy Stream.null synchronized before and after evaluation
+```
+
+Curated evidence:
+
+```text
+results/curated/ewp3c/20260811T173256700165Z_fgsm_cupy/
+```
+
+The curated directory contains `robustness_summary.csv`,
+`timing_summary.json`, `run_metadata.json`, and four PNG figures. The raw
+`results/runs/<run_id>/` directory remains ignored and should not be committed.
+This medium-scale run validates runner stability and artifact curation; it is
+not the final full CIFAR-10 evaluation and not a CPU/GPU benchmark.
 
 ## NumPy Reference Tests for Future CuPy Equivalence
 

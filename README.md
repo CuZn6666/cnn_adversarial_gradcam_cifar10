@@ -385,7 +385,7 @@ the saved `metrics`, `timing`, `summary`, and `environment` files:
 python -m experiments.fgsm.plot_fgsm_run --run-dir results/runs/<run_id> --output-root results/curated/ewp3c --expected-sample-count 1000 --expected-epsilons 0,1/255,2/255,4/255,8/255
 ```
 
-The planned EWP3-C cluster sanity workload is:
+The validated EWP3-C cluster sanity workload is:
 
 ```bash
 python -m experiments.fgsm.run_fgsm_experiment --backend cupy --data-dir data/raw --checkpoint results/checkpoints/portfolio_baseline_best.npz --split test --max-samples 1000 --batch-size 32 --epsilons 0,1/255,2/255,4/255,8/255 --output-root results/runs
@@ -407,6 +407,41 @@ results/curated/ewp3c/<run_id>/
 These figures and summaries are derived from saved runner artifacts. The
 1000-sample run is a medium-scale sanity check, not the final full CIFAR-10
 evaluation or CPU/GPU scaling benchmark.
+
+Validated curated evidence:
+
+```text
+results/curated/ewp3c/20260811T173256700165Z_fgsm_cupy/
+```
+
+The run used the CuPy backend on an NVIDIA GeForce RTX 2080 Ti with CuPy
+`14.1.1`, NumPy `2.4.6`, Python `3.12.13`, batch size `32`, seed `42`, and
+1000 CIFAR-10 test samples. CIFAR-10 checksum validation passed and the run
+completed successfully.
+
+| Epsilon | Clean Accuracy | Adversarial Accuracy | Accuracy Drop | Attack Success Rate |
+| ------- | -------------- | -------------------- | ------------- | ------------------- |
+| 0 | 0.481 | 0.481 | 0.000 | 0.000 |
+| 1/255 | 0.481 | 0.317 | 0.164 | 0.341 |
+| 2/255 | 0.481 | 0.202 | 0.279 | 0.580 |
+| 4/255 | 0.481 | 0.090 | 0.391 | 0.813 |
+| 8/255 | 0.481 | 0.009 | 0.472 | 0.981 |
+
+Timing summary:
+
+```text
+evaluation_wall_seconds: 10.670563029998448
+total_wall_seconds: 11.60283667499607
+sample_epsilon_pairs: 5000
+evaluation_sample_epsilon_pairs_per_second: 468.5788356193916
+```
+
+Curated plot artifacts:
+
+* [Accuracy vs epsilon](results/curated/ewp3c/20260811T173256700165Z_fgsm_cupy/accuracy_vs_epsilon.png)
+* [Attack success rate vs epsilon](results/curated/ewp3c/20260811T173256700165Z_fgsm_cupy/attack_success_rate_vs_epsilon.png)
+* [Accuracy drop vs epsilon](results/curated/ewp3c/20260811T173256700165Z_fgsm_cupy/accuracy_drop_vs_epsilon.png)
+* [Runtime and throughput summary](results/curated/ewp3c/20260811T173256700165Z_fgsm_cupy/runtime_throughput_summary.png)
 
 ## Numerical Gradient Checking
 
