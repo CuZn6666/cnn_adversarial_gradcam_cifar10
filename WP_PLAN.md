@@ -1187,7 +1187,8 @@ Status:
 PARTIALLY COMPLETE. EWP3-A environment and dataset-staging validation is
 complete. EWP3-B scheduler-neutral experiment-runner infrastructure is
 complete. EWP3-C medium-scale GPU FGSM sanity validation is complete. EWP3-D
-and later scaling/full-evaluation work have not started.
+CPU/GPU scaling and performance benchmarking is complete. Later
+full-evaluation work has not started.
 
 #### EWP3-A: Cluster Environment and CIFAR-10 Dataset Staging
 
@@ -1632,6 +1633,282 @@ The local tests use synthetic artifact directories and validate loading,
 epsilon ordering, curated summary generation, plotting, overwrite behavior,
 and missing/invalid artifact failures. They do not require CIFAR-10 data or a
 GPU.
+
+#### EWP3-D: CPU/GPU Scaling and Performance Benchmark
+
+Status:
+
+COMPLETE.
+
+Goal:
+
+Produce reproducible, defensible CPU/GPU performance evidence for the existing
+FGSM robustness evaluation path. This phase measures systems behavior only; it
+does not change numerical semantics, model architecture, FGSM definitions, or
+robustness metrics.
+
+Implemented local benchmark support:
+
+* Scheduler-neutral benchmark driver:
+
+```text
+python -m experiments.fgsm.run_fgsm_benchmark
+```
+
+* Launches the existing production FGSM runner for every benchmark point.
+* Does not implement a second numerical path.
+* Supports sample-count scaling, CuPy batch-size scaling, repeated measured
+  runs, excluded warm-up runs, per-point failure recording, aggregation, and
+  plotting from saved benchmark artifacts.
+* Supports optional matched NumPy/CuPy batch-size scaling through
+  `--batch-scaling-backends numpy,cupy`.
+* Preserves raw individual runner outputs under ignored `results/runs/`.
+* Writes aggregate benchmark artifacts under `results/benchmarks/<benchmark_id>/`.
+
+Default sample-count scaling matrix:
+
+```text
+backends: [numpy, cupy]
+sample_counts: [100, 250, 500, 1000, 2000]
+batch_size: 32
+epsilons: [0, 4/255]
+repeats: 3 measured repeats
+warmup_runs: 1 excluded warm-up per workload
+```
+
+Default CuPy batch-size scaling matrix:
+
+```text
+backend: cupy
+sample_count: 1000
+batch_sizes: [8, 16, 32, 64, 128]
+epsilons: [0, 4/255]
+repeats: 3 measured repeats
+warmup_runs: 1 excluded warm-up per workload
+```
+
+Matched batch-size extension:
+
+```text
+backends: [numpy, cupy]
+sample_count: 1000
+batch_sizes: [8, 16, 32, 64, 128]
+epsilons: [0, 4/255]
+repeats: 3 measured repeats
+warmup_runs: 1 excluded warm-up per workload
+```
+
+The matched extension is intended to quantify the observed CPU/GPU crossover
+region after the first full benchmark showed NumPy faster than CuPy at
+matched `batch_size = 32`, while CuPy throughput improved strongly at larger
+batch sizes.
+
+The default matrix implies 45 measured runner invocations and 15 warm-up
+invocations, for 60 total runner invocations:
+
+```text
+sample-count scaling: 5 sample counts * 2 backends * (1 warm-up + 3 repeats) = 40
+batch-size scaling: 5 batch sizes * 1 backend * (1 warm-up + 3 repeats) = 20
+```
+
+Timing methodology:
+
+* Timing comes from the EWP3-B runner's `timing.json`.
+* CPU and GPU timing use `time.perf_counter`.
+* CuPy timing synchronizes `cupy.cuda.Stream.null` before and after the
+  evaluation region through the validated runner path.
+* Benchmark claims use `evaluation_wall_seconds` unless explicitly labeled as
+  total-wall timing.
+* This phase does not claim kernel-only timing.
+
+Speedup definition:
+
+```text
+CPU evaluation_wall_seconds / GPU evaluation_wall_seconds
+```
+
+Speedups are computed only for matched workloads with the same sample count,
+batch size, epsilon workload, seed, checkpoint, dataset split, and repeat
+semantics. Total-wall speedup is recorded separately where available.
+
+Statistical summary:
+
+For each measured workload, aggregate artifacts record:
+
+```text
+mean
+median
+sample standard deviation
+min
+max
+completed repeat count
+failed repeat count
+```
+
+With three repeats, variability is treated as an engineering stability signal,
+not a high-confidence statistical claim.
+
+Benchmark artifact schema:
+
+```text
+results/benchmarks/<benchmark_id>/
+  config.json
+  benchmark_runs.csv
+  benchmark_runs.json
+  benchmark_summary.csv
+  benchmark_summary.json
+  speedup_summary.csv
+  speedup_summary.json
+  crossover_analysis.json
+  status.json
+  plots/
+    runtime_vs_sample_count.png
+    throughput_vs_sample_count.png
+    speedup_vs_sample_count.png
+    runtime_vs_batch_size.png
+    throughput_vs_batch_size.png
+    speedup_vs_batch_size.png
+    cupy_runtime_vs_batch_size.png
+    cupy_throughput_vs_batch_size.png
+```
+
+Raw individual runs remain under:
+
+```text
+results/runs/<run_id>/
+```
+
+and remain ignored by Git.
+
+Failure handling:
+
+* Individual runner failures are recorded in `benchmark_runs.csv/json` with
+  `status = FAILED`, error type, and error message.
+* Earlier valid results are preserved after a later failed configuration.
+* Aggregate summaries include completed and failed repeat counts.
+* CuPy requests still rely on the runner's no-fallback behavior; CuPy is not
+  silently replaced by NumPy.
+* A benchmark-level `status.json` records `COMPLETED`, `COMPLETED_WITH_FAILURES`,
+  or `FAILED`.
+
+Crossover analysis:
+
+* `speedup_summary.json` includes a `crossover_analysis` object.
+* `crossover_analysis.json` records the first tested batch size with
+  `evaluation_speedup_median > 1`, the associated speedup, the maximum tested
+  speedup, and the batch size associated with that maximum.
+* These values are computed from matched CPU/GPU benchmark artifacts and must
+  not be manually entered.
+
+Required plots:
+
+* CPU vs GPU evaluation runtime vs sample count.
+* CPU vs GPU throughput vs sample count.
+* GPU speedup vs sample count.
+* CPU vs GPU evaluation runtime vs batch size when matched batch-size
+  backends are enabled.
+* CPU vs GPU throughput vs batch size when matched batch-size backends are
+  enabled.
+* GPU speedup vs batch size when matched batch-size backends are enabled.
+* CuPy evaluation runtime vs batch size.
+* CuPy throughput vs batch size.
+
+Local validation:
+
+```text
+tests/test_fgsm_benchmark.py
+```
+
+The local tests use synthetic timing/artifact data and monkeypatch the runner.
+They cover CLI/config parsing, benchmark matrix generation, repeat and warm-up
+indexing, run ID uniqueness, aggregation statistics, matched CPU/GPU speedup,
+matched batch-size workload generation, batch-size crossover detection,
+partial failure preservation, and plotting from synthetic benchmark summaries.
+They do not require CIFAR-10 data, CuPy, or a GPU.
+
+Validated cluster benchmark command:
+
+```bash
+python -m experiments.fgsm.run_fgsm_benchmark --data-dir data/raw --checkpoint results/checkpoints/portfolio_baseline_best.npz --split test --sample-counts 100,250,500,1000,2000 --sample-scaling-backends numpy,cupy --sample-scaling-batch-size 32 --batch-sizes 8,16,32,64,128 --batch-scaling-backend cupy --batch-scaling-sample-count 1000 --epsilons 0,4/255 --repeats 3 --warmup-runs 1 --raw-run-output-root results/runs --benchmark-output-root results/benchmarks
+```
+
+Planned matched batch-size validation command:
+
+```bash
+python -m experiments.fgsm.run_fgsm_benchmark --data-dir data/raw --checkpoint results/checkpoints/portfolio_baseline_best.npz --split test --skip-sample-scaling --batch-sizes 8,16,32,64,128 --batch-scaling-backends numpy,cupy --batch-scaling-sample-count 1000 --epsilons 0,4/255 --repeats 3 --warmup-runs 1 --raw-run-output-root results/runs --benchmark-output-root results/benchmarks
+```
+
+Validated matched batch-size benchmark:
+
+```text
+benchmark_id: 20260811T185420645969Z_fgsm_benchmark
+status: COMPLETED
+GPU: NVIDIA GeForce RTX 2080 Ti
+CuPy: 14.1.1
+NumPy: 2.4.6
+Python: 3.12.13
+sample_count: 1000
+epsilons: [0, 4/255]
+batch_sizes: [8, 16, 32, 64, 128]
+repeats: 3
+warmup_runs: 1
+completed_repeats: 3 for every measured configuration
+failed_repeats: 0 for every measured configuration
+```
+
+Median evaluation-wall speedup:
+
+| Batch Size | CPU/GPU Speedup |
+| ---------- | --------------- |
+| 8 | 0.25152078941245753 |
+| 16 | 0.4203870515032853 |
+| 32 | 0.7614486302511735 |
+| 64 | 1.467427603695772 |
+| 128 | 2.8822301436224573 |
+
+Throughput summary, in sample-epsilon pairs per second:
+
+| Batch Size | NumPy Mean Throughput | CuPy Mean Throughput |
+| ---------- | --------------------- | -------------------- |
+| 8 | ~491.67 | ~123.69 |
+| 16 | ~577.79 | ~242.77 |
+| 32 | ~622.71 | ~474.55 |
+| 64 | ~643.74 | ~945.14 |
+| 128 | ~644.50 | ~1855.80 |
+
+Engineering interpretation:
+
+* At `batch_size = 32`, CuPy remained slower than NumPy.
+* The first tested GPU-faster batch size was `64`, with median evaluation
+  speedup `1.467427603695772`.
+* The maximum tested speedup was `2.8822301436224573` at batch size `128`.
+* Batch size `128` is the best tested batch size in this benchmark, not a
+  global optimum claim.
+* CuPy throughput scaled strongly through batch size `128`; NumPy throughput
+  approached a plateau around the tested higher batch sizes.
+* The earlier sample-count benchmark showed no CPU/GPU crossover at matched
+  `batch_size = 32` for sample counts `100`, `250`, `500`, `1000`, and
+  `2000`. This supports the conclusion that batch size / GPU utilization, not
+  sample count alone, drove the crossover in the current implementation.
+* Speedup values are evaluation-wall-time speedups, not kernel-only speedups.
+* No custom CUDA kernel or GPU-specific Conv2D optimization has been applied.
+
+Curated EWP3-D evidence:
+
+```text
+results/curated/ewp3d/20260811T185420645969Z_fgsm_benchmark/
+  benchmark_summary.csv
+  speedup_summary.csv
+  crossover_analysis.json
+  benchmark_metadata.json
+  runtime_vs_batch_size.png
+  throughput_vs_batch_size.png
+  speedup_vs_batch_size.png
+```
+
+Raw `results/runs/` and raw `results/benchmarks/` outputs are runtime-specific
+and ignored by Git. Curated EWP3-D evidence may be intentionally tracked after
+validation.
 
 ---
 

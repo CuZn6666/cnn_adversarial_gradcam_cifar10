@@ -24,6 +24,7 @@ EWP3-A local staging validation tests: 4 passed
 EWP3-B local runner infrastructure tests: 7 passed
 EWP3-C local run-curation tests: 7 passed
 EWP3-C real 1000-sample CuPy sanity run: completed and curated
+EWP3-D local benchmark infrastructure tests: 10 passed
 EWP2-B local slice on this machine: 2 skipped because cupy is not installed
 EWP2-C local slice on this machine: 2 skipped because cupy is not installed
 EWP2-D local slice on this machine: 3 skipped because cupy is not installed
@@ -939,6 +940,172 @@ The curated directory contains `robustness_summary.csv`,
 `results/runs/<run_id>/` directory remains ignored and should not be committed.
 This medium-scale run validates runner stability and artifact curation; it is
 not the final full CIFAR-10 evaluation and not a CPU/GPU benchmark.
+
+## EWP3-D CPU/GPU FGSM Benchmark Infrastructure
+
+The benchmark driver is:
+
+```text
+experiments/fgsm/run_fgsm_benchmark.py
+```
+
+Status: COMPLETE.
+
+It launches the existing production FGSM runner for each benchmark point and
+does not duplicate the numerical evaluation path.
+
+Default benchmark matrix:
+
+```text
+sample-count scaling:
+  backends: numpy, cupy
+  sample_counts: 100, 250, 500, 1000, 2000
+  batch_size: 32
+  epsilons: 0, 4/255
+
+CuPy batch-size scaling:
+  backend: cupy
+  sample_count: 1000
+  batch_sizes: 8, 16, 32, 64, 128
+  epsilons: 0, 4/255
+
+matched batch-size extension:
+  backends: numpy, cupy
+  sample_count: 1000
+  batch_sizes: 8, 16, 32, 64, 128
+  epsilons: 0, 4/255
+
+repeats: 3 measured repeats
+warmup_runs: 1 excluded warm-up per workload
+```
+
+The default matrix contains 45 measured runner invocations and 15 warm-up
+invocations. Warm-up runs use the same workload as measured repeats but are
+excluded from aggregate benchmark statistics.
+
+Benchmark artifacts:
+
+```text
+results/benchmarks/<benchmark_id>/
+  config.json
+  benchmark_runs.csv
+  benchmark_runs.json
+  benchmark_summary.csv
+  benchmark_summary.json
+  speedup_summary.csv
+  speedup_summary.json
+  crossover_analysis.json
+  status.json
+  plots/
+    runtime_vs_sample_count.png
+    throughput_vs_sample_count.png
+    speedup_vs_sample_count.png
+    runtime_vs_batch_size.png
+    throughput_vs_batch_size.png
+    speedup_vs_batch_size.png
+    cupy_runtime_vs_batch_size.png
+    cupy_throughput_vs_batch_size.png
+```
+
+Raw per-repeat runner outputs remain under ignored `results/runs/<run_id>/`.
+The benchmark aggregate directory is not automatically committed; curated
+benchmark evidence should be reviewed before tracking.
+
+Timing and speedup semantics:
+
+* Timing uses the EWP3-B runner's `time.perf_counter` measurements.
+* CuPy timing uses the runner's `cupy.cuda.Stream.null` synchronization before
+  and after the evaluation region.
+* Benchmark claims should use `evaluation_wall_seconds` unless explicitly
+  labeled as total-wall timing.
+* Evaluation speedup is defined as:
+
+```text
+CPU evaluation_wall_seconds / GPU evaluation_wall_seconds
+```
+
+* Speedups are computed only for matched CPU/GPU workloads.
+* Aggregate statistics record mean, median, sample standard deviation, min,
+  max, completed repeat count, and failed repeat count.
+* `crossover_analysis.json` records the first tested batch size where
+  `evaluation_speedup_median > 1`, plus the maximum tested speedup and its
+  batch size.
+
+Focused local tests:
+
+```text
+tests/test_fgsm_benchmark.py
+```
+
+These tests use synthetic runner timings and do not require CIFAR-10 data,
+CuPy, or a GPU. They cover CLI/config parsing, matrix generation, repeat and
+warm-up indexing, run ID uniqueness, aggregation statistics, matched CPU/GPU
+speedup calculation, matched batch-size workload generation, crossover
+detection, partial failure preservation, and plotting from synthetic benchmark
+summaries.
+
+Suggested local validation:
+
+```bash
+MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m py_compile experiments/fgsm/run_fgsm_benchmark.py
+MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q tests/test_fgsm_benchmark.py
+MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -m "not requires_cupy"
+```
+
+Planned real cluster benchmark command:
+
+```bash
+python -m experiments.fgsm.run_fgsm_benchmark --data-dir data/raw --checkpoint results/checkpoints/portfolio_baseline_best.npz --split test --sample-counts 100,250,500,1000,2000 --sample-scaling-backends numpy,cupy --sample-scaling-batch-size 32 --batch-sizes 8,16,32,64,128 --batch-scaling-backend cupy --batch-scaling-sample-count 1000 --epsilons 0,4/255 --repeats 3 --warmup-runs 1 --raw-run-output-root results/runs --benchmark-output-root results/benchmarks
+```
+
+Validated matched batch-size command:
+
+```bash
+python -m experiments.fgsm.run_fgsm_benchmark --data-dir data/raw --checkpoint results/checkpoints/portfolio_baseline_best.npz --split test --skip-sample-scaling --batch-sizes 8,16,32,64,128 --batch-scaling-backends numpy,cupy --batch-scaling-sample-count 1000 --epsilons 0,4/255 --repeats 3 --warmup-runs 1 --raw-run-output-root results/runs --benchmark-output-root results/benchmarks
+```
+
+Validated real cluster result:
+
+```text
+benchmark_id: 20260811T185420645969Z_fgsm_benchmark
+status: COMPLETED
+GPU: NVIDIA GeForce RTX 2080 Ti
+CuPy: 14.1.1
+NumPy: 2.4.6
+Python: 3.12.13
+sample_count: 1000
+epsilons: [0, 4/255]
+batch_sizes: [8, 16, 32, 64, 128]
+repeats: 3
+warmup_runs: 1
+completed_repeats: 3 for every measured configuration
+failed_repeats: 0 for every measured configuration
+```
+
+Validated median evaluation speedups:
+
+```text
+batch 8: 0.25152078941245753
+batch 16: 0.4203870515032853
+batch 32: 0.7614486302511735
+batch 64: 1.467427603695772
+batch 128: 2.8822301436224573
+```
+
+`crossover_analysis.json` reports first tested GPU-faster batch size `64` and
+maximum tested speedup `2.8822301436224573` at batch size `128`. The values
+are evaluation-wall-time speedups, not kernel-only speedups.
+
+Curated evidence:
+
+```text
+results/curated/ewp3d/20260811T185420645969Z_fgsm_benchmark/
+```
+
+The curated directory contains `benchmark_summary.csv`, `speedup_summary.csv`,
+`crossover_analysis.json`, `benchmark_metadata.json`, and three matched
+batch-size PNG plots. Raw `results/benchmarks/` and `results/runs/` outputs
+remain ignored.
 
 ## NumPy Reference Tests for Future CuPy Equivalence
 

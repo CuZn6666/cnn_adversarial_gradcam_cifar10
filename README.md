@@ -443,6 +443,124 @@ Curated plot artifacts:
 * [Accuracy drop vs epsilon](results/curated/ewp3c/20260811T173256700165Z_fgsm_cupy/accuracy_drop_vs_epsilon.png)
 * [Runtime and throughput summary](results/curated/ewp3c/20260811T173256700165Z_fgsm_cupy/runtime_throughput_summary.png)
 
+### Run a CPU/GPU FGSM benchmark
+
+The benchmark driver launches the existing FGSM runner for each workload. It
+does not implement a second attack or evaluation path:
+
+```bash
+python -m experiments.fgsm.run_fgsm_benchmark --data-dir data/raw --checkpoint results/checkpoints/portfolio_baseline_best.npz --split test --sample-counts 100,250,500,1000,2000 --sample-scaling-backends numpy,cupy --sample-scaling-batch-size 32 --batch-sizes 8,16,32,64,128 --batch-scaling-backend cupy --batch-scaling-sample-count 1000 --epsilons 0,4/255 --repeats 3 --warmup-runs 1 --raw-run-output-root results/runs --benchmark-output-root results/benchmarks
+```
+
+The default benchmark matrix is:
+
+```text
+sample-count scaling:
+  backends: numpy, cupy
+  sample_counts: 100, 250, 500, 1000, 2000
+  batch_size: 32
+  epsilons: 0, 4/255
+
+CuPy batch-size scaling:
+  backend: cupy
+  sample_count: 1000
+  batch_sizes: 8, 16, 32, 64, 128
+  epsilons: 0, 4/255
+
+Matched batch-size extension:
+  backends: numpy, cupy
+  sample_count: 1000
+  batch_sizes: 8, 16, 32, 64, 128
+  epsilons: 0, 4/255
+
+measured repeats: 3
+excluded warm-up runs: 1 per workload
+```
+
+Benchmark aggregate artifacts are written to:
+
+```text
+results/benchmarks/<benchmark_id>/
+  config.json
+  benchmark_runs.csv
+  benchmark_runs.json
+  benchmark_summary.csv
+  benchmark_summary.json
+  speedup_summary.csv
+  speedup_summary.json
+  crossover_analysis.json
+  status.json
+  plots/
+    runtime_vs_sample_count.png
+    throughput_vs_sample_count.png
+    speedup_vs_sample_count.png
+    runtime_vs_batch_size.png
+    throughput_vs_batch_size.png
+    speedup_vs_batch_size.png
+    cupy_runtime_vs_batch_size.png
+    cupy_throughput_vs_batch_size.png
+```
+
+Raw per-repeat runner outputs stay under ignored `results/runs/<run_id>/`.
+Evaluation speedup is defined as `CPU evaluation_wall_seconds / GPU
+evaluation_wall_seconds` for matched workloads. The benchmark records
+`evaluation_wall_seconds` and `total_wall_seconds` separately and uses the
+runner's synchronized CuPy timing path.
+
+To run only the matched batch-size extension after the sample-count benchmark
+has already been completed:
+
+```bash
+python -m experiments.fgsm.run_fgsm_benchmark --data-dir data/raw --checkpoint results/checkpoints/portfolio_baseline_best.npz --split test --skip-sample-scaling --batch-sizes 8,16,32,64,128 --batch-scaling-backends numpy,cupy --batch-scaling-sample-count 1000 --epsilons 0,4/255 --repeats 3 --warmup-runs 1 --raw-run-output-root results/runs --benchmark-output-root results/benchmarks
+```
+
+`crossover_analysis.json` records the first tested batch size where GPU
+evaluation speedup exceeds `1.0`, plus the maximum tested speedup and its
+batch size.
+
+Validated RTX 2080 Ti benchmark evidence:
+
+```text
+benchmark_id: 20260811T185420645969Z_fgsm_benchmark
+backend pair: numpy / cupy
+sample_count: 1000
+epsilons: 0, 4/255
+repeats: 3
+warmup_runs: 1
+```
+
+On the validated RTX 2080 Ti benchmark, CuPy was slower than NumPy at small
+batches, crossed the CPU/GPU break-even at the first tested batch size of
+`64`, and reached a median `2.88x` evaluation-wall-time speedup at batch size
+`128`. Batch size `128` is the best tested batch size in this benchmark, not a
+global optimum claim.
+
+| Batch Size | Median CPU/GPU Evaluation Speedup | NumPy Mean Throughput | CuPy Mean Throughput |
+| ---------- | --------------------------------- | --------------------- | -------------------- |
+| 8 | 0.252x | ~491.67 pairs/s | ~123.69 pairs/s |
+| 16 | 0.420x | ~577.79 pairs/s | ~242.77 pairs/s |
+| 32 | 0.761x | ~622.71 pairs/s | ~474.55 pairs/s |
+| 64 | 1.467x | ~643.74 pairs/s | ~945.14 pairs/s |
+| 128 | 2.882x | ~644.50 pairs/s | ~1855.80 pairs/s |
+
+The earlier sample-count benchmark at matched batch size `32` did not show a
+CPU/GPU crossover for sample counts `100`, `250`, `500`, `1000`, or `2000`.
+Together, these measurements indicate that batch size and GPU utilization are
+the key crossover factors for the current implementation. No custom CUDA
+kernel or GPU-specific Conv2D optimization has been applied.
+
+Curated EWP3-D evidence is tracked under:
+
+```text
+results/curated/ewp3d/20260811T185420645969Z_fgsm_benchmark/
+```
+
+Key plots:
+
+* [Runtime vs batch size](results/curated/ewp3d/20260811T185420645969Z_fgsm_benchmark/runtime_vs_batch_size.png)
+* [Throughput vs batch size](results/curated/ewp3d/20260811T185420645969Z_fgsm_benchmark/throughput_vs_batch_size.png)
+* [Speedup vs batch size](results/curated/ewp3d/20260811T185420645969Z_fgsm_benchmark/speedup_vs_batch_size.png)
+
 ## Numerical Gradient Checking
 
 Manual backpropagation is validated against numerical finite differences.
