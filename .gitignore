@@ -29,6 +29,7 @@ results/checkpoints/*
 # Experiment outputs and external logs
 wandb/
 *.log
+results/cluster_validation/
 
 # Large binary files
 *.npz

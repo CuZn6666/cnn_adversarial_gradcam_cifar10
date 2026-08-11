@@ -1184,7 +1184,127 @@ Scope:
 
 Status:
 
-PLANNED.
+PARTIALLY COMPLETE. EWP3-A environment and dataset-staging validation is
+complete. EWP3-B scheduler-neutral experiment-runner infrastructure has not
+started.
+
+#### EWP3-A: Cluster Environment and CIFAR-10 Dataset Staging
+
+Status:
+
+COMPLETE.
+
+Implemented infrastructure:
+
+* Scheduler-neutral validation utility:
+
+```text
+scripts/validate_cluster_environment.py
+```
+
+* Human-readable environment and dataset report.
+* Optional machine-readable JSON validation report.
+* Python, NumPy, optional CuPy, CUDA runtime, visible device count, and GPU
+  device-name reporting.
+* Explicit CIFAR-10 staging validation without starting training, robustness
+  evaluation, or benchmark workloads.
+* Optional extraction only when the expected archive exists and its checksum
+  matches the project checksum.
+
+Dataset architecture:
+
+* Default data directory: `data/raw`.
+* Expected archive: `data/raw/cifar-10-python.tar.gz`.
+* Expected archive MD5: `c58f30108f718f92721af3b95e74349a`.
+* Expected extracted directory: `data/raw/cifar-10-batches-py`.
+* Expected extracted files include `data_batch_1` through `data_batch_5`,
+  `test_batch`, and `batches.meta`.
+* Expected shapes are `(50000, 3, 32, 32)` for training images and
+  `(10000, 3, 32, 32)` for test images, with 10 class names.
+* `load_cifar10(data_dir=...)` already supports explicit custom data
+  directories. The cluster utility reuses the loader's batch parsing but does
+  not auto-download data.
+
+Cluster staging policy:
+
+```text
+dataset acquisition/staging
+-> checksum verification
+-> extraction
+-> persistent cluster storage
+-> read-only experiment consumption
+```
+
+GPU jobs should not repeatedly download CIFAR-10. Stage the archive once from
+a trusted source or trusted local copy, verify the checksum, extract it in the
+persistent project data directory, and have later jobs consume the staged
+files. Do not duplicate the dataset unless a cluster storage policy requires a
+separate persistent data location.
+
+Validated Hawaii cluster result:
+
+```text
+path: data/raw/cifar-10-python.tar.gz
+observed size: 170498071 bytes
+expected MD5: c58f30108f718f92721af3b95e74349a
+observed MD5: c58f30108f718f92721af3b95e74349a
+checksum: PASS
+extracted directory: data/raw/cifar-10-batches-py
+train shape: (50000, 3, 32, 32)
+train labels: (50000,)
+test shape: (10000, 3, 32, 32)
+test labels: (10000,)
+class count: 10
+```
+
+The previous cluster archive with MD5
+`352dcf059b8b606c932d1db9b8c351a9` has been replaced by the checksum-valid
+official CIFAR-10 archive. Checksum validation remains authoritative; do not
+change the expected checksum, disable validation, or modify the loader to
+accept invalid files.
+
+Validated environment:
+
+```text
+GPU: NVIDIA GeForce RTX 2080 Ti
+CuPy: 14.1.1
+Python: 3.12.13
+NumPy: 2.4.6
+CUDA-capable device count: 1
+Slurm allocation: 1 GPU
+```
+
+Validation artifacts generated on the cluster:
+
+```text
+results/cluster_validation/cifar10_environment_numpy.json
+results/cluster_validation/cifar10_environment_cupy.json
+```
+
+Both reports had `status = passed`. The CuPy report recorded environment
+status `passed`, dataset status `passed`, CuPy `14.1.1`, device count `1`, and
+GPU name `NVIDIA GeForce RTX 2080 Ti`. These JSON files are run-specific
+cluster/environment outputs and are intentionally ignored by Git; this plan
+records the verified summary.
+
+Validated command results:
+
+```text
+python scripts/validate_cluster_environment.py --backend numpy --data-dir data/raw --json-output results/cluster_validation/cifar10_environment_numpy.json
+PASS
+
+python scripts/validate_cluster_environment.py --backend cupy --data-dir data/raw --extract-if-needed --json-output results/cluster_validation/cifar10_environment_cupy.json
+PASS
+
+python -m pytest -q -m requires_data
+3 passed, 240 deselected in 3.34s
+```
+
+Compatibility and data-staging validation are claimed only for the tested
+cluster environment above, not for untested hardware/software combinations.
+
+EWP3-A does not implement the cluster experiment runner, large-scale FGSM
+evaluation, benchmarking plots, or PGD.
 
 ---
 
