@@ -891,6 +891,7 @@ tests/test_gradient_check.py
 tests/test_input_gradients.py
 tests/test_fgsm.py
 tests/test_fgsm_evaluation.py
+tests/test_cupy_layer_loss_equivalence.py
 ```
 
 Scope:
@@ -904,7 +905,50 @@ Scope:
 
 Status:
 
-PLANNED. No CuPy tests exist yet.
+PARTIALLY COMPLETE.
+
+EWP2-A: Remaining layer and loss numerical equivalence
+
+Status: COMPLETE.
+
+Implemented coverage:
+
+* `ReLU.forward` and `ReLU.backward`.
+* `MaxPool2D.forward` and `MaxPool2D.backward`, including `add.at` backward
+  execution and first-maximum tie semantics.
+* `Flatten.forward` and `Flatten.backward`.
+* `Linear.forward` and `Linear.backward`, including `dx`, `dw`, and `db`.
+* `SoftmaxCrossEntropyLoss.forward` and `SoftmaxCrossEntropyLoss.backward`.
+
+Validation boundary:
+
+* The tests are implemented in `tests/test_cupy_layer_loss_equivalence.py`.
+* They skip cleanly on systems without CuPy/CUDA.
+* Real GPU validation passed on the tested environment:
+
+```text
+GPU: NVIDIA GeForce RTX 2080 Ti
+CUDA Toolkit: 12.5
+CuPy: 14.1.1
+Python: 3.12
+Slurm allocation: 1 GPU
+```
+
+* GPU validation result:
+
+```text
+python -m pytest -q tests/test_cupy_layer_loss_equivalence.py -rs
+6 passed in 0.67s
+
+python -m pytest -q -m "not requires_data"
+229 passed, 3 deselected in 7.86s
+```
+
+* NumPy remains the authoritative correctness reference.
+* Compatibility is claimed only for the tested environment above, not for
+  untested GPU/CUDA/CuPy configurations.
+* EWP2 is not complete; FGSM, input-gradient, robustness, checkpoint, and
+  broader model-level equivalence remain future EWP2 work.
 
 ---
 
