@@ -561,6 +561,49 @@ Key plots:
 * [Throughput vs batch size](results/curated/ewp3d/20260811T185420645969Z_fgsm_benchmark/throughput_vs_batch_size.png)
 * [Speedup vs batch size](results/curated/ewp3d/20260811T185420645969Z_fgsm_benchmark/speedup_vs_batch_size.png)
 
+### Run the full CIFAR-10 FGSM evaluation
+
+EWP3-E uses the validated runner and curation pipeline for the final full
+CIFAR-10 test-set FGSM robustness run. This is a robustness evaluation, not a
+new performance benchmark.
+
+The planned Hawaii cluster workload is:
+
+```bash
+python -m experiments.fgsm.run_fgsm_experiment --backend cupy --data-dir data/raw --checkpoint results/checkpoints/portfolio_baseline_best.npz --split test --max-samples 10000 --batch-size 128 --epsilons 0,1/255,2/255,4/255,8/255,12/255,16/255 --seed 42 --output-root results/runs
+```
+
+Batch size `128` is used because EWP3-D found it to be the best tested batch
+size in the current benchmark range. It is not a global optimum claim.
+
+After the runner completes, curate the saved artifacts:
+
+```bash
+python -m experiments.fgsm.plot_fgsm_run --run-dir results/runs/<run_id> --output-root results/curated/ewp3e --expected-sample-count 10000 --expected-epsilons 0,1/255,2/255,4/255,8/255,12/255,16/255 --expected-backend cupy --expected-gpu-name "NVIDIA GeForce RTX 2080 Ti" --interpretation "Full CIFAR-10 test-set FGSM robustness evaluation; final EWP3-E robustness evidence, not a performance benchmark."
+```
+
+The curation step validates run completion, epsilon ordering, sample count,
+bounded/finite robustness metrics, epsilon-zero consistency, dataset checksum
+metadata, expected CuPy backend metadata, expected RTX 2080 Ti metadata, and
+positive timing values.
+
+Curated outputs will be written under:
+
+```text
+results/curated/ewp3e/<run_id>/
+  robustness_summary.csv
+  timing_summary.json
+  run_metadata.json
+  accuracy_vs_epsilon.png
+  attack_success_rate_vs_epsilon.png
+  accuracy_drop_vs_epsilon.png
+  runtime_throughput_summary.png
+```
+
+Raw run artifacts remain under ignored `results/runs/<run_id>/`. After the
+full run, compare the broad robustness trend with the 1000-sample EWP3-C
+sanity run without combining the two runs into one statistical estimate.
+
 ## Numerical Gradient Checking
 
 Manual backpropagation is validated against numerical finite differences.

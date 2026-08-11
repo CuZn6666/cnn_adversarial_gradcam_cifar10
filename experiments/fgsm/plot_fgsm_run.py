@@ -26,6 +26,10 @@ from src.plotting import (
 
 
 DEFAULT_OUTPUT_ROOT = PROJECT_ROOT / "results" / "curated" / "ewp3c"
+DEFAULT_INTERPRETATION = (
+    "Medium-scale sanity run; use for runner stability and artifact quality, "
+    "not as the final full CIFAR-10 robustness conclusion."
+)
 REQUIRED_JSON_ARTIFACTS = (
     "config.json",
     "environment.json",
@@ -121,6 +125,8 @@ def validate_run_artifacts(
     *,
     expected_sample_count: int | None = None,
     expected_epsilons: tuple[float, ...] | None = None,
+    expected_backend: str | None = None,
+    expected_gpu_name: str | None = None,
 ) -> list[dict[str, Any]]:
     status = artifacts["status"]
     if status.get("status") != "COMPLETED":
@@ -132,6 +138,10 @@ def validate_run_artifacts(
         raise ValueError("metrics.json must contain a non-empty results list.")
 
     config = artifacts["config"]
+    if expected_backend is not None and config.get("backend") != expected_backend:
+        raise ValueError(
+            f"Expected backend {expected_backend}, observed {config.get('backend')}."
+        )
     configured_epsilons = [float(value) for value in config["epsilon_values"]]
     observed_epsilons = [float(row["epsilon"]) for row in rows]
     if observed_epsilons != configured_epsilons:
@@ -157,6 +167,14 @@ def validate_run_artifacts(
     if dataset.get("evaluated_samples") != sample_count:
         raise ValueError("summary.json dataset evaluated_samples must match metrics.")
 
+    if expected_gpu_name is not None:
+        environment = artifacts["environment"]
+        observed_gpu_name = environment.get("cupy", {}).get("gpu_name")
+        if observed_gpu_name != expected_gpu_name:
+            raise ValueError(
+                f"Expected GPU {expected_gpu_name}, observed {observed_gpu_name}."
+            )
+
     for index, row in enumerate(rows):
         for field in ROBUSTNESS_SUMMARY_FIELDS:
             if field == "epsilon_label":
@@ -172,6 +190,14 @@ def validate_run_artifacts(
         ):
             _require_finite_number(row[field], f"metrics row {index} {field}")
         for field in (
+            "clean_accuracy",
+            "adversarial_accuracy",
+            "attack_success_rate",
+        ):
+            value = float(row[field])
+            if value < 0.0 or value > 1.0:
+                raise ValueError(f"metrics row {index} {field} must be in [0, 1].")
+        for field in (
             "total_samples",
             "clean_correct",
             "adversarial_correct",
@@ -181,6 +207,29 @@ def validate_run_artifacts(
             value = row[field]
             if isinstance(value, bool) or int(value) < 0:
                 raise ValueError(f"metrics row {index} {field} must be non-negative.")
+
+    epsilon_zero_rows = [
+        row for row in rows if math.isclose(float(row["epsilon"]), 0.0, abs_tol=0.0)
+    ]
+    if epsilon_zero_rows:
+        epsilon_zero = epsilon_zero_rows[0]
+        if int(epsilon_zero["clean_correct"]) != int(
+            epsilon_zero["adversarial_correct"]
+        ):
+            raise ValueError(
+                "epsilon=0 clean_correct must match adversarial_correct."
+            )
+        if int(epsilon_zero["successful_attacks"]) != 0:
+            raise ValueError("epsilon=0 successful_attacks must be zero.")
+        if not math.isclose(
+            float(epsilon_zero["clean_accuracy"]),
+            float(epsilon_zero["adversarial_accuracy"]),
+            rel_tol=0.0,
+            abs_tol=1e-12,
+        ):
+            raise ValueError(
+                "epsilon=0 clean_accuracy must match adversarial_accuracy."
+            )
 
     timing = artifacts["timing"]
     _require_positive_number(timing.get("total_wall_seconds"), "total_wall_seconds")
@@ -222,6 +271,8 @@ def _write_robustness_summary(
 def build_run_metadata(
     artifacts: dict[str, Any],
     rows: list[dict[str, Any]],
+    *,
+    interpretation: str = DEFAULT_INTERPRETATION,
 ) -> dict[str, Any]:
     config = artifacts["config"]
     environment = artifacts["environment"]
@@ -253,10 +304,7 @@ def build_run_metadata(
         "git_commit": git.get("commit"),
         "git_dirty": git.get("dirty"),
         "seed": config["seed"],
-        "interpretation": (
-            "Medium-scale sanity run; use for runner stability and artifact "
-            "quality, not as the final full CIFAR-10 robustness conclusion."
-        ),
+        "interpretation": interpretation,
     }
 
 
@@ -351,6 +399,9 @@ def curate_fgsm_run(
     *,
     expected_sample_count: int | None = None,
     expected_epsilons: tuple[float, ...] | None = None,
+    expected_backend: str | None = None,
+    expected_gpu_name: str | None = None,
+    interpretation: str = DEFAULT_INTERPRETATION,
     overwrite: bool = False,
 ) -> dict[str, Path]:
     artifacts = load_run_artifacts(run_dir)
@@ -358,6 +409,8 @@ def curate_fgsm_run(
         artifacts,
         expected_sample_count=expected_sample_count,
         expected_epsilons=expected_epsilons,
+        expected_backend=expected_backend,
+        expected_gpu_name=expected_gpu_name,
     )
     run_id = artifacts["config"]["run_id"]
     output_dir = _prepare_output_dir(
@@ -372,7 +425,7 @@ def curate_fgsm_run(
         output_dir / "robustness_summary.csv",
     )
     run_metadata_path = save_metrics(
-        build_run_metadata(artifacts, rows),
+        build_run_metadata(artifacts, rows, interpretation=interpretation),
         output_dir / "run_metadata.json",
     )
     timing_summary = build_timing_summary(artifacts, rows)
@@ -415,8 +468,8 @@ def curate_fgsm_run(
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Create curated EWP3-C summaries and plots from one FGSM runner "
-            "artifact directory."
+            "Create curated summaries and plots from one FGSM runner artifact "
+            "directory."
         )
     )
     parser.add_argument(
@@ -443,6 +496,22 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Optional comma-separated expected epsilon list.",
     )
     parser.add_argument(
+        "--expected-backend",
+        choices=("numpy", "cupy"),
+        default=None,
+        help="Optional required backend recorded by the run config.",
+    )
+    parser.add_argument(
+        "--expected-gpu-name",
+        default=None,
+        help="Optional required GPU name recorded by environment metadata.",
+    )
+    parser.add_argument(
+        "--interpretation",
+        default=DEFAULT_INTERPRETATION,
+        help="Interpretation text to store in run_metadata.json.",
+    )
+    parser.add_argument(
         "--overwrite",
         action="store_true",
         help="Regenerate curated files if they already exist.",
@@ -462,6 +531,9 @@ def main(argv: list[str] | None = None) -> int:
         args.output_root,
         expected_sample_count=args.expected_sample_count,
         expected_epsilons=expected_epsilons,
+        expected_backend=args.expected_backend,
+        expected_gpu_name=args.expected_gpu_name,
+        interpretation=args.interpretation,
         overwrite=args.overwrite,
     )
     print(f"curated_output_dir: {outputs['output_dir']}")

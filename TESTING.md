@@ -18,13 +18,14 @@ visible CUDA GPU is unavailable.
 Latest verified local state:
 
 ```text
-Non-CuPy local regression: 238 passed, 19 deselected
-Full local suite: 238 passed, 19 skipped
+Non-CuPy local regression: 252 passed, 19 deselected
+Full local suite: 252 passed, 19 skipped
 EWP3-A local staging validation tests: 4 passed
 EWP3-B local runner infrastructure tests: 7 passed
-EWP3-C local run-curation tests: 7 passed
+EWP3-C/EWP3-E local run-curation tests: 11 passed
 EWP3-C real 1000-sample CuPy sanity run: completed and curated
 EWP3-D local benchmark infrastructure tests: 10 passed
+EWP3-E full-run curation gates: implemented locally, full 10k cluster run pending
 EWP2-B local slice on this machine: 2 skipped because cupy is not installed
 EWP2-C local slice on this machine: 2 skipped because cupy is not installed
 EWP2-D local slice on this machine: 3 skipped because cupy is not installed
@@ -1106,6 +1107,63 @@ The curated directory contains `benchmark_summary.csv`, `speedup_summary.csv`,
 `crossover_analysis.json`, `benchmark_metadata.json`, and three matched
 batch-size PNG plots. Raw `results/benchmarks/` and `results/runs/` outputs
 remain ignored.
+
+## EWP3-E Full CIFAR-10 FGSM Robustness Preparation
+
+Status: READY FOR FULL 10K CLUSTER RUN.
+
+EWP3-E reuses the production FGSM runner and the existing curation script. It
+does not introduce a new attack path, modify robustness semantics, or run PGD.
+
+Full-run workload to validate on the Hawaii RTX 2080 Ti cluster:
+
+```text
+backend: cupy
+split: test
+sample_count: 10000
+batch_size: 128
+seed: 42
+epsilons: [0, 1/255, 2/255, 4/255, 8/255, 12/255, 16/255]
+checkpoint: results/checkpoints/portfolio_baseline_best.npz
+data_dir: data/raw
+```
+
+Batch size `128` is selected because EWP3-D found it to be the best tested
+batch size in the current benchmark range. This is not a global optimum claim.
+
+The curation script now supports EWP3-E validation gates:
+
+```bash
+python -m experiments.fgsm.plot_fgsm_run --run-dir results/runs/<run_id> --output-root results/curated/ewp3e --expected-sample-count 10000 --expected-epsilons 0,1/255,2/255,4/255,8/255,12/255,16/255 --expected-backend cupy --expected-gpu-name "NVIDIA GeForce RTX 2080 Ti" --interpretation "Full CIFAR-10 test-set FGSM robustness evaluation; final EWP3-E robustness evidence, not a performance benchmark."
+```
+
+Required validation checks before EWP3-E can be closed:
+
+* `status.json` reports `COMPLETED`.
+* The metrics contain exactly seven epsilon rows in the requested order.
+* Every metric row reports `total_samples = 10000`.
+* Clean accuracy, adversarial accuracy, attack success rate, and timing values
+  are finite.
+* Clean accuracy, adversarial accuracy, and attack success rate are bounded in
+  `[0, 1]`.
+* The epsilon `0` row has matching clean/adversarial correct counts and
+  accuracies, with zero successful attacks.
+* Dataset checksum metadata passes.
+* Run metadata confirms backend `cupy` and GPU `NVIDIA GeForce RTX 2080 Ti`.
+* Timing values are positive.
+* Curated CSV, JSON, and PNG artifacts are generated from saved runner
+  artifacts.
+
+Focused local tests:
+
+```text
+tests/test_fgsm_run_curation.py
+```
+
+The tests now cover full-run interpretation metadata, expected backend/GPU
+validation, bounded robustness metrics, and epsilon-zero consistency in
+addition to the EWP3-C curation behavior. They use synthetic artifacts and do
+not require CIFAR-10 data, CuPy, or a GPU.
 
 ## NumPy Reference Tests for Future CuPy Equivalence
 
