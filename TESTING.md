@@ -70,6 +70,21 @@ Non-data cluster regression: 231 passed, 3 deselected in 9.23s
 NumPy remains the authoritative correctness reference. Compatibility is
 recorded only for the tested GPU/CUDA/CuPy/Python configuration above.
 
+Latest verified real GPU EWP2-C state:
+
+```text
+GPU: NVIDIA GeForce RTX 2080 Ti
+CUDA Toolkit: 12.5
+CuPy: 14.1.1
+Python: 3.12
+Slurm allocation: 1 GPU
+EWP2-C input-gradient/FGSM equivalence: 2 passed in 1.14s
+Non-data cluster regression: 233 passed, 3 deselected in 8.29s
+```
+
+NumPy remains the authoritative correctness reference. Compatibility is
+recorded only for the tested GPU/CUDA/CuPy/Python configuration above.
+
 Standard offline CI command:
 
 ```bash
@@ -666,7 +681,7 @@ python -m pytest -q -m "not requires_data"
 
 The validated environment was `NVIDIA GeForce RTX 2080 Ti`, CUDA Toolkit
 `12.5`, CuPy `14.1.1`, Python `3.12`, with one GPU allocated through Slurm.
-This is not input-gradient or FGSM equivalence; those are tracked in EWP2-C.
+Input-gradient and FGSM equivalence are covered by EWP2-C.
 
 ## EWP2-C Input-Gradient and FGSM Equivalence Tests
 
@@ -676,16 +691,18 @@ The optional EWP2-C tests are:
 tests/test_cupy_fgsm_equivalence.py
 ```
 
-Status: IMPLEMENTED LOCALLY / GPU VALIDATION PENDING.
+Status: COMPLETE.
 
 They validate NumPy/CuPy equivalence for:
 
 * Deterministic `CompactCNN` parameter synchronization before attack-path
   comparison.
+* Identical deterministic clean inputs, labels, epsilon, and clipping bounds.
 * Production `compute_input_gradient(...)` loss-to-input gradients.
 * Production `fgsm_attack(...)` with `epsilon=0`.
 * Production `fgsm_attack(...)` with a nonzero epsilon.
 * FGSM shape, `L_inf` perturbation bound, and `[0, 1]` clipping semantics.
+* Adversarial images.
 * Adversarial `CompactCNN.forward` logits and exact predicted classes.
 * End-to-end attack path:
   `clean input -> input gradient -> FGSM image -> adversarial forward`.
@@ -718,9 +735,20 @@ GPU validation command:
 python -m pytest -q tests/test_cupy_fgsm_equivalence.py -rs
 ```
 
-EWP2-C must not be marked complete until this command passes on the validated
-RTX 2080 Ti cluster environment and the non-data cluster regression remains
-green.
+Validated on the GPU cluster with:
+
+```text
+python -m pytest -q tests/test_cupy_fgsm_equivalence.py -rs
+2 passed in 1.14s
+
+python -m pytest -q -m "not requires_data"
+233 passed, 3 deselected in 8.29s
+```
+
+The validated environment was `NVIDIA GeForce RTX 2080 Ti`, CUDA Toolkit
+`12.5`, CuPy `14.1.1`, Python `3.12`, with one GPU allocated through Slurm.
+This is not robustness metric or epsilon-sweep equivalence; those remain
+future EWP2-D work.
 
 ## Cluster / GPU Validation Boundary
 
