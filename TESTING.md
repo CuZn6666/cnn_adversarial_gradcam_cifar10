@@ -122,6 +122,32 @@ requires_data suite: 3 passed, 240 deselected in 3.34s
 
 EWP3-A validation is recorded only for the tested cluster environment above.
 
+Latest verified real cluster EWP3-B state:
+
+```text
+run_id: 20260811T171313482022Z_fgsm_cupy
+hostname: csg-brook01
+GPU: NVIDIA GeForce RTX 2080 Ti
+CuPy: 14.1.1
+NumPy: 2.4.6
+Python: 3.12.13
+device_count: 1
+Slurm allocation: 1 GPU
+backend: cupy
+split: test
+max_samples: 8
+batch_size: 2
+epsilons: [0.0, 0.00392156862745098]
+status: COMPLETED
+evaluation_wall_seconds: 0.7688142889965093
+total_wall_seconds: 1.6952154820028227
+sample_epsilon_pairs: 16
+evaluation_sample_epsilon_pairs_per_second: 20.811267726155187
+```
+
+The smoke run validates runner integration only. It is not a robustness
+conclusion and not a performance benchmark.
+
 Standard offline CI command:
 
 ```bash
@@ -698,7 +724,7 @@ The scheduler-neutral FGSM experiment runner is:
 experiments/fgsm/run_fgsm_experiment.py
 ```
 
-Status: IMPLEMENTED LOCALLY / CLUSTER SMOKE PENDING.
+Status: COMPLETE.
 
 It validates and records:
 
@@ -736,14 +762,63 @@ MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -
 MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -m "not requires_cupy"
 ```
 
-Small cluster smoke command before EWP3-B closeout:
+Validated cluster smoke command:
 
 ```bash
-python -m experiments.fgsm.run_fgsm_experiment --backend cupy --data-dir data/raw --checkpoint results/baseline/portfolio_baseline_best.npz --split test --max-samples 8 --batch-size 2 --epsilons 0,1/255 --output-root results/runs
+python -m experiments.fgsm.run_fgsm_experiment --backend cupy --data-dir data/raw --checkpoint results/checkpoints/portfolio_baseline_best.npz --split test --max-samples 8 --batch-size 2 --epsilons 0,1/255 --output-root results/runs
 ```
 
+Validated cluster smoke artifacts:
+
+```text
+config.json
+environment.json
+metrics.csv
+metrics.json
+timing.json
+summary.json
+status.json
+```
+
+Validated smoke metrics:
+
+```text
+epsilon 0.0:
+  total_samples: 8
+  clean_correct: 3
+  adversarial_correct: 3
+  clean_accuracy: 0.375
+  adversarial_accuracy: 0.375
+  successful_attacks: 0
+  attack_success_rate: 0.0
+
+epsilon 1/255:
+  total_samples: 8
+  clean_correct: 3
+  adversarial_correct: 3
+  clean_accuracy: 0.375
+  adversarial_accuracy: 0.375
+  successful_attacks: 0
+  attack_success_rate: 0.0
+```
+
+Validated timing:
+
+```text
+evaluation_wall_seconds: 0.7688142889965093
+total_wall_seconds: 1.6952154820028227
+sample_epsilon_pairs: 16
+evaluation_sample_epsilon_pairs_per_second: 20.811267726155187
+gpu_synchronization: CuPy Stream.null synchronized before and after evaluation
+```
+
+`results/runs/` contains run-specific experiment outputs and is ignored by
+Git. Keep raw run directories out of normal source commits; commit later
+curated benchmark summaries or plots only through an explicit final artifact
+policy.
+
 This smoke command is intentionally small. Do not treat it as the large-scale
-FGSM evaluation or final CPU/GPU benchmark.
+FGSM evaluation, a robustness conclusion, or a final CPU/GPU benchmark.
 
 ## NumPy Reference Tests for Future CuPy Equivalence
 

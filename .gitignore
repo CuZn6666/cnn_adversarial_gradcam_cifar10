@@ -30,6 +30,7 @@ results/checkpoints/*
 wandb/
 *.log
 results/cluster_validation/
+results/runs/
 
 # Large binary files
 *.npz
