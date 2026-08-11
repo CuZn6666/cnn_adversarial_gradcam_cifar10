@@ -1187,8 +1187,8 @@ Status:
 PARTIALLY COMPLETE. EWP3-A environment and dataset-staging validation is
 complete. EWP3-B scheduler-neutral experiment-runner infrastructure is
 complete. EWP3-C medium-scale GPU FGSM sanity validation is complete. EWP3-D
-benchmark orchestration is implemented locally and pending the real cluster
-benchmark run. Later full-evaluation work has not started.
+matched batch-size benchmark extension is implemented locally and pending the
+real cluster validation run. Later full-evaluation work has not started.
 
 #### EWP3-A: Cluster Environment and CIFAR-10 Dataset Staging
 
@@ -1638,7 +1638,8 @@ GPU.
 
 Status:
 
-IMPLEMENTED LOCALLY / REAL CLUSTER BENCHMARK PENDING.
+MATCHED BATCH-SIZE EXTENSION IMPLEMENTED LOCALLY / REAL CLUSTER VALIDATION
+PENDING.
 
 Goal:
 
@@ -1660,6 +1661,8 @@ python -m experiments.fgsm.run_fgsm_benchmark
 * Supports sample-count scaling, CuPy batch-size scaling, repeated measured
   runs, excluded warm-up runs, per-point failure recording, aggregation, and
   plotting from saved benchmark artifacts.
+* Supports optional matched NumPy/CuPy batch-size scaling through
+  `--batch-scaling-backends numpy,cupy`.
 * Preserves raw individual runner outputs under ignored `results/runs/`.
 * Writes aggregate benchmark artifacts under `results/benchmarks/<benchmark_id>/`.
 
@@ -1684,6 +1687,22 @@ epsilons: [0, 4/255]
 repeats: 3 measured repeats
 warmup_runs: 1 excluded warm-up per workload
 ```
+
+Matched batch-size extension:
+
+```text
+backends: [numpy, cupy]
+sample_count: 1000
+batch_sizes: [8, 16, 32, 64, 128]
+epsilons: [0, 4/255]
+repeats: 3 measured repeats
+warmup_runs: 1 excluded warm-up per workload
+```
+
+The matched extension is intended to quantify the observed CPU/GPU crossover
+region after the first full benchmark showed NumPy faster than CuPy at
+matched `batch_size = 32`, while CuPy throughput improved strongly at larger
+batch sizes.
 
 The default matrix implies 45 measured runner invocations and 15 warm-up
 invocations, for 60 total runner invocations:
@@ -1741,11 +1760,15 @@ results/benchmarks/<benchmark_id>/
   benchmark_summary.json
   speedup_summary.csv
   speedup_summary.json
+  crossover_analysis.json
   status.json
   plots/
     runtime_vs_sample_count.png
     throughput_vs_sample_count.png
     speedup_vs_sample_count.png
+    runtime_vs_batch_size.png
+    throughput_vs_batch_size.png
+    speedup_vs_batch_size.png
     cupy_runtime_vs_batch_size.png
     cupy_throughput_vs_batch_size.png
 ```
@@ -1769,15 +1792,27 @@ Failure handling:
 * A benchmark-level `status.json` records `COMPLETED`, `COMPLETED_WITH_FAILURES`,
   or `FAILED`.
 
+Crossover analysis:
+
+* `speedup_summary.json` includes a `crossover_analysis` object.
+* `crossover_analysis.json` records the first tested batch size with
+  `evaluation_speedup_median > 1`, the associated speedup, the maximum tested
+  speedup, and the batch size associated with that maximum.
+* These values are computed from matched CPU/GPU benchmark artifacts and must
+  not be manually entered.
+
 Required plots:
 
 * CPU vs GPU evaluation runtime vs sample count.
 * CPU vs GPU throughput vs sample count.
 * GPU speedup vs sample count.
+* CPU vs GPU evaluation runtime vs batch size when matched batch-size
+  backends are enabled.
+* CPU vs GPU throughput vs batch size when matched batch-size backends are
+  enabled.
+* GPU speedup vs batch size when matched batch-size backends are enabled.
 * CuPy evaluation runtime vs batch size.
 * CuPy throughput vs batch size.
-* Speedup vs batch size may be generated later if matched CPU batch-size
-  baselines are intentionally added.
 
 Local validation:
 
@@ -1788,6 +1823,7 @@ tests/test_fgsm_benchmark.py
 The local tests use synthetic timing/artifact data and monkeypatch the runner.
 They cover CLI/config parsing, benchmark matrix generation, repeat and warm-up
 indexing, run ID uniqueness, aggregation statistics, matched CPU/GPU speedup,
+matched batch-size workload generation, batch-size crossover detection,
 partial failure preservation, and plotting from synthetic benchmark summaries.
 They do not require CIFAR-10 data, CuPy, or a GPU.
 
@@ -1797,9 +1833,16 @@ Planned cluster benchmark command:
 python -m experiments.fgsm.run_fgsm_benchmark --data-dir data/raw --checkpoint results/checkpoints/portfolio_baseline_best.npz --split test --sample-counts 100,250,500,1000,2000 --sample-scaling-backends numpy,cupy --sample-scaling-batch-size 32 --batch-sizes 8,16,32,64,128 --batch-scaling-backend cupy --batch-scaling-sample-count 1000 --epsilons 0,4/255 --repeats 3 --warmup-runs 1 --raw-run-output-root results/runs --benchmark-output-root results/benchmarks
 ```
 
-EWP3-D must not be marked complete until the real cluster benchmark finishes,
-aggregate artifacts and plots are generated, failed configurations if any are
-documented, and no raw `results/runs/` directories are accidentally staged.
+Planned matched batch-size validation command:
+
+```bash
+python -m experiments.fgsm.run_fgsm_benchmark --data-dir data/raw --checkpoint results/checkpoints/portfolio_baseline_best.npz --split test --skip-sample-scaling --batch-sizes 8,16,32,64,128 --batch-scaling-backends numpy,cupy --batch-scaling-sample-count 1000 --epsilons 0,4/255 --repeats 3 --warmup-runs 1 --raw-run-output-root results/runs --benchmark-output-root results/benchmarks
+```
+
+EWP3-D must not be marked complete until the matched batch-size validation
+finishes on the real cluster, aggregate artifacts and plots are validated,
+crossover analysis is recorded, failed configurations if any are documented,
+and no raw `results/runs/` directories are accidentally staged.
 
 ---
 

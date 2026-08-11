@@ -63,7 +63,7 @@ def _small_config(tmp_path: Path, **overrides) -> run_fgsm_benchmark.FGSBenchmar
         "sample_scaling_backends": ("numpy", "cupy"),
         "sample_scaling_batch_size": 32,
         "batch_sizes": (8,),
-        "batch_scaling_backend": "cupy",
+        "batch_scaling_backends": ("cupy",),
         "batch_scaling_sample_count": 100,
         "epsilon_values": (0.0, 4.0 / 255.0),
         "repeats": 2,
@@ -88,6 +88,8 @@ def test_cli_parses_benchmark_config(tmp_path: Path) -> None:
             "16",
             "--batch-sizes",
             "8,32",
+            "--batch-scaling-backends",
+            "numpy,cupy",
             "--batch-scaling-sample-count",
             "500",
             "--epsilons",
@@ -109,6 +111,7 @@ def test_cli_parses_benchmark_config(tmp_path: Path) -> None:
     assert config.sample_scaling_backends == ("numpy", "cupy")
     assert config.sample_scaling_batch_size == 16
     assert config.batch_sizes == (8, 32)
+    assert config.batch_scaling_backends == ("numpy", "cupy")
     assert config.batch_scaling_sample_count == 500
     assert config.epsilon_values == (0.0, 4.0 / 255.0)
     assert config.repeats == 3
@@ -134,6 +137,33 @@ def test_build_benchmark_plan_includes_warmups_and_repeats(tmp_path: Path) -> No
     assert first.repeat_index == 0
     measured_points = [point for point in points if point.measurement_type == "measured"]
     assert {point.repeat_index for point in measured_points} == {0, 1}
+
+
+def test_batch_scaling_can_generate_matched_cpu_gpu_workloads(
+    tmp_path: Path,
+) -> None:
+    config = _small_config(
+        tmp_path,
+        run_sample_scaling=False,
+        batch_sizes=(8, 16, 32),
+        batch_scaling_backends=("numpy", "cupy"),
+        repeats=3,
+        warmup_runs=1,
+    )
+
+    points = run_fgsm_benchmark.build_benchmark_plan(config)
+
+    assert len(points) == 3 * 2 * 4
+    measured = [point for point in points if point.measurement_type == "measured"]
+    assert {(point.batch_size, point.backend) for point in measured} == {
+        (8, "numpy"),
+        (8, "cupy"),
+        (16, "numpy"),
+        (16, "cupy"),
+        (32, "numpy"),
+        (32, "cupy"),
+    }
+    assert {point.repeat_index for point in measured} == {0, 1, 2}
 
 
 def test_benchmark_run_ids_are_unique_and_valid(tmp_path: Path) -> None:
@@ -230,11 +260,57 @@ def test_aggregation_and_speedup_calculation() -> None:
     assert speedup["paired_evaluation_speedup_median"] == 4.5
 
 
+def test_batch_size_speedup_and_crossover_detection() -> None:
+    rows = []
+    for batch_size, cpu_time, gpu_time in (
+        (8, 8.0, 10.0),
+        (16, 8.0, 6.0),
+        (32, 8.0, 4.0),
+    ):
+        for backend, evaluation_time in (
+            ("numpy", cpu_time),
+            ("cupy", gpu_time),
+        ):
+            rows.append(
+                {
+                    "benchmark_id": "bench",
+                    "suite": "batch_size_scaling",
+                    "backend": backend,
+                    "sample_count": 1000,
+                    "batch_size": batch_size,
+                    "epsilon_values": "0,0.01568627450980392",
+                    "epsilon_labels": "0,4/255",
+                    "measurement_type": "measured",
+                    "repeat_index": 0,
+                    "status": "COMPLETED",
+                    "evaluation_wall_seconds": evaluation_time,
+                    "total_wall_seconds": evaluation_time + 1.0,
+                    "evaluation_sample_epsilon_pairs_per_second": (
+                        2000.0 / evaluation_time
+                    ),
+                }
+            )
+
+    summaries = run_fgsm_benchmark.aggregate_benchmark_rows(rows)
+    speedups = run_fgsm_benchmark.compute_speedup_rows(rows, summaries)
+    crossover = run_fgsm_benchmark.detect_speedup_crossover(speedups)
+
+    assert [row["batch_size"] for row in speedups] == [8, 16, 32]
+    assert [row["evaluation_speedup_median"] for row in speedups] == [
+        0.8,
+        8.0 / 6.0,
+        2.0,
+    ]
+    assert crossover["first_gpu_faster_batch_size"] == 16
+    assert crossover["max_speedup_batch_size"] == 32
+    assert crossover["max_speedup"] == 2.0
+
+
 def test_run_fgsm_benchmark_writes_artifacts_with_fake_runner(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    config = _small_config(tmp_path)
+    config = _small_config(tmp_path, batch_scaling_backends=("numpy", "cupy"))
     monkeypatch.setattr(run_fgsm_benchmark, "run_fgsm_experiment", _fake_runner)
 
     result = run_fgsm_benchmark.run_fgsm_benchmark(config)
@@ -255,10 +331,15 @@ def test_run_fgsm_benchmark_writes_artifacts_with_fake_runner(
 
     status = json.loads((benchmark_dir / "status.json").read_text(encoding="utf-8"))
     assert status["status"] == "COMPLETED"
-    assert len(result["rows"]) == 9
+    assert len(result["rows"]) == 12
     assert all(row["status"] == "COMPLETED" for row in result["rows"])
     assert (benchmark_dir / "plots" / "runtime_vs_sample_count.png").is_file()
+    assert (benchmark_dir / "plots" / "speedup_vs_batch_size.png").is_file()
     assert (benchmark_dir / "plots" / "cupy_throughput_vs_batch_size.png").is_file()
+    crossover = json.loads(
+        (benchmark_dir / "crossover_analysis.json").read_text(encoding="utf-8")
+    )
+    assert crossover["tested_batch_sizes"] == [8]
 
 
 def test_run_fgsm_benchmark_preserves_partial_failure_results(
@@ -269,6 +350,7 @@ def test_run_fgsm_benchmark_preserves_partial_failure_results(
         tmp_path,
         run_sample_scaling=False,
         batch_sizes=(8, 16),
+        batch_scaling_backends=("cupy",),
         repeats=1,
         warmup_runs=0,
     )
@@ -334,6 +416,20 @@ def test_plot_benchmark_results_from_synthetic_summary(tmp_path: Path) -> None:
         {
             "benchmark_id": "bench",
             "suite": "batch_size_scaling",
+            "backend": "numpy",
+            "sample_count": 1000,
+            "batch_size": 8,
+            "epsilon_values": "0,0.01568627450980392",
+            "epsilon_labels": "0,4/255",
+            "completed_repeats": 3,
+            "evaluation_wall_seconds_median": 5.0,
+            "evaluation_wall_seconds_std": 0.5,
+            "throughput_median": 200.0,
+            "throughput_std": 8.0,
+        },
+        {
+            "benchmark_id": "bench",
+            "suite": "batch_size_scaling",
             "backend": "cupy",
             "sample_count": 1000,
             "batch_size": 8,
@@ -344,6 +440,20 @@ def test_plot_benchmark_results_from_synthetic_summary(tmp_path: Path) -> None:
             "evaluation_wall_seconds_std": 0.4,
             "throughput_median": 250.0,
             "throughput_std": 10.0,
+        },
+        {
+            "benchmark_id": "bench",
+            "suite": "batch_size_scaling",
+            "backend": "numpy",
+            "sample_count": 1000,
+            "batch_size": 16,
+            "epsilon_values": "0,0.01568627450980392",
+            "epsilon_labels": "0,4/255",
+            "completed_repeats": 3,
+            "evaluation_wall_seconds_median": 5.0,
+            "evaluation_wall_seconds_std": 0.5,
+            "throughput_median": 200.0,
+            "throughput_std": 8.0,
         },
         {
             "benchmark_id": "bench",
@@ -365,7 +475,17 @@ def test_plot_benchmark_results_from_synthetic_summary(tmp_path: Path) -> None:
             "suite": "sample_count_scaling",
             "sample_count": 100,
             "evaluation_speedup_median": 5.0,
-        }
+        },
+        {
+            "suite": "batch_size_scaling",
+            "batch_size": 8,
+            "evaluation_speedup_median": 1.25,
+        },
+        {
+            "suite": "batch_size_scaling",
+            "batch_size": 16,
+            "evaluation_speedup_median": 5.0 / 3.0,
+        },
     ]
 
     outputs = run_fgsm_benchmark.plot_benchmark_results(
@@ -378,6 +498,9 @@ def test_plot_benchmark_results_from_synthetic_summary(tmp_path: Path) -> None:
         "runtime_vs_sample_count",
         "throughput_vs_sample_count",
         "speedup_vs_sample_count",
+        "runtime_vs_batch_size",
+        "throughput_vs_batch_size",
+        "speedup_vs_batch_size",
         "cupy_runtime_vs_batch_size",
         "cupy_throughput_vs_batch_size",
     }

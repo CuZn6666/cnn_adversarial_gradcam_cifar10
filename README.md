@@ -467,6 +467,12 @@ CuPy batch-size scaling:
   batch_sizes: 8, 16, 32, 64, 128
   epsilons: 0, 4/255
 
+Matched batch-size extension:
+  backends: numpy, cupy
+  sample_count: 1000
+  batch_sizes: 8, 16, 32, 64, 128
+  epsilons: 0, 4/255
+
 measured repeats: 3
 excluded warm-up runs: 1 per workload
 ```
@@ -482,11 +488,15 @@ results/benchmarks/<benchmark_id>/
   benchmark_summary.json
   speedup_summary.csv
   speedup_summary.json
+  crossover_analysis.json
   status.json
   plots/
     runtime_vs_sample_count.png
     throughput_vs_sample_count.png
     speedup_vs_sample_count.png
+    runtime_vs_batch_size.png
+    throughput_vs_batch_size.png
+    speedup_vs_batch_size.png
     cupy_runtime_vs_batch_size.png
     cupy_throughput_vs_batch_size.png
 ```
@@ -496,6 +506,17 @@ Evaluation speedup is defined as `CPU evaluation_wall_seconds / GPU
 evaluation_wall_seconds` for matched workloads. The benchmark records
 `evaluation_wall_seconds` and `total_wall_seconds` separately and uses the
 runner's synchronized CuPy timing path.
+
+To run only the matched batch-size extension after the sample-count benchmark
+has already been completed:
+
+```bash
+python -m experiments.fgsm.run_fgsm_benchmark --data-dir data/raw --checkpoint results/checkpoints/portfolio_baseline_best.npz --split test --skip-sample-scaling --batch-sizes 8,16,32,64,128 --batch-scaling-backends numpy,cupy --batch-scaling-sample-count 1000 --epsilons 0,4/255 --repeats 3 --warmup-runs 1 --raw-run-output-root results/runs --benchmark-output-root results/benchmarks
+```
+
+`crossover_analysis.json` records the first tested batch size where GPU
+evaluation speedup exceeds `1.0`, plus the maximum tested speedup and its
+batch size.
 
 ## Numerical Gradient Checking
 

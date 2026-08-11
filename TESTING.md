@@ -24,7 +24,7 @@ EWP3-A local staging validation tests: 4 passed
 EWP3-B local runner infrastructure tests: 7 passed
 EWP3-C local run-curation tests: 7 passed
 EWP3-C real 1000-sample CuPy sanity run: completed and curated
-EWP3-D local benchmark infrastructure tests: 8 passed
+EWP3-D local benchmark infrastructure tests: 10 passed
 EWP2-B local slice on this machine: 2 skipped because cupy is not installed
 EWP2-C local slice on this machine: 2 skipped because cupy is not installed
 EWP2-D local slice on this machine: 3 skipped because cupy is not installed
@@ -949,7 +949,8 @@ The benchmark driver is:
 experiments/fgsm/run_fgsm_benchmark.py
 ```
 
-Status: IMPLEMENTED LOCALLY / REAL CLUSTER BENCHMARK PENDING.
+Status: MATCHED BATCH-SIZE EXTENSION IMPLEMENTED LOCALLY / REAL CLUSTER
+VALIDATION PENDING.
 
 It launches the existing production FGSM runner for each benchmark point and
 does not duplicate the numerical evaluation path.
@@ -965,6 +966,12 @@ sample-count scaling:
 
 CuPy batch-size scaling:
   backend: cupy
+  sample_count: 1000
+  batch_sizes: 8, 16, 32, 64, 128
+  epsilons: 0, 4/255
+
+matched batch-size extension:
+  backends: numpy, cupy
   sample_count: 1000
   batch_sizes: 8, 16, 32, 64, 128
   epsilons: 0, 4/255
@@ -988,11 +995,15 @@ results/benchmarks/<benchmark_id>/
   benchmark_summary.json
   speedup_summary.csv
   speedup_summary.json
+  crossover_analysis.json
   status.json
   plots/
     runtime_vs_sample_count.png
     throughput_vs_sample_count.png
     speedup_vs_sample_count.png
+    runtime_vs_batch_size.png
+    throughput_vs_batch_size.png
+    speedup_vs_batch_size.png
     cupy_runtime_vs_batch_size.png
     cupy_throughput_vs_batch_size.png
 ```
@@ -1017,6 +1028,9 @@ CPU evaluation_wall_seconds / GPU evaluation_wall_seconds
 * Speedups are computed only for matched CPU/GPU workloads.
 * Aggregate statistics record mean, median, sample standard deviation, min,
   max, completed repeat count, and failed repeat count.
+* `crossover_analysis.json` records the first tested batch size where
+  `evaluation_speedup_median > 1`, plus the maximum tested speedup and its
+  batch size.
 
 Focused local tests:
 
@@ -1027,8 +1041,9 @@ tests/test_fgsm_benchmark.py
 These tests use synthetic runner timings and do not require CIFAR-10 data,
 CuPy, or a GPU. They cover CLI/config parsing, matrix generation, repeat and
 warm-up indexing, run ID uniqueness, aggregation statistics, matched CPU/GPU
-speedup calculation, partial failure preservation, and plotting from synthetic
-benchmark summaries.
+speedup calculation, matched batch-size workload generation, crossover
+detection, partial failure preservation, and plotting from synthetic benchmark
+summaries.
 
 Suggested local validation:
 
@@ -1044,9 +1059,15 @@ Planned real cluster benchmark command:
 python -m experiments.fgsm.run_fgsm_benchmark --data-dir data/raw --checkpoint results/checkpoints/portfolio_baseline_best.npz --split test --sample-counts 100,250,500,1000,2000 --sample-scaling-backends numpy,cupy --sample-scaling-batch-size 32 --batch-sizes 8,16,32,64,128 --batch-scaling-backend cupy --batch-scaling-sample-count 1000 --epsilons 0,4/255 --repeats 3 --warmup-runs 1 --raw-run-output-root results/runs --benchmark-output-root results/benchmarks
 ```
 
-EWP3-D should not be marked complete until this benchmark is run on the real
-cluster, aggregate artifacts and plots are validated, and failures if any are
-documented.
+Matched batch-size validation command:
+
+```bash
+python -m experiments.fgsm.run_fgsm_benchmark --data-dir data/raw --checkpoint results/checkpoints/portfolio_baseline_best.npz --split test --skip-sample-scaling --batch-sizes 8,16,32,64,128 --batch-scaling-backends numpy,cupy --batch-scaling-sample-count 1000 --epsilons 0,4/255 --repeats 3 --warmup-runs 1 --raw-run-output-root results/runs --benchmark-output-root results/benchmarks
+```
+
+EWP3-D should not be marked complete until the matched batch-size validation is
+run on the real cluster, aggregate artifacts and plots are validated,
+crossover analysis is recorded, and failures if any are documented.
 
 ## NumPy Reference Tests for Future CuPy Equivalence
 

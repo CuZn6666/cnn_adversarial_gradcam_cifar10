@@ -112,6 +112,7 @@ SPEEDUP_FIELDNAMES = (
     "total_wall_speedup_mean",
     "total_wall_speedup_median",
 )
+CROSSOVER_ANALYSIS_FILENAME = "crossover_analysis.json"
 
 
 @dataclass(frozen=True)
@@ -129,7 +130,8 @@ class FGSBenchmarkConfig:
     sample_scaling_backends: tuple[str, ...] = ("numpy", "cupy")
     sample_scaling_batch_size: int = 32
     batch_sizes: tuple[int, ...] = DEFAULT_BATCH_SIZES
-    batch_scaling_backend: str = "cupy"
+    batch_scaling_backends: tuple[str, ...] = ("cupy",)
+    batch_scaling_backend: str | None = None
     batch_scaling_sample_count: int = 1000
     epsilon_values: tuple[float, ...] = DEFAULT_EPSILON_VALUES
     repeats: int = DEFAULT_REPEATS
@@ -181,10 +183,19 @@ class FGSBenchmarkConfig:
         if not sample_backends:
             raise ValueError("sample_scaling_backends must not be empty.")
         object.__setattr__(self, "sample_scaling_backends", sample_backends)
+        raw_batch_backends = self.batch_scaling_backends
+        if self.batch_scaling_backend is not None:
+            raw_batch_backends = (self.batch_scaling_backend,)
+        batch_backends = tuple(
+            _normalize_backend(backend) for backend in raw_batch_backends
+        )
+        if not batch_backends:
+            raise ValueError("batch_scaling_backends must not be empty.")
+        object.__setattr__(self, "batch_scaling_backends", batch_backends)
         object.__setattr__(
             self,
             "batch_scaling_backend",
-            _normalize_backend(self.batch_scaling_backend),
+            batch_backends[0] if len(batch_backends) == 1 else None,
         )
 
         if not self.epsilon_values:
@@ -268,7 +279,11 @@ def _parse_int_list(value: str, label: str) -> tuple[int, ...]:
 
 
 def _parse_backend_list(value: str) -> tuple[str, ...]:
-    return tuple(_normalize_backend(token.strip()) for token in value.split(",") if token.strip())
+    return tuple(
+        _normalize_backend(token.strip())
+        for token in value.split(",")
+        if token.strip()
+    )
 
 
 def _epsilon_signature(epsilon_values: tuple[float, ...]) -> str:
@@ -294,6 +309,7 @@ def config_to_json(config: FGSBenchmarkConfig) -> dict[str, Any]:
         "sample_scaling_backends": list(config.sample_scaling_backends),
         "sample_scaling_batch_size": config.sample_scaling_batch_size,
         "batch_sizes": list(config.batch_sizes),
+        "batch_scaling_backends": list(config.batch_scaling_backends),
         "batch_scaling_backend": config.batch_scaling_backend,
         "batch_scaling_sample_count": config.batch_scaling_sample_count,
         "epsilon_values": list(config.epsilon_values),
@@ -363,12 +379,13 @@ def build_benchmark_plan(config: FGSBenchmarkConfig) -> list[BenchmarkPoint]:
 
     if config.run_batch_scaling:
         for batch_size in config.batch_sizes:
-            append_point_set(
-                suite="batch_size_scaling",
-                backend=config.batch_scaling_backend,
-                sample_count=config.batch_scaling_sample_count,
-                batch_size=batch_size,
-            )
+            for backend in config.batch_scaling_backends:
+                append_point_set(
+                    suite="batch_size_scaling",
+                    backend=backend,
+                    sample_count=config.batch_scaling_sample_count,
+                    batch_size=batch_size,
+                )
 
     return points
 
@@ -729,6 +746,47 @@ def compute_speedup_rows(
     return speedups
 
 
+def detect_speedup_crossover(
+    speedups: list[dict[str, Any]],
+    *,
+    suite: str = "batch_size_scaling",
+    speedup_key: str = "evaluation_speedup_median",
+) -> dict[str, Any]:
+    """Summarize the first and maximum observed GPU speedups for one suite."""
+    rows = sorted(
+        [
+            row
+            for row in speedups
+            if row["suite"] == suite and _finite_float(row.get(speedup_key)) is not None
+        ],
+        key=lambda row: row["batch_size"],
+    )
+    first_gpu_faster = next(
+        (row for row in rows if float(row[speedup_key]) > 1.0),
+        None,
+    )
+    max_row = (
+        None
+        if not rows
+        else max(rows, key=lambda row: float(row[speedup_key]))
+    )
+    return {
+        "schema_version": 1,
+        "suite": suite,
+        "speedup_metric": speedup_key,
+        "break_even_speedup": 1.0,
+        "tested_batch_sizes": [row["batch_size"] for row in rows],
+        "first_gpu_faster_batch_size": (
+            None if first_gpu_faster is None else first_gpu_faster["batch_size"]
+        ),
+        "first_gpu_faster_speedup": (
+            None if first_gpu_faster is None else first_gpu_faster[speedup_key]
+        ),
+        "max_speedup_batch_size": None if max_row is None else max_row["batch_size"],
+        "max_speedup": None if max_row is None else max_row[speedup_key],
+    }
+
+
 def _paired_evaluation_speedups(
     run_rows: list[dict[str, Any]],
     *,
@@ -770,6 +828,7 @@ def write_summary_artifacts(
     summaries: list[dict[str, Any]],
     speedups: list[dict[str, Any]],
 ) -> dict[str, Path]:
+    crossover_analysis = detect_speedup_crossover(speedups)
     summary_json = save_metrics(
         {"schema_version": 1, "rows": summaries},
         benchmark_dir / "benchmark_summary.json",
@@ -786,6 +845,7 @@ def write_summary_artifacts(
                 "CPU evaluation_wall_seconds / GPU evaluation_wall_seconds "
                 "for matched workloads"
             ),
+            "crossover_analysis": crossover_analysis,
             "rows": speedups,
         },
         benchmark_dir / "speedup_summary.json",
@@ -795,11 +855,16 @@ def write_summary_artifacts(
         speedups,
         SPEEDUP_FIELDNAMES,
     )
+    crossover_json = save_metrics(
+        crossover_analysis,
+        benchmark_dir / CROSSOVER_ANALYSIS_FILENAME,
+    )
     return {
         "benchmark_summary_json": summary_json,
         "benchmark_summary_csv": summary_csv,
         "speedup_summary_json": speedup_json,
         "speedup_summary_csv": speedup_csv,
+        "crossover_analysis_json": crossover_json,
     }
 
 
@@ -945,6 +1010,104 @@ def _plot_cupy_batch_metric(
     return output_path
 
 
+def _plot_metric_by_batch_size(
+    summaries: list[dict[str, Any]],
+    *,
+    metric_key: str,
+    error_key: str,
+    ylabel: str,
+    title: str,
+    output_path: Path,
+) -> Path:
+    rows = [
+        row
+        for row in summaries
+        if row["suite"] == "batch_size_scaling"
+        and row["completed_repeats"] > 0
+        and _finite_float(row[metric_key]) is not None
+    ]
+    if not rows:
+        raise ValueError("No batch-size benchmark rows are available for plotting.")
+
+    figure, axes = plt.subplots(figsize=(7, 4.5))
+    for backend, color in (("numpy", "#4c78a8"), ("cupy", "#f58518")):
+        backend_rows = sorted(
+            [row for row in rows if row["backend"] == backend],
+            key=lambda row: row["batch_size"],
+        )
+        if not backend_rows:
+            continue
+        axes.errorbar(
+            [row["batch_size"] for row in backend_rows],
+            [float(row[metric_key]) for row in backend_rows],
+            yerr=[
+                0.0
+                if _finite_float(row[error_key]) is None
+                else float(row[error_key])
+                for row in backend_rows
+            ],
+            marker="o",
+            linewidth=2.0,
+            capsize=4,
+            label=backend,
+            color=color,
+        )
+    axes.set_xlabel("Batch size")
+    axes.set_ylabel(ylabel)
+    axes.set_title(title)
+    axes.grid(True, alpha=0.3)
+    axes.legend(title="Backend")
+    figure.tight_layout()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    figure.savefig(output_path, dpi=170)
+    plt.close(figure)
+    return output_path
+
+
+def _plot_speedup_by_batch_size(
+    speedups: list[dict[str, Any]],
+    output_path: Path,
+) -> Path:
+    rows = sorted(
+        [
+            row
+            for row in speedups
+            if row["suite"] == "batch_size_scaling"
+            and _finite_float(row["evaluation_speedup_median"]) is not None
+        ],
+        key=lambda row: row["batch_size"],
+    )
+    if not rows:
+        raise ValueError("No matched batch-size speedup rows are available.")
+
+    figure, axes = plt.subplots(figsize=(7, 4.5))
+    axes.plot(
+        [row["batch_size"] for row in rows],
+        [float(row["evaluation_speedup_median"]) for row in rows],
+        marker="o",
+        linewidth=2.0,
+        color="#54a24b",
+        label="Median evaluation speedup",
+    )
+    axes.axhline(
+        1.0,
+        color="0.5",
+        linestyle="--",
+        linewidth=1.2,
+        label="Break-even",
+    )
+    axes.set_xlabel("Batch size")
+    axes.set_ylabel("CPU / GPU evaluation-wall speedup")
+    axes.set_title("FGSM Benchmark: GPU Speedup vs Batch Size")
+    axes.grid(True, alpha=0.3)
+    axes.legend()
+    figure.tight_layout()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    figure.savefig(output_path, dpi=170)
+    plt.close(figure)
+    return output_path
+
+
 def plot_benchmark_results(
     benchmark_dir: Path,
     summaries: list[dict[str, Any]],
@@ -980,6 +1143,35 @@ def plot_benchmark_results(
             lambda: _plot_speedup_by_sample_count(
                 speedups,
                 plots_dir / "speedup_vs_sample_count.png",
+            ),
+        ),
+        (
+            "runtime_vs_batch_size",
+            lambda: _plot_metric_by_batch_size(
+                summaries,
+                metric_key="evaluation_wall_seconds_median",
+                error_key="evaluation_wall_seconds_std",
+                ylabel="Evaluation wall time (seconds)",
+                title="FGSM Benchmark: Runtime vs Batch Size",
+                output_path=plots_dir / "runtime_vs_batch_size.png",
+            ),
+        ),
+        (
+            "throughput_vs_batch_size",
+            lambda: _plot_metric_by_batch_size(
+                summaries,
+                metric_key="throughput_median",
+                error_key="throughput_std",
+                ylabel="Sample-epsilon pairs / second",
+                title="FGSM Benchmark: Throughput vs Batch Size",
+                output_path=plots_dir / "throughput_vs_batch_size.png",
+            ),
+        ),
+        (
+            "speedup_vs_batch_size",
+            lambda: _plot_speedup_by_batch_size(
+                speedups,
+                plots_dir / "speedup_vs_batch_size.png",
             ),
         ),
         (
@@ -1128,9 +1320,19 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--batch-sizes",
         default="8,16,32,64,128",
-        help="Comma-separated CuPy batch sizes for batch scaling.",
+        help="Comma-separated batch sizes for batch-size scaling.",
     )
-    parser.add_argument("--batch-scaling-backend", choices=("numpy", "cupy"), default="cupy")
+    parser.add_argument(
+        "--batch-scaling-backends",
+        default="cupy",
+        help="Comma-separated backends for batch-size scaling.",
+    )
+    parser.add_argument(
+        "--batch-scaling-backend",
+        choices=("numpy", "cupy"),
+        default=None,
+        help="Deprecated single-backend alias for --batch-scaling-backends.",
+    )
     parser.add_argument("--batch-scaling-sample-count", type=int, default=1000)
     parser.add_argument(
         "--epsilons",
@@ -1158,6 +1360,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def config_from_args(args: argparse.Namespace) -> FGSBenchmarkConfig:
+    batch_scaling_backends = _parse_backend_list(args.batch_scaling_backends)
+    if args.batch_scaling_backend is not None:
+        batch_scaling_backends = (args.batch_scaling_backend,)
     return FGSBenchmarkConfig(
         data_dir=args.data_dir,
         checkpoint_path=args.checkpoint,
@@ -1170,7 +1375,7 @@ def config_from_args(args: argparse.Namespace) -> FGSBenchmarkConfig:
         sample_scaling_backends=_parse_backend_list(args.sample_scaling_backends),
         sample_scaling_batch_size=args.sample_scaling_batch_size,
         batch_sizes=_parse_int_list(args.batch_sizes, "batch_sizes"),
-        batch_scaling_backend=args.batch_scaling_backend,
+        batch_scaling_backends=batch_scaling_backends,
         batch_scaling_sample_count=args.batch_scaling_sample_count,
         epsilon_values=parse_epsilon_values(args.epsilons),
         repeats=args.repeats,
