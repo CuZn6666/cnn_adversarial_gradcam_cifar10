@@ -443,6 +443,60 @@ Curated plot artifacts:
 * [Accuracy drop vs epsilon](results/curated/ewp3c/20260811T173256700165Z_fgsm_cupy/accuracy_drop_vs_epsilon.png)
 * [Runtime and throughput summary](results/curated/ewp3c/20260811T173256700165Z_fgsm_cupy/runtime_throughput_summary.png)
 
+### Run a CPU/GPU FGSM benchmark
+
+The benchmark driver launches the existing FGSM runner for each workload. It
+does not implement a second attack or evaluation path:
+
+```bash
+python -m experiments.fgsm.run_fgsm_benchmark --data-dir data/raw --checkpoint results/checkpoints/portfolio_baseline_best.npz --split test --sample-counts 100,250,500,1000,2000 --sample-scaling-backends numpy,cupy --sample-scaling-batch-size 32 --batch-sizes 8,16,32,64,128 --batch-scaling-backend cupy --batch-scaling-sample-count 1000 --epsilons 0,4/255 --repeats 3 --warmup-runs 1 --raw-run-output-root results/runs --benchmark-output-root results/benchmarks
+```
+
+The default benchmark matrix is:
+
+```text
+sample-count scaling:
+  backends: numpy, cupy
+  sample_counts: 100, 250, 500, 1000, 2000
+  batch_size: 32
+  epsilons: 0, 4/255
+
+CuPy batch-size scaling:
+  backend: cupy
+  sample_count: 1000
+  batch_sizes: 8, 16, 32, 64, 128
+  epsilons: 0, 4/255
+
+measured repeats: 3
+excluded warm-up runs: 1 per workload
+```
+
+Benchmark aggregate artifacts are written to:
+
+```text
+results/benchmarks/<benchmark_id>/
+  config.json
+  benchmark_runs.csv
+  benchmark_runs.json
+  benchmark_summary.csv
+  benchmark_summary.json
+  speedup_summary.csv
+  speedup_summary.json
+  status.json
+  plots/
+    runtime_vs_sample_count.png
+    throughput_vs_sample_count.png
+    speedup_vs_sample_count.png
+    cupy_runtime_vs_batch_size.png
+    cupy_throughput_vs_batch_size.png
+```
+
+Raw per-repeat runner outputs stay under ignored `results/runs/<run_id>/`.
+Evaluation speedup is defined as `CPU evaluation_wall_seconds / GPU
+evaluation_wall_seconds` for matched workloads. The benchmark records
+`evaluation_wall_seconds` and `total_wall_seconds` separately and uses the
+runner's synchronized CuPy timing path.
+
 ## Numerical Gradient Checking
 
 Manual backpropagation is validated against numerical finite differences.

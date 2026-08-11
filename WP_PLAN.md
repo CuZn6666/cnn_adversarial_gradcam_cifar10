@@ -1187,7 +1187,8 @@ Status:
 PARTIALLY COMPLETE. EWP3-A environment and dataset-staging validation is
 complete. EWP3-B scheduler-neutral experiment-runner infrastructure is
 complete. EWP3-C medium-scale GPU FGSM sanity validation is complete. EWP3-D
-and later scaling/full-evaluation work have not started.
+benchmark orchestration is implemented locally and pending the real cluster
+benchmark run. Later full-evaluation work has not started.
 
 #### EWP3-A: Cluster Environment and CIFAR-10 Dataset Staging
 
@@ -1632,6 +1633,173 @@ The local tests use synthetic artifact directories and validate loading,
 epsilon ordering, curated summary generation, plotting, overwrite behavior,
 and missing/invalid artifact failures. They do not require CIFAR-10 data or a
 GPU.
+
+#### EWP3-D: CPU/GPU Scaling and Performance Benchmark
+
+Status:
+
+IMPLEMENTED LOCALLY / REAL CLUSTER BENCHMARK PENDING.
+
+Goal:
+
+Produce reproducible, defensible CPU/GPU performance evidence for the existing
+FGSM robustness evaluation path. This phase measures systems behavior only; it
+does not change numerical semantics, model architecture, FGSM definitions, or
+robustness metrics.
+
+Implemented local benchmark support:
+
+* Scheduler-neutral benchmark driver:
+
+```text
+python -m experiments.fgsm.run_fgsm_benchmark
+```
+
+* Launches the existing production FGSM runner for every benchmark point.
+* Does not implement a second numerical path.
+* Supports sample-count scaling, CuPy batch-size scaling, repeated measured
+  runs, excluded warm-up runs, per-point failure recording, aggregation, and
+  plotting from saved benchmark artifacts.
+* Preserves raw individual runner outputs under ignored `results/runs/`.
+* Writes aggregate benchmark artifacts under `results/benchmarks/<benchmark_id>/`.
+
+Default sample-count scaling matrix:
+
+```text
+backends: [numpy, cupy]
+sample_counts: [100, 250, 500, 1000, 2000]
+batch_size: 32
+epsilons: [0, 4/255]
+repeats: 3 measured repeats
+warmup_runs: 1 excluded warm-up per workload
+```
+
+Default CuPy batch-size scaling matrix:
+
+```text
+backend: cupy
+sample_count: 1000
+batch_sizes: [8, 16, 32, 64, 128]
+epsilons: [0, 4/255]
+repeats: 3 measured repeats
+warmup_runs: 1 excluded warm-up per workload
+```
+
+The default matrix implies 45 measured runner invocations and 15 warm-up
+invocations, for 60 total runner invocations:
+
+```text
+sample-count scaling: 5 sample counts * 2 backends * (1 warm-up + 3 repeats) = 40
+batch-size scaling: 5 batch sizes * 1 backend * (1 warm-up + 3 repeats) = 20
+```
+
+Timing methodology:
+
+* Timing comes from the EWP3-B runner's `timing.json`.
+* CPU and GPU timing use `time.perf_counter`.
+* CuPy timing synchronizes `cupy.cuda.Stream.null` before and after the
+  evaluation region through the validated runner path.
+* Benchmark claims use `evaluation_wall_seconds` unless explicitly labeled as
+  total-wall timing.
+* This phase does not claim kernel-only timing.
+
+Speedup definition:
+
+```text
+CPU evaluation_wall_seconds / GPU evaluation_wall_seconds
+```
+
+Speedups are computed only for matched workloads with the same sample count,
+batch size, epsilon workload, seed, checkpoint, dataset split, and repeat
+semantics. Total-wall speedup is recorded separately where available.
+
+Statistical summary:
+
+For each measured workload, aggregate artifacts record:
+
+```text
+mean
+median
+sample standard deviation
+min
+max
+completed repeat count
+failed repeat count
+```
+
+With three repeats, variability is treated as an engineering stability signal,
+not a high-confidence statistical claim.
+
+Benchmark artifact schema:
+
+```text
+results/benchmarks/<benchmark_id>/
+  config.json
+  benchmark_runs.csv
+  benchmark_runs.json
+  benchmark_summary.csv
+  benchmark_summary.json
+  speedup_summary.csv
+  speedup_summary.json
+  status.json
+  plots/
+    runtime_vs_sample_count.png
+    throughput_vs_sample_count.png
+    speedup_vs_sample_count.png
+    cupy_runtime_vs_batch_size.png
+    cupy_throughput_vs_batch_size.png
+```
+
+Raw individual runs remain under:
+
+```text
+results/runs/<run_id>/
+```
+
+and remain ignored by Git.
+
+Failure handling:
+
+* Individual runner failures are recorded in `benchmark_runs.csv/json` with
+  `status = FAILED`, error type, and error message.
+* Earlier valid results are preserved after a later failed configuration.
+* Aggregate summaries include completed and failed repeat counts.
+* CuPy requests still rely on the runner's no-fallback behavior; CuPy is not
+  silently replaced by NumPy.
+* A benchmark-level `status.json` records `COMPLETED`, `COMPLETED_WITH_FAILURES`,
+  or `FAILED`.
+
+Required plots:
+
+* CPU vs GPU evaluation runtime vs sample count.
+* CPU vs GPU throughput vs sample count.
+* GPU speedup vs sample count.
+* CuPy evaluation runtime vs batch size.
+* CuPy throughput vs batch size.
+* Speedup vs batch size may be generated later if matched CPU batch-size
+  baselines are intentionally added.
+
+Local validation:
+
+```text
+tests/test_fgsm_benchmark.py
+```
+
+The local tests use synthetic timing/artifact data and monkeypatch the runner.
+They cover CLI/config parsing, benchmark matrix generation, repeat and warm-up
+indexing, run ID uniqueness, aggregation statistics, matched CPU/GPU speedup,
+partial failure preservation, and plotting from synthetic benchmark summaries.
+They do not require CIFAR-10 data, CuPy, or a GPU.
+
+Planned cluster benchmark command:
+
+```bash
+python -m experiments.fgsm.run_fgsm_benchmark --data-dir data/raw --checkpoint results/checkpoints/portfolio_baseline_best.npz --split test --sample-counts 100,250,500,1000,2000 --sample-scaling-backends numpy,cupy --sample-scaling-batch-size 32 --batch-sizes 8,16,32,64,128 --batch-scaling-backend cupy --batch-scaling-sample-count 1000 --epsilons 0,4/255 --repeats 3 --warmup-runs 1 --raw-run-output-root results/runs --benchmark-output-root results/benchmarks
+```
+
+EWP3-D must not be marked complete until the real cluster benchmark finishes,
+aggregate artifacts and plots are generated, failed configurations if any are
+documented, and no raw `results/runs/` directories are accidentally staged.
 
 ---
 
