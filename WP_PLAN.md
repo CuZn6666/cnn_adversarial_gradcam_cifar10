@@ -35,8 +35,8 @@ Current implementation summary:
   from `0/255` through `16/255`.
 * WP9 now includes the validated EWP4-A L-infinity PGD core, EWP4-B
   NumPy/CuPy PGD equivalence validation on the tested RTX 2080 Ti
-  environment, EWP4-C runner/curation validation, and the completed EWP4-D
-  full 10,000-sample PGD evaluation with curated FGSM-vs-PGD comparison evidence.
+  environment, EWP4-C runner/curation validation, EWP4-D full 10,000-sample
+  PGD evaluation, and EWP4-E full 10,000-sample PGD epsilon-sweep evidence.
 * WP10-WP12 remain intentionally deferred.
 * WP13 implementation exists and needs formal documentation/closeout.
 * WP14 currently covers clean-vs-FGSM Grad-CAM analysis only.
@@ -56,12 +56,12 @@ Current implementation summary:
 | WP7 | FGSM Attack and Input-Gradient Visualization | COMPLETE | Input gradients, FGSM, qualitative visualizations, and controlled example generation are implemented and tested. |
 | WP8 | FGSM robustness evaluation | COMPLETE | Original FGSM robustness scope is complete, including batch evaluation, epsilon sweeps, plots, representative metadata, and 1024-sample quantitative evaluation. Larger GPU runs are an extension, not missing WP8 work. |
 | WP9 | PGD Attack Implementation | COMPLETE | EWP4-A implements the L-infinity PGD core, EWP4-B validates NumPy/CuPy equivalence on the tested RTX 2080 Ti environment, EWP4-C validates runner/curation integration, and EWP4-D completes the full 10,000-sample PGD evaluation path. |
-| WP10 | PGD Robustness Evaluation and Comparison | COMPLETE | Full CIFAR-10 test-set PGD-Linf evaluation completed on 10,000 samples at epsilon `8/255`, alpha `2/255`, 10 steps, random start, seed 42. PGD adversarial accuracy was `0.23%` with `99.50%` ASR, and matched FGSM-vs-PGD curated comparison artifacts were generated. |
+| WP10 | PGD Robustness Evaluation and Comparison | COMPLETE | Full CIFAR-10 PGD-Linf evaluation completed on 10,000 test samples with `alpha=2/255`, 10 steps, random start, seed 42. EWP4-E extended this to epsilon `0,1/255,2/255,4/255,8/255,12/255,16/255`; adversarial accuracy decreased from `46.39%` at epsilon 0 to `0.00%` at `16/255`, while ASR increased from `0.00%` to `100.00%`. |
 | WP11 | Non-Gradient Black-Box Attack Implementation | DEFERRED | Intentionally not active. No black-box attack implementation exists. |
 | WP12 | Black-Box Attack Evaluation | DEFERRED | Intentionally not active. Query-count evaluation is not implemented. |
 | WP13 | Grad-CAM Implementation | NEEDS DOCUMENTATION | Core Grad-CAM implementation exists and is tested; formal WP13 closeout remains to be written. |
 | WP14 | Grad-CAM Analysis Before and After Attacks | PARTIALLY COMPLETE | Clean-vs-FGSM Grad-CAM analysis exists. PGD/black-box Grad-CAM analysis is absent because WP9-WP12 are deferred. |
-| WP15 | Final integration, reproducibility and result organization | PARTIALLY COMPLETE | README, CI, tests, and result artifacts exist, but final integration is incomplete while extension work is pending. |
+| WP15 | Final integration, reproducibility and result organization | COMPLETE | Final FGSM, PGD, CPU/GPU benchmark, Grad-CAM, curated portfolio evidence, README presentation, and reproducibility documentation are integrated. EWP4-E marks the project feature freeze; further attacks or training extensions are future work rather than incomplete scope. |
 
 ## Original Work Packages
 
@@ -2694,3 +2694,49 @@ Before starting implementation for a new original or extended Work Package:
 4. Preserve the NumPy reference behavior unless the task explicitly changes it.
 5. Do not start PGD, black-box attacks, or large-scale cluster experiments
    without explicit user approval.
+
+
+## EWP4-E Final PGD Epsilon Sweep and Feature Freeze
+
+EWP4-E completed the final robustness extension using the existing production
+PGD-Linf attack and single-epsilon runner path.
+
+Final configuration:
+
+- backend: CuPy
+- GPU: NVIDIA GeForce RTX 2080 Ti
+- CIFAR-10 test samples: 10,000
+- batch size: 128
+- alpha: 2/255
+- steps: 10
+- random start: true
+- seed: 42
+- epsilons: 0, 1/255, 2/255, 4/255, 8/255, 12/255, 16/255
+
+Measured adversarial accuracies:
+
+- 0: 46.39%
+- 1/255: 30.47%
+- 2/255: 17.38%
+- 4/255: 4.58%
+- 8/255: 0.23%
+- 12/255: 0.01%
+- 16/255: 0.00%
+
+Measured attack success rates:
+
+- 0: 0.00%
+- 1/255: 34.32%
+- 2/255: 62.54%
+- 4/255: 90.13%
+- 8/255: 99.50%
+- 12/255: 99.98%
+- 16/255: 100.00%
+
+The sweep reuses the existing PGD numerical path; no second attack
+implementation was introduced.
+
+PROJECT FEATURE FREEZE:
+No further large feature additions are required for portfolio completion.
+Multi-restart PGD, PGD scaling benchmarks, black-box attacks, adversarial
+training, and additional attack families remain optional future work.

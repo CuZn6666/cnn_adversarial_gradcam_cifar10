@@ -37,14 +37,16 @@ validated CuPy / RTX 2080 Ti execution path.
 ## Final Evidence Snapshot
 
 The final portfolio evidence is generated from tracked curated artifacts under
-`results/curated/ewp3d/`, `results/curated/ewp3e/`, and
-`results/curated/ewp4d/`:
+`results/curated/ewp3d/`, `results/curated/ewp3e/`,
+`results/curated/ewp4d/`, and final portfolio-level PGD sweep evidence under
+`results/curated/portfolio/`:
 
 | Claim | Validated result | Source |
 | ----- | ---------------- | ------ |
 | Full-test clean accuracy | `46.39%` on `10,000` CIFAR-10 test images | [EWP3-E robustness summary](results/curated/ewp3e/20260812T115232600695Z_fgsm_cupy/robustness_summary.csv) |
 | FGSM adversarial accuracy | `7.43%` at `4/255`, `0.99%` at `8/255`, `0.04%` at `16/255` | [EWP3-E robustness summary](results/curated/ewp3e/20260812T115232600695Z_fgsm_cupy/robustness_summary.csv) |
 | PGD-10 adversarial accuracy | `0.23%` at `8/255` (`alpha=2/255`, 10 steps, random start); ASR `99.50%` | [EWP4-D robustness summary](results/curated/ewp4d/20260812T143028388690Z_pgd_linf_cupy/robustness_summary.csv) |
+| PGD-10 epsilon sweep | Adv. accuracy: `30.47%` at `1/255`, `17.38%` at `2/255`, `4.58%` at `4/255`, `0.23%` at `8/255`, `0.01%` at `12/255`, `0.00%` at `16/255` | [PGD epsilon sweep summary](results/curated/portfolio/pgd_epsilon_sweep_summary.csv) |
 | FGSM vs PGD at `8/255` | FGSM: `0.99%` adv. accuracy / `97.87%` ASR; PGD-10: `0.23%` / `99.50%` | [FGSM vs PGD summary](results/curated/portfolio/fgsm_vs_pgd_summary.csv) |
 | Full-run throughput | `1891.39` sample-epsilon pairs/s for `70,000` pairs | [EWP3-E timing summary](results/curated/ewp3e/20260812T115232600695Z_fgsm_cupy/timing_summary.json) |
 | CPU/GPU crossover | First tested GPU-faster batch size: `64` | [EWP3-D crossover analysis](results/curated/ewp3d/20260811T185420645969Z_fgsm_benchmark/crossover_analysis.json) |
@@ -54,6 +56,8 @@ Summary artifacts:
 
 * [Final portfolio summary CSV](results/curated/portfolio/portfolio_summary.csv)
 * [Final portfolio summary JSON](results/curated/portfolio/portfolio_summary.json)
+* [PGD epsilon sweep summary CSV](results/curated/portfolio/pgd_epsilon_sweep_summary.csv)
+* [PGD epsilon sweep summary JSON](results/curated/portfolio/pgd_epsilon_sweep_summary.json)
 
 Regenerate the final summary and figures from tracked curated evidence:
 
@@ -73,6 +77,18 @@ At `epsilon=8/255` on the same `10,000` CIFAR-10 test images and checkpoint,
 FGSM achieved `0.99%` adversarial accuracy with `97.87%` attack success rate,
 while 10-step PGD-Linf (`alpha=2/255`, random start) achieved `0.23%`
 adversarial accuracy with `99.50%` attack success rate.
+
+### Full-test PGD-Linf epsilon sweep
+
+[![Full PGD-Linf epsilon sweep](results/curated/portfolio/final_pgd_epsilon_sweep.png)](results/curated/portfolio/final_pgd_epsilon_sweep.png)
+
+With `alpha=2/255`, `10` PGD steps, random start, seed `42`, and the same
+`10,000` CIFAR-10 test images, adversarial accuracy decreased monotonically
+from the `46.39%` clean baseline to `30.47%`, `17.38%`, `4.58%`, `0.23%`,
+`0.01%`, and `0.00%` as epsilon increased from `1/255` through `16/255`.
+Attack success rate increased from `34.32%` at `1/255` to `100.00%` at
+`16/255`.
+
 
 
 The performance speedup is evaluation-wall-time speedup for matched workloads:
