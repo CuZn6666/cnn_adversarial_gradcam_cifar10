@@ -245,11 +245,37 @@ def test_curate_fgsm_run_writes_summary_plots_and_metadata(
         "results/checkpoints/portfolio_baseline_best.npz"
     )
     assert metadata["git_commit"] == "abc123"
+    assert "Medium-scale sanity run" in metadata["interpretation"]
     assert timing["sample_epsilon_pairs"] == 3000
     assert math.isclose(
         timing["evaluation_sample_epsilon_pairs_per_second"],
         240.0,
     )
+
+
+def test_curate_fgsm_run_accepts_full_run_interpretation_and_expected_device(
+    tmp_path: Path,
+) -> None:
+    run_dir = _write_synthetic_run(tmp_path)
+    interpretation = (
+        "Full CIFAR-10 test-set FGSM robustness evaluation; use as final "
+        "EWP3-E robustness evidence, not as a performance benchmark."
+    )
+
+    outputs = plot_fgsm_run.curate_fgsm_run(
+        run_dir,
+        tmp_path / "curated",
+        expected_sample_count=1000,
+        expected_epsilons=(0.0, 1.0 / 255.0, 2.0 / 255.0),
+        expected_backend="cupy",
+        expected_gpu_name="NVIDIA GeForce RTX 2080 Ti",
+        interpretation=interpretation,
+    )
+
+    metadata = json.loads(outputs["run_metadata"].read_text(encoding="utf-8"))
+    assert metadata["backend"] == "cupy"
+    assert metadata["gpu"] == "NVIDIA GeForce RTX 2080 Ti"
+    assert metadata["interpretation"] == interpretation
 
 
 def test_curate_fgsm_run_rejects_existing_outputs_without_overwrite(
@@ -295,6 +321,49 @@ def test_validate_run_artifacts_rejects_nonfinite_metric(tmp_path: Path) -> None
 
     with pytest.raises(ValueError, match="adversarial_accuracy"):
         plot_fgsm_run.validate_run_artifacts(artifacts)
+
+
+def test_validate_run_artifacts_rejects_out_of_range_accuracy(
+    tmp_path: Path,
+) -> None:
+    rows = _metric_rows()
+    rows[1] = {**rows[1], "attack_success_rate": 1.2}
+    run_dir = _write_synthetic_run(tmp_path, rows=rows)
+    artifacts = plot_fgsm_run.load_run_artifacts(run_dir)
+
+    with pytest.raises(ValueError, match=r"\[0, 1\]"):
+        plot_fgsm_run.validate_run_artifacts(artifacts)
+
+
+def test_validate_run_artifacts_rejects_epsilon_zero_inconsistency(
+    tmp_path: Path,
+) -> None:
+    rows = _metric_rows()
+    rows[0] = {
+        **rows[0],
+        "adversarial_correct": 449,
+        "adversarial_accuracy": 0.449,
+    }
+    run_dir = _write_synthetic_run(tmp_path, rows=rows)
+    artifacts = plot_fgsm_run.load_run_artifacts(run_dir)
+
+    with pytest.raises(ValueError, match="epsilon=0"):
+        plot_fgsm_run.validate_run_artifacts(artifacts)
+
+
+def test_validate_run_artifacts_rejects_unexpected_backend_or_gpu(
+    tmp_path: Path,
+) -> None:
+    run_dir = _write_synthetic_run(tmp_path)
+    artifacts = plot_fgsm_run.load_run_artifacts(run_dir)
+
+    with pytest.raises(ValueError, match="Expected backend numpy"):
+        plot_fgsm_run.validate_run_artifacts(artifacts, expected_backend="numpy")
+    with pytest.raises(ValueError, match="Expected GPU"):
+        plot_fgsm_run.validate_run_artifacts(
+            artifacts,
+            expected_gpu_name="Different GPU",
+        )
 
 
 def test_validate_run_artifacts_rejects_bad_dataset_checksum(

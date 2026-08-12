@@ -561,6 +561,101 @@ Key plots:
 * [Throughput vs batch size](results/curated/ewp3d/20260811T185420645969Z_fgsm_benchmark/throughput_vs_batch_size.png)
 * [Speedup vs batch size](results/curated/ewp3d/20260811T185420645969Z_fgsm_benchmark/speedup_vs_batch_size.png)
 
+### Run the full CIFAR-10 FGSM evaluation
+
+EWP3-E uses the validated runner and curation pipeline for the final full
+CIFAR-10 test-set FGSM robustness run. This is FGSM robustness evidence, not
+PGD robustness evidence and not a new performance benchmark.
+
+Validated Hawaii cluster workload:
+
+```bash
+python -m experiments.fgsm.run_fgsm_experiment --backend cupy --data-dir data/raw --checkpoint results/checkpoints/portfolio_baseline_best.npz --split test --max-samples 10000 --batch-size 128 --epsilons 0,1/255,2/255,4/255,8/255,12/255,16/255 --seed 42 --output-root results/runs
+```
+
+Batch size `128` is used because EWP3-D found it to be the best tested batch
+size in the current benchmark range. It is not a global optimum claim.
+
+The validated run was:
+
+```text
+run_id: 20260812T115232600695Z_fgsm_cupy
+backend: cupy
+GPU: NVIDIA GeForce RTX 2080 Ti
+CuPy: 14.1.1
+NumPy: 2.4.6
+Python: 3.12.13
+sample_count: 10000
+batch_size: 128
+seed: 42
+CIFAR-10 checksum: PASS
+Git commit at runtime: b5a755b457c4299d9dd1a7c77d195f6fc3d74bc4
+status: COMPLETED
+```
+
+Curate the saved artifacts with:
+
+```bash
+python -m experiments.fgsm.plot_fgsm_run --run-dir results/runs/<run_id> --output-root results/curated/ewp3e --expected-sample-count 10000 --expected-epsilons 0,1/255,2/255,4/255,8/255,12/255,16/255 --expected-backend cupy --expected-gpu-name "NVIDIA GeForce RTX 2080 Ti" --interpretation "Full CIFAR-10 test-set FGSM robustness evaluation; final EWP3-E robustness evidence, not a performance benchmark."
+```
+
+The curation step validates run completion, epsilon ordering, sample count,
+bounded/finite robustness metrics, epsilon-zero consistency, dataset checksum
+metadata, expected CuPy backend metadata, expected RTX 2080 Ti metadata, and
+positive timing values.
+
+Curated outputs are tracked under:
+
+```text
+results/curated/ewp3e/20260812T115232600695Z_fgsm_cupy/
+  robustness_summary.csv
+  timing_summary.json
+  run_metadata.json
+  accuracy_vs_epsilon.png
+  attack_success_rate_vs_epsilon.png
+  accuracy_drop_vs_epsilon.png
+  runtime_throughput_summary.png
+```
+
+Full-test-set robustness summary:
+
+| Epsilon | Clean Accuracy | Adversarial Accuracy | Accuracy Drop | Attack Success Rate |
+| ------- | -------------- | -------------------- | ------------- | ------------------- |
+| 0 | 0.4639 | 0.4639 | 0.0000 | 0.000 |
+| 1/255 | 0.4639 | 0.3020 | 0.1619 | 0.349 |
+| 2/255 | 0.4639 | 0.1854 | 0.2785 | 0.600 |
+| 4/255 | 0.4639 | 0.0743 | 0.3896 | 0.840 |
+| 8/255 | 0.4639 | 0.0099 | 0.4540 | 0.979 |
+| 12/255 | 0.4639 | 0.0017 | 0.4622 | 0.996 |
+| 16/255 | 0.4639 | 0.0004 | 0.4635 | 0.999 |
+
+Timing summary:
+
+```text
+sample_epsilon_pairs: 70000
+evaluation_wall_seconds: 37.00973283001804
+total_wall_seconds: 37.96863090901752
+evaluation_sample_epsilon_pairs_per_second: 1891.3943616265192
+timing_method: time.perf_counter
+gpu_synchronization: CuPy Stream.null synchronized before and after evaluation
+```
+
+These timing values document the execution of this robustness experiment. Use
+EWP3-D for CPU/GPU speedup claims.
+
+Curated plot artifacts:
+
+* [Accuracy vs epsilon](results/curated/ewp3e/20260812T115232600695Z_fgsm_cupy/accuracy_vs_epsilon.png)
+* [Attack success rate vs epsilon](results/curated/ewp3e/20260812T115232600695Z_fgsm_cupy/attack_success_rate_vs_epsilon.png)
+* [Accuracy drop vs epsilon](results/curated/ewp3e/20260812T115232600695Z_fgsm_cupy/accuracy_drop_vs_epsilon.png)
+* [Runtime and throughput summary](results/curated/ewp3e/20260812T115232600695Z_fgsm_cupy/runtime_throughput_summary.png)
+
+The full 10k run follows the same broad robustness trend as the earlier
+1000-sample EWP3-C sanity run: adversarial accuracy decreases sharply as
+epsilon increases, and attack success rate approaches `1.0` at larger
+epsilons. The two runs should not be combined into one statistical estimate.
+Raw run artifacts remain under ignored `results/runs/<run_id>/`.
+
 ## Numerical Gradient Checking
 
 Manual backpropagation is validated against numerical finite differences.
@@ -803,6 +898,8 @@ emphasized:
 * Controlled FGSM robustness evaluation with epsilon sweep.
 * FGSM quantitative robustness figures.
 * FGSM qualitative comparison and epsilon progression figures.
+* Full CIFAR-10 test-set FGSM robustness evaluation on the validated RTX 2080 Ti / CuPy environment.
+* CPU/GPU FGSM scaling benchmark and curated performance plots.
 * Clean Grad-CAM core for the final `relu2` activation.
 * Clean vs adversarial Grad-CAM qualitative comparison figures.
 * GitHub Actions CI workflow for automated test validation.
@@ -820,8 +917,8 @@ implemented in the current repository state.
 
 * The core model and learning mechanics are NumPy-based; plotting uses
   Matplotlib and tests use Pytest.
-* Current CIFAR-10 experiments are controlled subset or smoke validations.
-* The committed WP8 robustness result demonstrates pipeline execution, not a
-  strong model-robustness conclusion.
-* Full CIFAR-10 multi-epoch training and larger robustness evaluation remain
-  future work.
+* Historical WP8 CIFAR-10 robustness artifacts are controlled subset or smoke
+  validations; use the EWP3-E curated run for full-test-set FGSM evidence.
+* The full-test-set robustness result is FGSM-only. It is not PGD robustness,
+  black-box robustness, or adversarial training evidence.
+* Full CIFAR-10 multi-epoch training remains future work.

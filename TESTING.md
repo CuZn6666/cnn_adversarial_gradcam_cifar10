@@ -18,13 +18,14 @@ visible CUDA GPU is unavailable.
 Latest verified local state:
 
 ```text
-Non-CuPy local regression: 238 passed, 19 deselected
-Full local suite: 238 passed, 19 skipped
+Non-CuPy local regression: 252 passed, 19 deselected
+Full local suite: 252 passed, 19 skipped
 EWP3-A local staging validation tests: 4 passed
 EWP3-B local runner infrastructure tests: 7 passed
-EWP3-C local run-curation tests: 7 passed
+EWP3-C/EWP3-E local run-curation tests: 11 passed
 EWP3-C real 1000-sample CuPy sanity run: completed and curated
 EWP3-D local benchmark infrastructure tests: 10 passed
+EWP3-E full 10k CuPy robustness run: completed and curated
 EWP2-B local slice on this machine: 2 skipped because cupy is not installed
 EWP2-C local slice on this machine: 2 skipped because cupy is not installed
 EWP2-D local slice on this machine: 3 skipped because cupy is not installed
@@ -1106,6 +1107,108 @@ The curated directory contains `benchmark_summary.csv`, `speedup_summary.csv`,
 `crossover_analysis.json`, `benchmark_metadata.json`, and three matched
 batch-size PNG plots. Raw `results/benchmarks/` and `results/runs/` outputs
 remain ignored.
+
+## EWP3-E Full CIFAR-10 FGSM Robustness Evaluation
+
+Status: COMPLETE.
+
+EWP3-E reuses the production FGSM runner and the existing curation script. It
+does not introduce a new attack path, modify robustness semantics, or run PGD.
+
+Validated full-run workload on the Hawaii RTX 2080 Ti cluster:
+
+```text
+backend: cupy
+split: test
+sample_count: 10000
+batch_size: 128
+seed: 42
+epsilons: [0, 1/255, 2/255, 4/255, 8/255, 12/255, 16/255]
+checkpoint: results/checkpoints/portfolio_baseline_best.npz
+data_dir: data/raw
+run_id: 20260812T115232600695Z_fgsm_cupy
+Git commit at runtime: b5a755b457c4299d9dd1a7c77d195f6fc3d74bc4
+```
+
+Batch size `128` is selected because EWP3-D found it to be the best tested
+batch size in the current benchmark range. This is not a global optimum claim.
+
+The curation script now supports EWP3-E validation gates:
+
+```bash
+python -m experiments.fgsm.plot_fgsm_run --run-dir results/runs/<run_id> --output-root results/curated/ewp3e --expected-sample-count 10000 --expected-epsilons 0,1/255,2/255,4/255,8/255,12/255,16/255 --expected-backend cupy --expected-gpu-name "NVIDIA GeForce RTX 2080 Ti" --interpretation "Full CIFAR-10 test-set FGSM robustness evaluation; final EWP3-E robustness evidence, not a performance benchmark."
+```
+
+Closeout validation checks:
+
+* `status.json` reports `COMPLETED`: passed.
+* The metrics contain exactly seven epsilon rows in the requested order:
+  passed.
+* Every metric row reports `total_samples = 10000`: passed.
+* Clean accuracy, adversarial accuracy, attack success rate, and timing values
+  are finite: passed.
+* Clean accuracy, adversarial accuracy, and attack success rate are bounded in
+  `[0, 1]`: passed.
+* The epsilon `0` row has matching clean/adversarial correct counts and
+  accuracies, with zero successful attacks: passed.
+* Dataset checksum metadata passes: passed.
+* Run metadata confirms backend `cupy` and GPU `NVIDIA GeForce RTX 2080 Ti`.
+* Timing values are positive: passed.
+* Curated CSV, JSON, and PNG artifacts are generated from saved runner
+  artifacts: passed.
+
+Validated full-test-set robustness summary:
+
+```text
+epsilon 0:      clean_accuracy 0.4639, adversarial_accuracy 0.4639, accuracy_drop 0.0000, attack_success_rate 0.0000000000000000
+epsilon 1/255:  clean_accuracy 0.4639, adversarial_accuracy 0.3020, accuracy_drop 0.1619, attack_success_rate 0.3489976287993102
+epsilon 2/255:  clean_accuracy 0.4639, adversarial_accuracy 0.1854, accuracy_drop 0.2785, attack_success_rate 0.6003449019185170
+epsilon 4/255:  clean_accuracy 0.4639, adversarial_accuracy 0.0743, accuracy_drop 0.3896, attack_success_rate 0.8398361715887045
+epsilon 8/255:  clean_accuracy 0.4639, adversarial_accuracy 0.0099, accuracy_drop 0.4540, attack_success_rate 0.9786591937917655
+epsilon 12/255: clean_accuracy 0.4639, adversarial_accuracy 0.0017, accuracy_drop 0.4622, attack_success_rate 0.9963354171157577
+epsilon 16/255: clean_accuracy 0.4639, adversarial_accuracy 0.0004, accuracy_drop 0.4635, attack_success_rate 0.9991377452037077
+```
+
+Validated timing:
+
+```text
+sample_epsilon_pairs: 70000
+evaluation_wall_seconds: 37.00973283001804
+total_wall_seconds: 37.96863090901752
+evaluation_sample_epsilon_pairs_per_second: 1891.3943616265192
+timing_method: time.perf_counter
+gpu_synchronization: CuPy Stream.null synchronized before and after evaluation
+```
+
+The timing values are experiment execution evidence, not a dedicated
+CPU/GPU benchmark.
+
+Curated evidence:
+
+```text
+results/curated/ewp3e/20260812T115232600695Z_fgsm_cupy/
+  robustness_summary.csv
+  timing_summary.json
+  run_metadata.json
+  accuracy_vs_epsilon.png
+  attack_success_rate_vs_epsilon.png
+  accuracy_drop_vs_epsilon.png
+  runtime_throughput_summary.png
+```
+
+Raw `results/runs/` artifacts remain ignored. The curated EWP3-E directory is
+intentional final robustness evidence.
+
+Focused local tests:
+
+```text
+tests/test_fgsm_run_curation.py
+```
+
+The tests now cover full-run interpretation metadata, expected backend/GPU
+validation, bounded robustness metrics, and epsilon-zero consistency in
+addition to the EWP3-C curation behavior. They use synthetic artifacts and do
+not require CIFAR-10 data, CuPy, or a GPU.
 
 ## NumPy Reference Tests for Future CuPy Equivalence
 
