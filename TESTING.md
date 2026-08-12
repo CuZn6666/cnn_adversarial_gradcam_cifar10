@@ -18,8 +18,8 @@ visible CUDA GPU is unavailable.
 Latest verified local state:
 
 ```text
-Non-CuPy local regression: 274 passed, 23 deselected
-Full local suite: 274 passed, 23 skipped
+Non-CuPy local regression: 293 passed, 23 deselected
+Full local suite: 293 passed, 23 skipped
 EWP3-A local staging validation tests: 4 passed
 EWP3-B local runner infrastructure tests: 7 passed
 EWP3-C/EWP3-E local run-curation tests: 11 passed
@@ -30,6 +30,8 @@ EWP3-F local portfolio evidence tests: 4 passed
 EWP4-A local PGD core tests: 18 passed
 EWP4-B local PGD CuPy equivalence slice: 4 skipped because cupy is not installed
 EWP4-B real GPU PGD equivalence tests: 4 passed
+EWP4-C local PGD runner/curation tests: 19 passed
+EWP4-C real 32-sample CuPy PGD smoke run: completed and curated
 EWP2-B local slice on this machine: 2 skipped because cupy is not installed
 EWP2-C local slice on this machine: 2 skipped because cupy is not installed
 EWP2-D local slice on this machine: 3 skipped because cupy is not installed
@@ -478,16 +480,21 @@ tests/test_plotting.py
 
 EWP4-A now provides a local NumPy-validated L-infinity PGD core attack. EWP4-B
 validates NumPy/CuPy PGD numerical equivalence on the tested RTX 2080 Ti
-environment. PGD robustness evaluation, PGD experiment-runner support, and
-black-box attacks remain deferred.
+environment. EWP4-C adds PGD runner and curation infrastructure validated by a
+small real cluster smoke run. Full PGD robustness evaluation and black-box
+attacks remain deferred.
 
 Current expected result:
 
 * `src.attacks.pgd_linf_attack(...)` exists for local PGD core validation.
 * `tests/test_cupy_pgd_equivalence.py` exists for optional PGD GPU
   equivalence validation.
-* No PGD evaluation exists.
-* No PGD experiment runner exists.
+* `experiments/pgd/run_pgd_experiment.py` exists for PGD runner smoke
+  validation.
+* `experiments/pgd/plot_pgd_run.py` exists for PGD smoke artifact curation.
+* Curated EWP4-C smoke evidence exists under
+  `results/curated/ewp4c/20260812T134536776276Z_pgd_linf_cupy/`.
+* No full PGD robustness evaluation exists.
 * No black-box attack implementation exists.
 * No query-count evaluation exists.
 
@@ -618,6 +625,120 @@ configurations.
 
 EWP4-B does not validate PGD robustness metrics, PGD experiment runners, full
 CIFAR-10 PGD execution, or CUDA kernel optimization.
+
+## EWP4-C PGD Runner and Curation Tests
+
+Status: COMPLETE.
+
+Local infrastructure tests:
+
+```text
+tests/test_pgd_experiment_runner.py
+tests/test_pgd_run_curation.py
+```
+
+The tests validate:
+
+* PGD runner CLI/config parsing, including `epsilon`, `alpha`, `steps`,
+  `random_start`, `seed`, backend, data path, checkpoint, output root, and
+  `run_id`.
+* Invalid configuration handling for invalid backend, batch size, epsilon,
+  alpha, steps, random-start type, run-id, and multi-value single-PGD
+  parameters.
+* Safe run-directory collision behavior.
+* NumPy environment metadata collection without requiring CuPy.
+* PGD metrics serialization to `metrics.csv` and `metrics.json`.
+* Tiny synthetic NumPy PGD runner execution with staged-data/checkpoint
+  monkeypatches.
+* `FAILED` status recording for a missing checkpoint.
+* PGD curation validation from synthetic raw artifacts.
+* Curated PGD smoke outputs: `robustness_summary.csv`,
+  `timing_summary.json`, `run_metadata.json`, and `pgd_smoke_summary.png`.
+* Missing artifact, invalid status, non-finite metric, out-of-range metric,
+  mismatched config, unexpected backend/GPU, and bad checksum rejection.
+
+Focused local commands:
+
+```bash
+MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m py_compile experiments/pgd/run_pgd_experiment.py experiments/pgd/plot_pgd_run.py
+MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q tests/test_pgd_experiment_runner.py tests/test_pgd_run_curation.py
+```
+
+Expected local result:
+
+```text
+19 passed
+```
+
+Validated RTX 2080 Ti cluster smoke command:
+
+```bash
+python -m experiments.pgd.run_pgd_experiment --backend cupy --data-dir data/raw --checkpoint results/checkpoints/portfolio_baseline_best.npz --split test --max-samples 32 --batch-size 8 --epsilon 8/255 --alpha 2/255 --steps 10 --random-start --seed 42 --output-root results/runs
+```
+
+Curate the smoke artifacts with:
+
+```bash
+python -m experiments.pgd.plot_pgd_run --run-dir results/runs/<run_id> --output-root results/curated/ewp4c --expected-sample-count 32 --expected-epsilon 8/255 --expected-backend cupy --expected-gpu-name "NVIDIA GeForce RTX 2080 Ti" --interpretation "Small PGD cluster smoke run; use for runner and artifact validation, not as final PGD robustness evidence."
+```
+
+Real cluster smoke result:
+
+```text
+run_id: 20260812T134536776276Z_pgd_linf_cupy
+GPU: NVIDIA GeForce RTX 2080 Ti
+CuPy: 14.1.1
+NumPy: 2.4.6
+Python: 3.12.13
+backend: cupy
+dataset checksum: PASS
+sample_count: 32
+batch_size: 8
+epsilon: 8/255
+alpha: 2/255
+steps: 10
+random_start: true
+seed: 42
+status: COMPLETED
+```
+
+Validated smoke metrics:
+
+```text
+clean_accuracy: 0.40625
+adversarial_accuracy: 0.03125
+accuracy_drop: 0.375
+attack_success_rate: 0.9230769230769231
+```
+
+Validated timing:
+
+```text
+evaluation_wall_seconds: 3.2447034979995806
+total_wall_seconds: 4.805044429987902
+gradient_evaluations: 320
+sample_steps: 320
+samples_per_second: 9.862226246474782
+sample_steps_per_second: 98.62226246474782
+```
+
+Curated smoke artifacts:
+
+```text
+results/curated/ewp4c/20260812T134536776276Z_pgd_linf_cupy/
+  robustness_summary.csv
+  timing_summary.json
+  run_metadata.json
+  pgd_smoke_summary.png
+```
+
+The curated artifact validation checks attack/backend metadata, sample count,
+PGD hyperparameters, dataset checksum metadata, finite and bounded metrics,
+positive timing values, `gradient_evaluations = sample_count * steps`,
+`sample_steps = sample_count * steps`, and a valid non-empty PNG file.
+
+EWP4-C does not validate a full CIFAR-10 PGD sweep, multiple restarts,
+PGD-vs-FGSM final comparisons, black-box attacks, or CUDA kernel optimization.
 
 ## WP13: Grad-CAM Implementation Validation
 

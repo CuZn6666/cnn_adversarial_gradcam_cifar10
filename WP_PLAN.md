@@ -17,8 +17,8 @@ do not rewrite the original definitions.
 Latest local validation:
 
 ```text
-Non-CuPy local regression: 274 passed, 23 deselected
-Full local suite on this machine: 274 passed, 23 skipped
+Non-CuPy local regression: 293 passed, 23 deselected
+Full local suite on this machine: 293 passed, 23 skipped
 Data-marked cluster suite after CIFAR-10 staging: 3 passed, 240 deselected
 ```
 
@@ -33,10 +33,11 @@ Current implementation summary:
 * WP8 includes the validated FGSM pipeline and a 1024-sample quantitative FGSM
   evaluation. The historical WP8 smoke runner currently uses 17 epsilon values
   from `0/255` through `16/255`.
-* WP9 now has a local EWP4-A L-infinity PGD core implementation and EWP4-B
+* WP9 now has a local EWP4-A L-infinity PGD core implementation, EWP4-B
   NumPy/CuPy PGD equivalence validation on the tested RTX 2080 Ti
-  environment. PGD robustness evaluation and PGD experiment infrastructure
-  have not started.
+  environment, and EWP4-C PGD runner/curation infrastructure validated by a
+  small real cluster smoke run. Full PGD robustness evaluation remains future
+  work.
 * WP10-WP12 remain intentionally deferred.
 * WP13 implementation exists and needs formal documentation/closeout.
 * WP14 currently covers clean-vs-FGSM Grad-CAM analysis only.
@@ -55,8 +56,8 @@ Current implementation summary:
 | WP6 | Focused Runtime Bottleneck Handling | COMPLETE | `Conv2D.backward` was profiled, selected, optimized, benchmarked, and tested. |
 | WP7 | FGSM Attack and Input-Gradient Visualization | COMPLETE | Input gradients, FGSM, qualitative visualizations, and controlled example generation are implemented and tested. |
 | WP8 | FGSM robustness evaluation | COMPLETE | Original FGSM robustness scope is complete, including batch evaluation, epsilon sweeps, plots, representative metadata, and 1024-sample quantitative evaluation. Larger GPU runs are an extension, not missing WP8 work. |
-| WP9 | PGD Attack Implementation | PARTIALLY COMPLETE | EWP4-A implements the local L-infinity PGD core and focused NumPy tests. EWP4-B PGD equivalence is validated on the tested RTX 2080 Ti environment. PGD examples, robustness evaluation, and runner integration have not started. |
-| WP10 | PGD Robustness Evaluation and Comparison | DEFERRED | Intentionally not active. No PGD evaluation exists. |
+| WP9 | PGD Attack Implementation | PARTIALLY COMPLETE | EWP4-A implements the local L-infinity PGD core and focused NumPy tests. EWP4-B PGD equivalence is validated on the tested RTX 2080 Ti environment. EWP4-C PGD runner/curation infrastructure is validated by a 32-sample real cluster smoke run. Full PGD robustness evaluation remains future work. |
+| WP10 | PGD Robustness Evaluation and Comparison | DEFERRED | Intentionally not active beyond EWP4-C smoke infrastructure. No full PGD robustness evaluation exists. |
 | WP11 | Non-Gradient Black-Box Attack Implementation | DEFERRED | Intentionally not active. No black-box attack implementation exists. |
 | WP12 | Black-Box Attack Evaluation | DEFERRED | Intentionally not active. Query-count evaluation is not implemented. |
 | WP13 | Grad-CAM Implementation | NEEDS DOCUMENTATION | Core Grad-CAM implementation exists and is tested; formal WP13 closeout remains to be written. |
@@ -2328,6 +2329,142 @@ Not included in EWP4-B:
 * Full CIFAR-10 PGD experiments.
 * CUDA kernel optimization.
 
+#### EWP4-C: PGD Experiment Runner, Curation, and Cluster Smoke
+
+Status:
+
+COMPLETE.
+
+Implemented functionality:
+
+* `experiments/pgd/run_pgd_experiment.py` adds a scheduler-neutral
+  `pgd_linf` runner that reuses the existing cluster runner infrastructure for
+  environment metadata, staged CIFAR-10 validation, checkpoint loading,
+  deterministic subset selection, backend batching, run directories,
+  `RUNNING` / `COMPLETED` / `FAILED` status artifacts, and synchronized CuPy
+  timing.
+* The runner calls the production `src.attacks.pgd_linf_attack(...)`
+  implementation. It does not duplicate PGD math, modify FGSM semantics, or
+  modify robustness metric definitions.
+* Required PGD configuration is recorded in `config.json`: `attack`,
+  `backend`, `data_dir`, `checkpoint`, `split`, `max_samples`, `batch_size`,
+  `epsilon`, `alpha`, `steps`, `random_start`, `seed`, `output_root`, and
+  `run_id`.
+* PGD metrics preserve the existing robustness semantics:
+  `successful_attacks / clean_correct_samples`, or `0.0` when there are no
+  clean-correct samples.
+* PGD timing records `evaluation_wall_seconds`, `total_wall_seconds`,
+  `sample_count`, `pgd_steps`, `gradient_evaluations`, `samples_per_second`,
+  and `sample_steps_per_second`. For CuPy, the runner synchronizes
+  `cupy Stream.null` before and after the timed evaluation region.
+* `experiments/pgd/plot_pgd_run.py` adds curation for a PGD smoke run. It
+  validates the raw artifacts and writes a small curated artifact set under
+  `results/curated/ewp4c/<run_id>/`.
+* A real 32-sample CuPy PGD cluster smoke run completed on the validated RTX
+  2080 Ti environment and produced curated smoke artifacts.
+
+PGD raw artifact schema:
+
+```text
+results/runs/<run_id>/
+  config.json
+  environment.json
+  metrics.csv
+  metrics.json
+  timing.json
+  summary.json
+  status.json
+```
+
+Curated EWP4-C smoke artifact schema:
+
+```text
+results/curated/ewp4c/<run_id>/
+  robustness_summary.csv
+  timing_summary.json
+  run_metadata.json
+  pgd_smoke_summary.png
+```
+
+Validated real cluster smoke workload:
+
+```text
+backend: cupy
+split: test
+sample_count: 32
+batch_size: 8
+epsilon: 8/255
+alpha: 2/255
+steps: 10
+random_start: true
+seed: 42
+checkpoint: results/checkpoints/portfolio_baseline_best.npz
+```
+
+Validated run:
+
+```text
+run_id: 20260812T134536776276Z_pgd_linf_cupy
+GPU: NVIDIA GeForce RTX 2080 Ti
+CuPy: 14.1.1
+NumPy: 2.4.6
+Python: 3.12.13
+dataset checksum: PASS
+status: COMPLETED
+```
+
+Smoke metrics:
+
+```text
+clean_accuracy: 0.40625
+adversarial_accuracy: 0.03125
+accuracy_drop: 0.375
+attack_success_rate: 0.9230769230769231
+```
+
+Timing:
+
+```text
+evaluation_wall_seconds: 3.2447034979995806
+total_wall_seconds: 4.805044429987902
+gradient_evaluations: 320
+sample_steps: 320
+samples_per_second: 9.862226246474782
+sample_steps_per_second: 98.62226246474782
+```
+
+Curated EWP4-C smoke evidence:
+
+```text
+results/curated/ewp4c/20260812T134536776276Z_pgd_linf_cupy/
+  robustness_summary.csv
+  timing_summary.json
+  run_metadata.json
+  pgd_smoke_summary.png
+```
+
+Local validation:
+
+```text
+tests/test_pgd_experiment_runner.py
+tests/test_pgd_run_curation.py
+```
+
+Interpretation:
+
+The EWP4-C result validates PGD runner orchestration, CuPy execution,
+metrics/timing artifacts, status handling, curation, and a compact smoke plot.
+It is a 32-sample integration smoke and is not final PGD robustness evidence.
+EWP4-D remains responsible for full-test-set PGD evaluation.
+
+Not included in EWP4-C:
+
+* Full 10k PGD evaluation.
+* PGD epsilon sweeps or hyperparameter matrices.
+* Multiple PGD restarts.
+* PGD-vs-FGSM final robustness comparison.
+* CUDA kernel optimization.
+
 ---
 
 ### EWP5: Runtime and Robustness Analysis
@@ -2378,11 +2515,12 @@ EWP3-E -> COMPLETE
 EWP3-F -> COMPLETE
 EWP4-A -> COMPLETE
 EWP4-B -> COMPLETE
-Next -> EWP4-C planning
+EWP4-C -> COMPLETE
+Next -> EWP4-D full PGD evaluation planning
 ```
 
-PGD experiment execution, black-box attacks, and adversarial training remain
-deferred.
+Full PGD robustness evaluation, black-box attacks, and adversarial training
+remain deferred.
 
 ### Planned Visualization and Artifact Matrix
 
