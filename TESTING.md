@@ -18,8 +18,8 @@ visible CUDA GPU is unavailable.
 Latest verified local state:
 
 ```text
-Non-CuPy local regression: 256 passed, 19 deselected
-Full local suite: 256 passed, 19 skipped
+Non-CuPy local regression: 274 passed, 23 deselected
+Full local suite: 274 passed, 23 skipped
 EWP3-A local staging validation tests: 4 passed
 EWP3-B local runner infrastructure tests: 7 passed
 EWP3-C/EWP3-E local run-curation tests: 11 passed
@@ -27,10 +27,13 @@ EWP3-C real 1000-sample CuPy sanity run: completed and curated
 EWP3-D local benchmark infrastructure tests: 10 passed
 EWP3-E full 10k CuPy robustness run: completed and curated
 EWP3-F local portfolio evidence tests: 4 passed
+EWP4-A local PGD core tests: 18 passed
+EWP4-B local PGD CuPy equivalence slice: 4 skipped because cupy is not installed
+EWP4-B real GPU PGD equivalence tests: 4 passed
 EWP2-B local slice on this machine: 2 skipped because cupy is not installed
 EWP2-C local slice on this machine: 2 skipped because cupy is not installed
 EWP2-D local slice on this machine: 3 skipped because cupy is not installed
-CuPy runtime/equivalence slices on this machine: 19 skipped because cupy is not installed
+CuPy runtime/equivalence slices on this machine: 23 skipped because cupy is not installed
 ```
 
 Latest verified real GPU EWP1-B state:
@@ -471,19 +474,150 @@ tests/test_fgsm_quantitative_runner.py
 tests/test_plotting.py
 ```
 
-## WP9-WP12: Deferred Attack Work
+## WP9-WP12: Attack Work Status
 
-PGD and black-box attacks are intentionally deferred.
+EWP4-A now provides a local NumPy-validated L-infinity PGD core attack. EWP4-B
+validates NumPy/CuPy PGD numerical equivalence on the tested RTX 2080 Ti
+environment. PGD robustness evaluation, PGD experiment-runner support, and
+black-box attacks remain deferred.
 
 Current expected result:
 
-* No PGD implementation exists.
+* `src.attacks.pgd_linf_attack(...)` exists for local PGD core validation.
+* `tests/test_cupy_pgd_equivalence.py` exists for optional PGD GPU
+  equivalence validation.
 * No PGD evaluation exists.
+* No PGD experiment runner exists.
 * No black-box attack implementation exists.
 * No query-count evaluation exists.
 
-Do not add PGD, PGD tests, black-box attacks, or black-box tests during the
-current CuPy preparation cycle.
+Do not add PGD robustness sweeps, PGD cluster experiments, black-box attacks,
+or black-box tests unless the active task explicitly opens that phase.
+
+## EWP4-A L-infinity PGD Core Attack
+
+Status: COMPLETE for local NumPy core validation.
+
+Focused tests:
+
+```text
+tests/test_pgd.py
+```
+
+The local PGD test slice validates:
+
+* `epsilon=0` returns a clean input copy.
+* `steps=0` is an explicit no-op and does not apply random initialization.
+* One-step PGD matches existing FGSM semantics when `random_start=False`,
+  `steps=1`, and `alpha=epsilon`.
+* L-infinity projection and `[0, 1]` clipping.
+* Deterministic NumPy random start when a seed is provided.
+* Different seeds can produce different random starts.
+* Multi-step updates and batch support.
+* The clean input is not mutated.
+* `CompactCNN` trainable parameters are not mutated by the attack.
+* Invalid configuration handling for negative epsilon, invalid alpha, negative
+  steps, invalid image shape/range, invalid label shape, invalid
+  `random_start`, and invalid seed.
+
+EWP4-A intentionally does not validate CuPy/GPU PGD equivalence, PGD
+robustness metrics, PGD experiment runners, or full CIFAR-10 PGD execution.
+
+Focused local command:
+
+```bash
+MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q tests/test_pgd.py
+```
+
+Expected local result:
+
+```text
+18 passed
+```
+
+## EWP4-B NumPy/CuPy PGD Equivalence Tests
+
+Status: COMPLETE.
+
+Optional GPU tests:
+
+```text
+tests/test_cupy_pgd_equivalence.py
+```
+
+The tests validate NumPy/CuPy equivalence for:
+
+* Synchronized `CompactCNN` parameters.
+* No-random-start multi-step PGD with `steps > 1` and `alpha < epsilon`.
+* Shared-initial-state PGD using an identical deterministic initial
+  adversarial image transferred from NumPy to CuPy.
+* `epsilon=0` clean-image copy semantics.
+* Final adversarial images.
+* Final adversarial logits and exact predictions.
+* Projection/clipping invariants for both backends.
+* Parameter preservation on both backends.
+* CuPy device integrity for model parameters, adversarial images, logits,
+  predictions, and recorded forward/backward tensors.
+* One-step PGD / FGSM relationship on both NumPy and CuPy.
+
+The tests use `rtol=1e-5` and `atol=1e-6` for tensor comparisons. Predictions
+are compared exactly.
+
+RNG policy:
+
+* Production `pgd_linf_attack(...)` keeps backend-native random-start
+  semantics.
+* Equivalence tests do not require NumPy and CuPy RNG streams to match.
+* Shared-random-start validation uses `_pgd_linf_attack_from_initial(...)`, a
+  private helper that lets tests inject the same initial adversarial state
+  while preserving the public PGD API.
+
+Local non-CuPy validation command:
+
+```bash
+MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q tests/test_cupy_pgd_equivalence.py -rs
+```
+
+Expected local result on machines without CuPy/CUDA:
+
+```text
+4 skipped
+```
+
+GPU validation command:
+
+```bash
+python -m pytest -q tests/test_cupy_pgd_equivalence.py -rs
+python -m pytest -q -m "not requires_data"
+```
+
+Validated real GPU environment:
+
+```text
+GPU: NVIDIA GeForce RTX 2080 Ti
+CuPy: 14.1.1
+Python: 3.12
+CUDA-capable device count: 1
+```
+
+Real GPU result:
+
+```text
+python -m pytest -q tests/test_cupy_pgd_equivalence.py -rs
+4 passed in 6.22s
+
+python -m pytest -q -m "not requires_data"
+294 passed, 3 deselected in 16.65s
+
+git diff --check
+passed
+```
+
+EWP4-B does not claim compatibility with untested GPU/CUDA/CuPy/Python
+configurations.
+
+EWP4-B does not validate PGD robustness metrics, PGD experiment runners, full
+CIFAR-10 PGD execution, or CUDA kernel optimization.
 
 ## WP13: Grad-CAM Implementation Validation
 

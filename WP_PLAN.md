@@ -17,8 +17,8 @@ do not rewrite the original definitions.
 Latest local validation:
 
 ```text
-Non-CuPy local regression: 256 passed, 19 deselected
-Full local suite on this machine: 256 passed, 19 skipped
+Non-CuPy local regression: 274 passed, 23 deselected
+Full local suite on this machine: 274 passed, 23 skipped
 Data-marked cluster suite after CIFAR-10 staging: 3 passed, 240 deselected
 ```
 
@@ -33,7 +33,11 @@ Current implementation summary:
 * WP8 includes the validated FGSM pipeline and a 1024-sample quantitative FGSM
   evaluation. The historical WP8 smoke runner currently uses 17 epsilon values
   from `0/255` through `16/255`.
-* WP9-WP12 are intentionally deferred.
+* WP9 now has a local EWP4-A L-infinity PGD core implementation and EWP4-B
+  NumPy/CuPy PGD equivalence validation on the tested RTX 2080 Ti
+  environment. PGD robustness evaluation and PGD experiment infrastructure
+  have not started.
+* WP10-WP12 remain intentionally deferred.
 * WP13 implementation exists and needs formal documentation/closeout.
 * WP14 currently covers clean-vs-FGSM Grad-CAM analysis only.
 * WP15 remains incomplete because final integration is not finished.
@@ -51,7 +55,7 @@ Current implementation summary:
 | WP6 | Focused Runtime Bottleneck Handling | COMPLETE | `Conv2D.backward` was profiled, selected, optimized, benchmarked, and tested. |
 | WP7 | FGSM Attack and Input-Gradient Visualization | COMPLETE | Input gradients, FGSM, qualitative visualizations, and controlled example generation are implemented and tested. |
 | WP8 | FGSM robustness evaluation | COMPLETE | Original FGSM robustness scope is complete, including batch evaluation, epsilon sweeps, plots, representative metadata, and 1024-sample quantitative evaluation. Larger GPU runs are an extension, not missing WP8 work. |
-| WP9 | PGD Attack Implementation | DEFERRED | Intentionally not active. No PGD implementation exists. |
+| WP9 | PGD Attack Implementation | PARTIALLY COMPLETE | EWP4-A implements the local L-infinity PGD core and focused NumPy tests. EWP4-B PGD equivalence is validated on the tested RTX 2080 Ti environment. PGD examples, robustness evaluation, and runner integration have not started. |
 | WP10 | PGD Robustness Evaluation and Comparison | DEFERRED | Intentionally not active. No PGD evaluation exists. |
 | WP11 | Non-Gradient Black-Box Attack Implementation | DEFERRED | Intentionally not active. No black-box attack implementation exists. |
 | WP12 | Black-Box Attack Evaluation | DEFERRED | Intentionally not active. Query-count evaluation is not implemented. |
@@ -545,16 +549,28 @@ Implement a small-scale PGD white-box attack.
 
 Implemented functionality:
 
-* None.
+* EWP4-A adds `src/attacks/pgd.py` with `pgd_linf_attack(...)`.
+* EWP4-B adds a private `_pgd_linf_attack_from_initial(...)` helper so tests
+  can validate deterministic shared-initial-state PGD without comparing
+  NumPy and CuPy RNG streams or duplicating the PGD algorithm in tests.
+* The implementation reuses `compute_input_gradient(...)` for each PGD step
+  instead of duplicating model/loss backward logic.
+* The attack enforces the valid image range, L-infinity projection around the
+  clean input, deterministic NumPy random start when a seed is provided, and
+  non-mutating clean-input behavior.
+* `steps=0` is explicitly allowed and returns a clean input copy without
+  random initialization or gradient computation.
+* `tests/test_pgd.py` covers the local NumPy PGD core.
 
 Remaining work:
 
-* PGD implementation, projection, clipping, parameter handling, examples, and
-  documentation are not part of the current active development cycle.
+* PGD experiment-runner support, CIFAR-10 PGD evaluation, representative PGD
+  examples, and curated PGD evidence have not started.
 
 Status:
 
-DEFERRED.
+PARTIALLY COMPLETE. EWP4-A and EWP4-B are complete; PGD evaluation,
+experiment-runner support, and curated PGD evidence have not started.
 
 ---
 
@@ -2135,25 +2151,182 @@ guardrails, and overwrite behavior.
 
 ---
 
-### EWP4: Large-scale FGSM Evaluation
+### EWP4: PGD Attack Development
 
 Goal:
 
-Scale the validated WP8 FGSM sweep to larger CIFAR-10 evaluation sets.
+Extend the validated adversarial-analysis pipeline with a production-quality
+L-infinity projected gradient descent attack while preserving the current
+NumPy-first numerical architecture.
 
 Scope:
 
-* Reuse the existing FGSM implementation and robustness metrics.
-* Increase evaluation sample count only through explicit configuration.
-* Preserve batched evaluation.
-* Save raw per-epsilon metrics and run metadata before creating summary plots.
-* Treat successful execution alone as insufficient; large-scale runs should
-  produce quantitative artifacts that support robustness interpretation.
-* Keep PGD and black-box attacks out of scope.
+* Keep NumPy as the authoritative reference backend.
+* Reuse the existing model/loss/input-gradient path.
+* Do not modify FGSM semantics, model architecture, or robustness metric
+  definitions.
+* Stage PGD work incrementally: core attack first, then GPU equivalence, then
+  runner/evaluation support.
+* Do not run large CIFAR-10 PGD experiments until the PGD core and equivalence
+  slices are validated.
 
 Status:
 
-PLANNED.
+PARTIALLY COMPLETE.
+
+#### EWP4-A: L-infinity PGD Core Attack
+
+Status:
+
+COMPLETE for local NumPy core validation.
+
+Implemented functionality:
+
+* `src.attacks.pgd_linf_attack(...)` implements iterative untargeted
+  L-infinity PGD.
+* Parameters: `epsilon`, `alpha`, `steps`, `random_start`, and `seed`.
+* Uses `compute_input_gradient(...)` at each step.
+* Enforces `[0, 1]` clipping and projection into the L-infinity epsilon-ball
+  around the clean input.
+* Preserves clean inputs and model parameters.
+* Supports deterministic local NumPy random starts when a seed is provided.
+* Allows `steps=0` as an explicit no-op returning a clean input copy.
+* Validates invalid configurations such as negative epsilon, non-positive
+  alpha when steps are positive, negative steps, invalid image shape/range, and
+  invalid label shape.
+
+Validation:
+
+```text
+tests/test_pgd.py
+```
+
+Local EWP4-A validation covers:
+
+* `epsilon=0` behavior.
+* `steps=0` no-op behavior.
+* One-step PGD / FGSM relationship for `random_start=False`, `steps=1`, and
+  `alpha=epsilon`.
+* L-infinity projection and `[0, 1]` clipping.
+* Deterministic random start with a fixed seed and different results for
+  different seeds.
+* Multi-step updates and batch support.
+* Clean-input and model-parameter preservation.
+* Invalid configuration handling.
+
+Not included in EWP4-A:
+
+* CuPy/GPU PGD equivalence validation.
+* PGD robustness evaluation or epsilon sweeps.
+* PGD experiment-runner integration.
+* Full CIFAR-10 PGD experiments.
+* CUDA kernel optimization.
+
+#### EWP4-B: NumPy/CuPy PGD Numerical Equivalence
+
+Status:
+
+COMPLETE.
+
+Implemented functionality:
+
+* `tests/test_cupy_pgd_equivalence.py` adds optional `requires_cupy` coverage
+  for PGD equivalence.
+* Tests use synchronized NumPy/CuPy `CompactCNN` parameters, deterministic
+  synthetic inputs, identical labels, and identical PGD hyperparameters.
+* No-random-start PGD validates final adversarial images, adversarial logits,
+  exact predictions, projection/clipping invariants, and parameter
+  preservation.
+* Multi-step PGD uses `steps > 1` and `alpha < epsilon` to exercise the
+  iterative path.
+* Shared-random-start validation uses a deterministic NumPy-generated initial
+  adversarial state transferred to CuPy. It does not compare backend-native
+  RNG streams.
+* `epsilon=0` validates clean-image copy semantics across backends.
+* A compact one-step regression checks that PGD with
+  `random_start=False`, `steps=1`, and `alpha=epsilon` matches existing FGSM
+  semantics on both backends.
+
+Minimal production refactor:
+
+* `_pgd_linf_attack_from_initial(...)` is a private helper used by both the
+  public PGD function and equivalence tests.
+* Public `pgd_linf_attack(...)` semantics are unchanged.
+* FGSM, robustness metrics, model architecture, and runner code are unchanged.
+
+Validation:
+
+```text
+tests/test_cupy_pgd_equivalence.py
+```
+
+Local non-CUDA result:
+
+```text
+4 skipped
+```
+
+Real GPU validation:
+
+```text
+GPU: NVIDIA GeForce RTX 2080 Ti
+CuPy: 14.1.1
+Python: 3.12
+CUDA-capable device count: 1
+
+python -m pytest -q tests/test_cupy_pgd_equivalence.py -rs
+4 passed in 6.22s
+
+python -m pytest -q -m "not requires_data"
+294 passed, 3 deselected in 16.65s
+
+git diff --check
+passed
+```
+
+Validated equivalence scope:
+
+* Multi-step no-random-start PGD.
+* `steps > 1`.
+* `alpha < epsilon`.
+* Deterministic shared-initial-state PGD.
+* `epsilon=0`.
+* Final adversarial image equivalence.
+* Adversarial logits equivalence.
+* Exact adversarial predictions.
+* L-infinity projection invariant.
+* `[0, 1]` clipping invariant.
+* Parameter preservation.
+* CuPy device integrity.
+* One-step PGD / FGSM relationship.
+
+Numerical tolerances:
+
+```text
+Tensor comparisons: rtol=1e-5, atol=1e-6
+Predictions: exact equality
+```
+
+RNG strategy:
+
+NumPy and CuPy RNG streams were not required to match. Cross-backend
+random-start equivalence used the same deterministic initial adversarial state
+transferred to both backends, isolating PGD numerical equivalence from backend
+RNG implementation differences.
+
+Refactor safety:
+
+The EWP4-B production refactor preserves public `pgd_linf_attack(...)`
+semantics and introduces only the private initial-state helper needed for
+equivalence validation. FGSM, robustness metrics, model/loss semantics, and
+runner code are unchanged. No CPU fallback was introduced.
+
+Not included in EWP4-B:
+
+* PGD robustness evaluation or epsilon sweeps.
+* PGD experiment-runner integration.
+* Full CIFAR-10 PGD experiments.
+* CUDA kernel optimization.
 
 ---
 
@@ -2202,11 +2375,14 @@ EWP3-B -> COMPLETE
 EWP3-C -> COMPLETE
 EWP3-D -> COMPLETE
 EWP3-E -> COMPLETE
-EWP3-F -> IMPLEMENTED LOCALLY / REVIEW PENDING
-Next -> final integration review
+EWP3-F -> COMPLETE
+EWP4-A -> COMPLETE
+EWP4-B -> COMPLETE
+Next -> EWP4-C planning
 ```
 
-PGD remains deferred.
+PGD experiment execution, black-box attacks, and adversarial training remain
+deferred.
 
 ### Planned Visualization and Artifact Matrix
 
