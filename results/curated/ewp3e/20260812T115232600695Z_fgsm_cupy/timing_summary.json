@@ -1,0 +1,13 @@
+{
+  "backend": "cupy",
+  "epsilon_count": 7,
+  "evaluation_sample_epsilon_pairs_per_second": 1891.3943616265192,
+  "evaluation_wall_seconds": 37.00973283001804,
+  "gpu_synchronization": "cupy Stream.null synchronized before and after evaluation",
+  "run_id": "20260812T115232600695Z_fgsm_cupy",
+  "sample_count": 10000,
+  "sample_epsilon_pairs": 70000,
+  "schema_version": 1,
+  "timing_method": "time.perf_counter",
+  "total_wall_seconds": 37.96863090901752
+}

@@ -1188,7 +1188,7 @@ PARTIALLY COMPLETE. EWP3-A environment and dataset-staging validation is
 complete. EWP3-B scheduler-neutral experiment-runner infrastructure is
 complete. EWP3-C medium-scale GPU FGSM sanity validation is complete. EWP3-D
 CPU/GPU scaling and performance benchmarking is complete. EWP3-E full-test-set
-FGSM evaluation is prepared and ready for the real 10k cluster run.
+FGSM robustness evaluation is complete.
 
 #### EWP3-A: Cluster Environment and CIFAR-10 Dataset Staging
 
@@ -1914,7 +1914,7 @@ validation.
 
 Status:
 
-READY FOR FULL 10K CLUSTER RUN.
+COMPLETE.
 
 Goal:
 
@@ -1936,9 +1936,9 @@ python -m experiments.fgsm.run_fgsm_experiment
 python -m experiments.fgsm.plot_fgsm_run
 ```
 
-* The curation script now supports final-run metadata through
-  `--interpretation`, and optional validation of expected backend and GPU
-  metadata through `--expected-backend` and `--expected-gpu-name`.
+* The curation script supports final-run metadata through `--interpretation`,
+  and optional validation of expected backend and GPU metadata through
+  `--expected-backend` and `--expected-gpu-name`.
 * No FGSM semantics, robustness metrics, model architecture, numerical
   backend behavior, PGD implementation, or CUDA optimization is included.
 
@@ -1958,20 +1958,36 @@ epsilons: [0, 1/255, 2/255, 4/255, 8/255, 12/255, 16/255]
 Batch size `128` is selected because EWP3-D found it to be the best tested
 batch size in the current benchmark range. It is not a global optimum claim.
 
+Validated run:
+
+```text
+run_id: 20260812T115232600695Z_fgsm_cupy
+backend: cupy
+GPU: NVIDIA GeForce RTX 2080 Ti
+CuPy: 14.1.1
+NumPy: 2.4.6
+Python: 3.12.13
+batch_size: 128
+seed: 42
+sample_count: 10000
+CIFAR-10 checksum: PASS
+Git commit at runtime: b5a755b457c4299d9dd1a7c77d195f6fc3d74bc4
+status: COMPLETED
+```
+
 Validation criteria:
 
-* `status.json` reports `COMPLETED`.
-* Metrics contain exactly 7 epsilon rows in the requested order.
-* Every row reports `total_samples = 10000`.
-* Metrics are finite.
+* `status.json` reports `COMPLETED`: passed.
+* Metrics contain exactly 7 epsilon rows in the requested order: passed.
+* Every row reports `total_samples = 10000`: passed.
+* Metrics are finite: passed.
 * Clean accuracy, adversarial accuracy, and attack success rate are bounded in
-  `[0, 1]`.
-* Epsilon `0` metrics are internally consistent: clean and adversarial
-  correct counts/accuracies match and successful attacks are zero.
-* Dataset checksum metadata passes.
-* Run metadata confirms CuPy backend and `NVIDIA GeForce RTX 2080 Ti`.
-* Timing values are positive.
-* No CPU fallback occurs.
+  `[0, 1]`: passed.
+* Epsilon `0` metrics are internally consistent: passed.
+* Dataset checksum metadata passes: passed.
+* Run metadata confirms CuPy backend and `NVIDIA GeForce RTX 2080 Ti`: passed.
+* Timing values are positive: passed.
+* No CPU fallback occurs: passed through the validated CuPy runner path.
 
 Cluster run command:
 
@@ -1985,10 +2001,10 @@ Curated evidence command:
 python -m experiments.fgsm.plot_fgsm_run --run-dir results/runs/<run_id> --output-root results/curated/ewp3e --expected-sample-count 10000 --expected-epsilons 0,1/255,2/255,4/255,8/255,12/255,16/255 --expected-backend cupy --expected-gpu-name "NVIDIA GeForce RTX 2080 Ti" --interpretation "Full CIFAR-10 test-set FGSM robustness evaluation; final EWP3-E robustness evidence, not a performance benchmark."
 ```
 
-Curated artifact plan:
+Curated artifact evidence:
 
 ```text
-results/curated/ewp3e/<run_id>/
+results/curated/ewp3e/20260812T115232600695Z_fgsm_cupy/
   robustness_summary.csv
   timing_summary.json
   run_metadata.json
@@ -1998,9 +2014,50 @@ results/curated/ewp3e/<run_id>/
   runtime_throughput_summary.png
 ```
 
-After the full run, compare the broad robustness trend with the EWP3-C
-1000-sample sanity run. Do not combine the two runs into one statistical
-estimate, and do not require exact equality.
+Full-test-set robustness summary:
+
+| Epsilon | Clean Accuracy | Adversarial Accuracy | Accuracy Drop | Attack Success Rate |
+| ------- | -------------- | -------------------- | ------------- | ------------------- |
+| 0 | 0.4639 | 0.4639 | 0.0000 | 0.0000000000000000 |
+| 1/255 | 0.4639 | 0.3020 | 0.1619 | 0.3489976287993102 |
+| 2/255 | 0.4639 | 0.1854 | 0.2785 | 0.6003449019185170 |
+| 4/255 | 0.4639 | 0.0743 | 0.3896 | 0.8398361715887045 |
+| 8/255 | 0.4639 | 0.0099 | 0.4540 | 0.9786591937917655 |
+| 12/255 | 0.4639 | 0.0017 | 0.4622 | 0.9963354171157577 |
+| 16/255 | 0.4639 | 0.0004 | 0.4635 | 0.9991377452037077 |
+
+Timing evidence:
+
+```text
+sample_epsilon_pairs: 70000
+evaluation_wall_seconds: 37.00973283001804
+total_wall_seconds: 37.96863090901752
+evaluation_sample_epsilon_pairs_per_second: 1891.3943616265192
+timing_method: time.perf_counter
+gpu_synchronization: CuPy Stream.null synchronized before and after evaluation
+```
+
+These timing values document this experiment execution. They are not a
+dedicated benchmark result and should not be compared directly against EWP3-D
+speedup claims unless workloads are matched.
+
+Comparison with EWP3-C:
+
+The full 10k run follows the same broad trend as the earlier 1000-sample
+EWP3-C sanity run: adversarial accuracy decreases sharply as epsilon
+increases, and attack success rate approaches `1.0` at larger epsilons. The
+full run is the stronger final robustness evidence because it covers the full
+CIFAR-10 test split. The EWP3-C sanity run remains a medium-scale runner and
+curation validation, not a statistical estimate to combine with EWP3-E.
+
+Scope notes:
+
+* This is FGSM robustness evidence, not PGD robustness evidence.
+* The result is validated for the tested RTX 2080 Ti / CuPy `14.1.1` /
+  Python `3.12.13` / NumPy `2.4.6` environment only.
+* Batch size `128` is the best tested EWP3-D batch size, not a global optimum.
+* Raw `results/runs/` outputs remain ignored; curated EWP3-E evidence is
+  intentionally tracked.
 
 ---
 
@@ -2066,14 +2123,12 @@ Current roadmap:
 ```text
 EWP1 -> COMPLETE
 EWP2 -> COMPLETE
-Next -> cluster preparation
-     -> correct CIFAR-10 staging
-     -> cluster experiment runner
-     -> small GPU FGSM smoke experiment
-     -> medium-scale evaluation
-     -> full CIFAR-10 test-set FGSM evaluation
-     -> runtime / robustness analysis
-     -> visualization / final experiment artifacts
+EWP3-A -> COMPLETE
+EWP3-B -> COMPLETE
+EWP3-C -> COMPLETE
+EWP3-D -> COMPLETE
+EWP3-E -> COMPLETE
+Next -> final analysis / integration phase
 ```
 
 PGD remains deferred.
