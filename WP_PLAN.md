@@ -34,9 +34,9 @@ Current implementation summary:
   evaluation. The historical WP8 smoke runner currently uses 17 epsilon values
   from `0/255` through `16/255`.
 * WP9 now has a local EWP4-A L-infinity PGD core implementation and EWP4-B
-  optional NumPy/CuPy PGD equivalence tests. Real GPU validation for EWP4-B is
-  pending. PGD robustness evaluation and PGD experiment infrastructure have
-  not started.
+  NumPy/CuPy PGD equivalence validation on the tested RTX 2080 Ti
+  environment. PGD robustness evaluation and PGD experiment infrastructure
+  have not started.
 * WP10-WP12 remain intentionally deferred.
 * WP13 implementation exists and needs formal documentation/closeout.
 * WP14 currently covers clean-vs-FGSM Grad-CAM analysis only.
@@ -55,7 +55,7 @@ Current implementation summary:
 | WP6 | Focused Runtime Bottleneck Handling | COMPLETE | `Conv2D.backward` was profiled, selected, optimized, benchmarked, and tested. |
 | WP7 | FGSM Attack and Input-Gradient Visualization | COMPLETE | Input gradients, FGSM, qualitative visualizations, and controlled example generation are implemented and tested. |
 | WP8 | FGSM robustness evaluation | COMPLETE | Original FGSM robustness scope is complete, including batch evaluation, epsilon sweeps, plots, representative metadata, and 1024-sample quantitative evaluation. Larger GPU runs are an extension, not missing WP8 work. |
-| WP9 | PGD Attack Implementation | PARTIALLY COMPLETE | EWP4-A implements the local L-infinity PGD core and focused NumPy tests. EWP4-B PGD equivalence tests are implemented locally and require real GPU validation. PGD examples, robustness evaluation, and runner integration have not started. |
+| WP9 | PGD Attack Implementation | PARTIALLY COMPLETE | EWP4-A implements the local L-infinity PGD core and focused NumPy tests. EWP4-B PGD equivalence is validated on the tested RTX 2080 Ti environment. PGD examples, robustness evaluation, and runner integration have not started. |
 | WP10 | PGD Robustness Evaluation and Comparison | DEFERRED | Intentionally not active. No PGD evaluation exists. |
 | WP11 | Non-Gradient Black-Box Attack Implementation | DEFERRED | Intentionally not active. No black-box attack implementation exists. |
 | WP12 | Black-Box Attack Evaluation | DEFERRED | Intentionally not active. Query-count evaluation is not implemented. |
@@ -564,14 +564,13 @@ Implemented functionality:
 
 Remaining work:
 
-* Real CuPy/GPU numerical equivalence for PGD is not validated yet.
 * PGD experiment-runner support, CIFAR-10 PGD evaluation, representative PGD
   examples, and curated PGD evidence have not started.
 
 Status:
 
-IMPLEMENTED LOCALLY through EWP4-A/EWP4-B. EWP4-B formal completion requires
-real GPU validation and review.
+PARTIALLY COMPLETE. EWP4-A and EWP4-B are complete; PGD evaluation,
+experiment-runner support, and curated PGD evidence have not started.
 
 ---
 
@@ -2227,7 +2226,7 @@ Not included in EWP4-A:
 
 Status:
 
-IMPLEMENTED LOCALLY / GPU VALIDATION PENDING.
+COMPLETE.
 
 Implemented functionality:
 
@@ -2267,12 +2266,60 @@ Local non-CUDA result:
 4 skipped
 ```
 
-GPU validation command:
+Real GPU validation:
 
-```bash
+```text
+GPU: NVIDIA GeForce RTX 2080 Ti
+CuPy: 14.1.1
+Python: 3.12
+CUDA-capable device count: 1
+
 python -m pytest -q tests/test_cupy_pgd_equivalence.py -rs
+4 passed in 6.22s
+
 python -m pytest -q -m "not requires_data"
+294 passed, 3 deselected in 16.65s
+
+git diff --check
+passed
 ```
+
+Validated equivalence scope:
+
+* Multi-step no-random-start PGD.
+* `steps > 1`.
+* `alpha < epsilon`.
+* Deterministic shared-initial-state PGD.
+* `epsilon=0`.
+* Final adversarial image equivalence.
+* Adversarial logits equivalence.
+* Exact adversarial predictions.
+* L-infinity projection invariant.
+* `[0, 1]` clipping invariant.
+* Parameter preservation.
+* CuPy device integrity.
+* One-step PGD / FGSM relationship.
+
+Numerical tolerances:
+
+```text
+Tensor comparisons: rtol=1e-5, atol=1e-6
+Predictions: exact equality
+```
+
+RNG strategy:
+
+NumPy and CuPy RNG streams were not required to match. Cross-backend
+random-start equivalence used the same deterministic initial adversarial state
+transferred to both backends, isolating PGD numerical equivalence from backend
+RNG implementation differences.
+
+Refactor safety:
+
+The EWP4-B production refactor preserves public `pgd_linf_attack(...)`
+semantics and introduces only the private initial-state helper needed for
+equivalence validation. FGSM, robustness metrics, model/loss semantics, and
+runner code are unchanged. No CPU fallback was introduced.
 
 Not included in EWP4-B:
 
@@ -2330,8 +2377,8 @@ EWP3-D -> COMPLETE
 EWP3-E -> COMPLETE
 EWP3-F -> COMPLETE
 EWP4-A -> COMPLETE
-EWP4-B -> IMPLEMENTED LOCALLY / GPU VALIDATION PENDING
-Next -> EWP4-B GPU validation branch preparation
+EWP4-B -> COMPLETE
+Next -> EWP4-C planning
 ```
 
 PGD experiment execution, black-box attacks, and adversarial training remain

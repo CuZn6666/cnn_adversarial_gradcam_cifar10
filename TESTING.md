@@ -29,6 +29,7 @@ EWP3-E full 10k CuPy robustness run: completed and curated
 EWP3-F local portfolio evidence tests: 4 passed
 EWP4-A local PGD core tests: 18 passed
 EWP4-B local PGD CuPy equivalence slice: 4 skipped because cupy is not installed
+EWP4-B real GPU PGD equivalence tests: 4 passed
 EWP2-B local slice on this machine: 2 skipped because cupy is not installed
 EWP2-C local slice on this machine: 2 skipped because cupy is not installed
 EWP2-D local slice on this machine: 3 skipped because cupy is not installed
@@ -476,8 +477,8 @@ tests/test_plotting.py
 ## WP9-WP12: Attack Work Status
 
 EWP4-A now provides a local NumPy-validated L-infinity PGD core attack. EWP4-B
-adds optional NumPy/CuPy PGD equivalence tests that require real GPU
-validation. PGD robustness evaluation, PGD experiment-runner support, and
+validates NumPy/CuPy PGD numerical equivalence on the tested RTX 2080 Ti
+environment. PGD robustness evaluation, PGD experiment-runner support, and
 black-box attacks remain deferred.
 
 Current expected result:
@@ -536,7 +537,7 @@ Expected local result:
 
 ## EWP4-B NumPy/CuPy PGD Equivalence Tests
 
-Status: IMPLEMENTED LOCALLY / GPU VALIDATION PENDING.
+Status: COMPLETE.
 
 Optional GPU tests:
 
@@ -589,6 +590,31 @@ GPU validation command:
 python -m pytest -q tests/test_cupy_pgd_equivalence.py -rs
 python -m pytest -q -m "not requires_data"
 ```
+
+Validated real GPU environment:
+
+```text
+GPU: NVIDIA GeForce RTX 2080 Ti
+CuPy: 14.1.1
+Python: 3.12
+CUDA-capable device count: 1
+```
+
+Real GPU result:
+
+```text
+python -m pytest -q tests/test_cupy_pgd_equivalence.py -rs
+4 passed in 6.22s
+
+python -m pytest -q -m "not requires_data"
+294 passed, 3 deselected in 16.65s
+
+git diff --check
+passed
+```
+
+EWP4-B does not claim compatibility with untested GPU/CUDA/CuPy/Python
+configurations.
 
 EWP4-B does not validate PGD robustness metrics, PGD experiment runners, full
 CIFAR-10 PGD execution, or CUDA kernel optimization.
