@@ -77,25 +77,26 @@ def main() -> None:
             output_root=args.output_root,
         )
 
-        summary = run_pgd_experiment(config)
+        run_result = run_pgd_experiment(config)
+        metrics = run_result["pgd_result"]
 
         runs.append(
             {
                 "epsilon": float(epsilon),
                 "run_id": config.run_id,
-                "run_dir": str(Path(args.output_root) / config.run_id),
-                "status": summary["status"],
-                "clean_accuracy": summary["clean_accuracy"],
-                "adversarial_accuracy": summary["adversarial_accuracy"],
-                "accuracy_drop": summary["accuracy_drop"],
-                "attack_success_rate": summary["attack_success_rate"],
+                "run_dir": str(run_result["run_dir"]),
+                "status": "COMPLETED",
+                "clean_accuracy": metrics["clean_accuracy"],
+                "adversarial_accuracy": metrics["adversarial_accuracy"],
+                "accuracy_drop": metrics["accuracy_drop"],
+                "attack_success_rate": metrics["attack_success_rate"],
             }
         )
 
         print(
             f"completed: {config.run_id} | "
-            f"adv_acc={summary['adversarial_accuracy']:.6f} | "
-            f"asr={summary['attack_success_rate']:.6f}",
+            f"adv_acc={metrics['adversarial_accuracy']:.6f} | "
+            f"asr={metrics['attack_success_rate']:.6f}",
             flush=True,
         )
 
