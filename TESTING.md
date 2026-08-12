@@ -18,14 +18,15 @@ visible CUDA GPU is unavailable.
 Latest verified local state:
 
 ```text
-Non-CuPy local regression: 252 passed, 19 deselected
-Full local suite: 252 passed, 19 skipped
+Non-CuPy local regression: 256 passed, 19 deselected
+Full local suite: 256 passed, 19 skipped
 EWP3-A local staging validation tests: 4 passed
 EWP3-B local runner infrastructure tests: 7 passed
 EWP3-C/EWP3-E local run-curation tests: 11 passed
 EWP3-C real 1000-sample CuPy sanity run: completed and curated
 EWP3-D local benchmark infrastructure tests: 10 passed
 EWP3-E full 10k CuPy robustness run: completed and curated
+EWP3-F local portfolio evidence tests: 4 passed
 EWP2-B local slice on this machine: 2 skipped because cupy is not installed
 EWP2-C local slice on this machine: 2 skipped because cupy is not installed
 EWP2-D local slice on this machine: 3 skipped because cupy is not installed
@@ -1209,6 +1210,54 @@ The tests now cover full-run interpretation metadata, expected backend/GPU
 validation, bounded robustness metrics, and epsilon-zero consistency in
 addition to the EWP3-C curation behavior. They use synthetic artifacts and do
 not require CIFAR-10 data, CuPy, or a GPU.
+
+## EWP3-F Final Portfolio Evidence
+
+Status: IMPLEMENTED LOCALLY / REVIEW PENDING.
+
+Final portfolio evidence is generated from tracked curated EWP3-D and EWP3-E
+artifacts only:
+
+```text
+results/curated/ewp3d/20260811T185420645969Z_fgsm_benchmark/
+results/curated/ewp3e/20260812T115232600695Z_fgsm_cupy/
+```
+
+The generation script is:
+
+```text
+experiments/generate_final_portfolio_evidence.py
+```
+
+Default outputs:
+
+```text
+results/curated/portfolio/portfolio_summary.csv
+results/curated/portfolio/portfolio_summary.json
+results/curated/portfolio/final_performance_summary.png
+results/curated/portfolio/final_robustness_summary.png
+```
+
+The script derives the summary table and final figures from existing CSV/JSON
+evidence. It does not load CIFAR-10, run a model, import CuPy, rerun
+experiments, or modify numerical code.
+
+Suggested regeneration command:
+
+```bash
+MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m experiments.generate_final_portfolio_evidence --overwrite
+```
+
+Focused local tests:
+
+```text
+tests/test_final_portfolio_evidence.py
+```
+
+The tests use synthetic curated EWP3-D/EWP3-E artifacts and temporary output
+directories. They cover source-summary derivation, PNG generation,
+unexpected-backend rejection, and overwrite protection. They do not require
+CIFAR-10 data, CuPy, or a GPU.
 
 ## NumPy Reference Tests for Future CuPy Equivalence
 

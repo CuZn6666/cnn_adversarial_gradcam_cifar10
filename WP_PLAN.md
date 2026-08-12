@@ -17,9 +17,9 @@ do not rewrite the original definitions.
 Latest local validation:
 
 ```text
-Offline CI-compatible suite: 212 passed, 3 deselected
-Data-marked suite: 3 passed, 212 deselected
-Full local suite: 215 passed
+Non-CuPy local regression: 256 passed, 19 deselected
+Full local suite on this machine: 256 passed, 19 skipped
+Data-marked cluster suite after CIFAR-10 staging: 3 passed, 240 deselected
 ```
 
 Current implementation summary:
@@ -1188,7 +1188,8 @@ PARTIALLY COMPLETE. EWP3-A environment and dataset-staging validation is
 complete. EWP3-B scheduler-neutral experiment-runner infrastructure is
 complete. EWP3-C medium-scale GPU FGSM sanity validation is complete. EWP3-D
 CPU/GPU scaling and performance benchmarking is complete. EWP3-E full-test-set
-FGSM robustness evaluation is complete.
+FGSM robustness evaluation is complete. EWP3-F final portfolio evidence and
+project presentation is implemented locally and ready for review.
 
 #### EWP3-A: Cluster Environment and CIFAR-10 Dataset Staging
 
@@ -2059,6 +2060,79 @@ Scope notes:
 * Raw `results/runs/` outputs remain ignored; curated EWP3-E evidence is
   intentionally tracked.
 
+#### EWP3-F: Final Portfolio Evidence and Project Presentation
+
+Status:
+
+IMPLEMENTED LOCALLY / REVIEW PENDING.
+
+Goal:
+
+Convert validated EWP1 through EWP3-E engineering results into a concise,
+technically defensible portfolio presentation. This phase is documentation,
+analysis, and visualization only. It does not implement PGD, modify numerical
+code, change model architecture, rerun large experiments, or introduce a new
+attack path.
+
+Source-of-truth artifacts:
+
+```text
+results/curated/ewp3d/20260811T185420645969Z_fgsm_benchmark/
+results/curated/ewp3e/20260812T115232600695Z_fgsm_cupy/
+```
+
+Implemented artifacts:
+
+```text
+experiments/generate_final_portfolio_evidence.py
+results/curated/portfolio/portfolio_summary.csv
+results/curated/portfolio/portfolio_summary.json
+results/curated/portfolio/final_performance_summary.png
+results/curated/portfolio/final_robustness_summary.png
+deliverables/EWP3F/portfolio_presentation.md
+```
+
+The final portfolio evidence script reads only tracked curated EWP3-D/EWP3-E
+CSV/JSON artifacts and derives:
+
+* a single-row machine-readable summary table,
+* a combined performance figure showing CPU vs GPU throughput and speedup by
+  batch size,
+* a combined robustness figure showing clean accuracy, adversarial accuracy,
+  and attack success rate across the full-test-set FGSM epsilon sweep.
+
+README updates:
+
+* Adds a concise final evidence snapshot for reviewers.
+* Adds a Mermaid architecture diagram showing CIFAR-10 loading, backend
+  boundary, CompactCNN, loss/input gradients, FGSM, robustness evaluation,
+  runner artifacts, and curated evidence.
+* Links the final portfolio summary CSV/JSON and combined figures.
+* States scope constraints: FGSM-only robustness, no PGD, RTX 2080 Ti / CuPy
+  `14.1.1` environment, and batch `128` as best tested rather than globally
+  optimal.
+
+Portfolio narrative:
+
+`deliverables/EWP3F/portfolio_presentation.md` records:
+
+* source-of-truth evidence map,
+* final engineering narrative,
+* systems-focused, ML/robustness-focused, and balanced resume bullet variants,
+* concise interview narrative covering project scope, difficulty, GPU
+  underutilization diagnosis, batch-size crossover, correctness preservation,
+  and next steps.
+
+Validation:
+
+```text
+tests/test_final_portfolio_evidence.py
+```
+
+The tests use synthetic curated artifacts and do not require CIFAR-10, CuPy,
+or a GPU. They validate summary derivation, plot generation, backend metadata
+guardrails, and overwrite behavior.
+
 ---
 
 ### EWP4: Large-scale FGSM Evaluation
@@ -2128,7 +2202,8 @@ EWP3-B -> COMPLETE
 EWP3-C -> COMPLETE
 EWP3-D -> COMPLETE
 EWP3-E -> COMPLETE
-Next -> final analysis / integration phase
+EWP3-F -> IMPLEMENTED LOCALLY / REVIEW PENDING
+Next -> final integration review
 ```
 
 PGD remains deferred.
