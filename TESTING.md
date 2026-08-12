@@ -37,6 +37,11 @@ EWP4-D full 10k CuPy PGD run: completed and curated
 EWP4-D final PGD configuration: epsilon=8/255, alpha=2/255, steps=10, random_start=true, seed=42
 EWP4-D final PGD result: clean_accuracy=0.4639, adversarial_accuracy=0.0023, attack_success_rate=0.9950420349213193
 EWP4-D final timing: evaluation_wall_seconds=49.57189846501569, total_wall_seconds=50.52436269199825, gradient_evaluations=100000
+EWP4-E 32-sample CuPy PGD epsilon-sweep smoke: completed for epsilons 0,4/255,8/255
+EWP4-E full 10k CuPy PGD epsilon sweep: completed for 7 epsilons
+EWP4-E configuration: alpha=2/255, steps=10, random_start=true, seed=42, batch_size=128
+EWP4-E adversarial accuracy: 46.39%, 30.47%, 17.38%, 4.58%, 0.23%, 0.01%, 0.00%
+EWP4-E ASR: 0.00%, 34.32%, 62.54%, 90.13%, 99.50%, 99.98%, 100.00%
 EWP2-B local slice on this machine: 2 skipped because cupy is not installed
 EWP2-C local slice on this machine: 2 skipped because cupy is not installed
 EWP2-D local slice on this machine: 3 skipped because cupy is not installed
