@@ -84,9 +84,31 @@ flowchart TD
     M --> N[Tracked portfolio evidence]
 ```
 
-## Visual Results
+## Representative Explainability Result
 
-### Clean CIFAR-10 baseline training and evaluation
+[![Clean vs Adversarial Grad-CAM](results/gradcam/gradcam_hero_presentation.png)](results/gradcam/gradcam_hero_presentation.png)
+
+Clean vs adversarial Grad-CAM under FGSM (`epsilon = 8/255`). The examples are
+clean-correct CIFAR-10 test samples where FGSM changes the model prediction.
+Grad-CAM maps are independently normalized to `[0, 1]`, so the visualization
+compares spatial localization patterns rather than absolute activation
+magnitude.
+
+The presentation figure uses a heatmap-weighted overlay with the `turbo`
+colormap to keep low-activation regions close to the original image while
+making high-activation regions easier to inspect.
+
+Additional Grad-CAM artifacts:
+
+- [Compact README hero figure](results/gradcam/gradcam_hero.png)
+- [Detailed clean vs adversarial comparison](results/gradcam/gradcam_detailed_comparison.png)
+- [Fixed-original-target Grad-CAM comparison](results/gradcam/gradcam_fixed_target_comparison.png)
+- [Attack success vs control comparison](results/gradcam/gradcam_success_vs_control.png)
+- [Grad-CAM comparison metadata (JSON)](results/gradcam/gradcam_comparison_metadata.json)
+
+## Supporting Evidence
+
+### Baseline training evidence
 
 | Training loss | Train vs validation accuracy | Confusion matrix |
 | ------------- | ---------------------------- | ---------------- |
@@ -127,11 +149,9 @@ should be regenerated from the documented scripts or distributed through a
 release artifact, cluster storage path, or another explicit external artifact
 store when an experiment needs an exact saved model.
 
-### FGSM quantitative robustness with reproducible baseline
+## Historical / Development Evidence
 
-| Accuracy vs epsilon | Attack success rate | Accuracy drop |
-| ------------------- | ------------------- | ------------- |
-| [![Accuracy vs Epsilon](results/fgsm/accuracy_vs_epsilon.png)](results/fgsm/accuracy_vs_epsilon.png) | [![Attack Success Rate vs Epsilon](results/fgsm/attack_success_rate_vs_epsilon.png)](results/fgsm/attack_success_rate_vs_epsilon.png) | [![Accuracy Drop vs Epsilon](results/fgsm/accuracy_drop_vs_epsilon.png)](results/fgsm/accuracy_drop_vs_epsilon.png) |
+### 1024-sample FGSM robustness check
 
 This FGSM quantitative evaluation uses the stronger reproducible baseline
 checkpoint:
@@ -161,9 +181,11 @@ FGSM quantitative artifacts:
 - [Attack success rate vs epsilon](results/fgsm/attack_success_rate_vs_epsilon.png)
 - [Accuracy drop vs epsilon](results/fgsm/accuracy_drop_vs_epsilon.png)
 
-### Historical WP8 smoke evaluation
+This 1024-sample run remains useful for development traceability. The
+authoritative final robustness evidence is the full `10000`-sample EWP3-E
+evaluation in the Final Evidence Snapshot.
 
-[![FGSM accuracy vs epsilon](results/WP8/fgsm_accuracy_vs_epsilon.png)](results/WP8/fgsm_accuracy_vs_epsilon.png)
+### Historical WP8 smoke evaluation
 
 Controlled WP8 smoke run over epsilon values from `0/255` through `16/255`.
 The pipeline produces clean accuracy, adversarial accuracy, accuracy drop, and
@@ -172,52 +194,25 @@ attack success rate metrics.
 Important limitation: this historical WP8 smoke plot was generated with the old
 tiny subset checkpoint, which achieved `0.0` clean accuracy on the fixed
 32-sample subset. It validates the evaluation pipeline rather than proving
-final CIFAR-10 robustness. The FGSM quantitative figures above are the current
-controlled evaluation results using the stronger baseline checkpoint.
+final CIFAR-10 robustness.
 
-### FGSM qualitative analysis with reproducible baseline
+- [Historical WP8 FGSM accuracy plot](results/WP8/fgsm_accuracy_vs_epsilon.png)
+- [Historical WP8 metrics JSON](results/WP8/fgsm_robustness_metrics.json)
 
-[![FGSM Qualitative Analysis](results/fgsm/fgsm_qualitative_comparison.png)](results/fgsm/fgsm_qualitative_comparison.png)
+### FGSM qualitative traceability
 
-This figure uses `results/baseline/portfolio_baseline_best.npz` and a
+These linked figures use `results/baseline/portfolio_baseline_best.npz` and a
 deterministic CIFAR-10 test-subset selection rule: the first clean-correct
 sample that becomes incorrect under FGSM at `epsilon = 8/255`. It shows the
 clean image, input-gradient map, visualized perturbation magnitude, and
 adversarial image.
 
-[![FGSM Epsilon Progression](results/fgsm/epsilon_progression.png)](results/fgsm/epsilon_progression.png)
-
 The epsilon progression keeps the same clean source image and independently
 generates FGSM examples for `0`, `2/255`, `4/255`, `8/255`, and `16/255`.
-
-FGSM qualitative artifacts:
 
 - [FGSM qualitative comparison](results/fgsm/fgsm_qualitative_comparison.png)
 - [FGSM epsilon progression](results/fgsm/epsilon_progression.png)
 - [FGSM qualitative metadata (JSON)](results/fgsm/fgsm_qualitative_metadata.json)
-
-### Clean vs adversarial Grad-CAM
-
-[![Clean vs Adversarial Grad-CAM](results/gradcam/gradcam_hero_presentation.png)](results/gradcam/gradcam_hero_presentation.png)
-
-Clean vs adversarial Grad-CAM under FGSM (`epsilon = 8/255`). The examples are
-clean-correct CIFAR-10 test samples where FGSM changes the model prediction.
-Grad-CAM maps are independently normalized to `[0, 1]`, so the visualization
-compares spatial localization patterns rather than absolute activation
-magnitude.
-
-The presentation figure uses a heatmap-weighted overlay with the `turbo`
-colormap to keep low-activation regions close to the original image while
-making high-activation regions easier to inspect.
-
-Grad-CAM artifacts:
-
-- [Presentation README hero figure](results/gradcam/gradcam_hero_presentation.png)
-- [Compact README hero figure](results/gradcam/gradcam_hero.png)
-- [Detailed clean vs adversarial comparison](results/gradcam/gradcam_detailed_comparison.png)
-- [Fixed-original-target Grad-CAM comparison](results/gradcam/gradcam_fixed_target_comparison.png)
-- [Attack success vs control comparison](results/gradcam/gradcam_success_vs_control.png)
-- [Grad-CAM comparison metadata (JSON)](results/gradcam/gradcam_comparison_metadata.json)
 
 Historical WP7 smoke qualitative artifacts remain available for traceability:
 
@@ -742,10 +737,10 @@ WP6 followed a focused performance-engineering workflow:
 local to that method and uses `np.einsum`-based accumulation while preserving
 the public API, forward behavior, stride, padding, and gradient shapes.
 
-[![Conv2D.backward runtime comparison](results/WP6/conv2d_backward_runtime_comparison.png)](results/WP6/conv2d_backward_runtime_comparison.png)
-
-The runtime figure summarizes the engineering workflow:
+The historical runtime figure summarizes the engineering workflow:
 profile → identify `Conv2D.backward` as the bottleneck → optimize → benchmark.
+
+- [Conv2D.backward runtime comparison](results/WP6/conv2d_backward_runtime_comparison.png)
 
 Documented local benchmark:
 
