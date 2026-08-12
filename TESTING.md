@@ -18,8 +18,8 @@ visible CUDA GPU is unavailable.
 Latest verified local state:
 
 ```text
-Non-CuPy local regression: 293 passed, 23 deselected
-Full local suite: 293 passed, 23 skipped
+Non-CuPy local regression: 300 passed, 23 deselected
+Full local suite: 300 passed, 23 skipped
 EWP3-A local staging validation tests: 4 passed
 EWP3-B local runner infrastructure tests: 7 passed
 EWP3-C/EWP3-E local run-curation tests: 11 passed
@@ -32,6 +32,7 @@ EWP4-B local PGD CuPy equivalence slice: 4 skipped because cupy is not installed
 EWP4-B real GPU PGD equivalence tests: 4 passed
 EWP4-C local PGD runner/curation tests: 19 passed
 EWP4-C real 32-sample CuPy PGD smoke run: completed and curated
+EWP4-D local final PGD curation/comparison preparation tests: 17 passed
 EWP2-B local slice on this machine: 2 skipped because cupy is not installed
 EWP2-C local slice on this machine: 2 skipped because cupy is not installed
 EWP2-D local slice on this machine: 3 skipped because cupy is not installed
@@ -481,8 +482,9 @@ tests/test_plotting.py
 EWP4-A now provides a local NumPy-validated L-infinity PGD core attack. EWP4-B
 validates NumPy/CuPy PGD numerical equivalence on the tested RTX 2080 Ti
 environment. EWP4-C adds PGD runner and curation infrastructure validated by a
-small real cluster smoke run. Full PGD robustness evaluation and black-box
-attacks remain deferred.
+small real cluster smoke run. EWP4-D prepares final PGD curation and
+FGSM-vs-PGD comparison infrastructure. Full PGD robustness results and
+black-box attacks remain pending.
 
 Current expected result:
 
@@ -494,7 +496,8 @@ Current expected result:
 * `experiments/pgd/plot_pgd_run.py` exists for PGD smoke artifact curation.
 * Curated EWP4-C smoke evidence exists under
   `results/curated/ewp4c/20260812T134536776276Z_pgd_linf_cupy/`.
-* No full PGD robustness evaluation exists.
+* EWP4-D final-run curation and comparison tests exist for preparation.
+* No full PGD robustness result exists yet.
 * No black-box attack implementation exists.
 * No query-count evaluation exists.
 
@@ -739,6 +742,69 @@ positive timing values, `gradient_evaluations = sample_count * steps`,
 
 EWP4-C does not validate a full CIFAR-10 PGD sweep, multiple restarts,
 PGD-vs-FGSM final comparisons, black-box attacks, or CUDA kernel optimization.
+
+## EWP4-D Full PGD Evaluation Preparation Tests
+
+Status: PREPARED / FULL 10K CLUSTER RUN PENDING.
+
+Focused preparation tests:
+
+```text
+tests/test_pgd_run_curation.py
+tests/test_pgd_fgsm_comparison.py
+```
+
+The EWP4-D preparation tests validate:
+
+* Strict final PGD curation expectations for sample count, epsilon, alpha,
+  steps, random start, seed, split, checkpoint path, backend, and GPU.
+* Final PGD output naming via `final_pgd_robustness_summary.png`.
+* Internal count consistency for clean/adversarial counts, accuracy drop, and
+  attack success rate.
+* `gradient_evaluations = sample_count * steps`.
+* `sample_steps = sample_count * steps`.
+* FGSM-vs-PGD comparison generation from curated artifacts only.
+* Matched FGSM/PGD source validation for checkpoint, split, sample count,
+  backend, GPU, and epsilon.
+* Comparison CSV, JSON, and PNG output generation.
+* Rejection of mismatched sample counts, checkpoint mismatches, and unsafe
+  overwrite attempts.
+
+Focused local commands:
+
+```bash
+MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m py_compile experiments/pgd/run_pgd_experiment.py experiments/pgd/plot_pgd_run.py experiments/pgd/compare_fgsm_pgd.py
+MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q tests/test_pgd_run_curation.py tests/test_pgd_fgsm_comparison.py
+```
+
+Expected local result:
+
+```text
+17 passed
+```
+
+Planned full RTX 2080 Ti PGD run command:
+
+```bash
+python -m experiments.pgd.run_pgd_experiment --backend cupy --data-dir data/raw --checkpoint results/checkpoints/portfolio_baseline_best.npz --split test --max-samples 10000 --batch-size 128 --epsilon 8/255 --alpha 2/255 --steps 10 --random-start --seed 42 --output-root results/runs
+```
+
+Curate the final PGD artifacts with:
+
+```bash
+python -m experiments.pgd.plot_pgd_run --run-dir results/runs/<run_id> --output-root results/curated/ewp4d --expected-sample-count 10000 --expected-epsilon 8/255 --expected-alpha 2/255 --expected-steps 10 --expected-random-start true --expected-seed 42 --expected-split test --expected-checkpoint results/checkpoints/portfolio_baseline_best.npz --expected-backend cupy --expected-gpu-name "NVIDIA GeForce RTX 2080 Ti" --plot-filename final_pgd_robustness_summary.png --plot-title "Final PGD-Linf Robustness" --interpretation "Full CIFAR-10 test-set PGD-Linf robustness evaluation; final EWP4-D PGD evidence, not a CPU/GPU benchmark."
+```
+
+After the real PGD curated artifact exists, build the matched FGSM-vs-PGD
+comparison with:
+
+```bash
+python -m experiments.pgd.compare_fgsm_pgd --fgsm-curated-dir results/curated/ewp3e/20260812T115232600695Z_fgsm_cupy --pgd-curated-dir results/curated/ewp4d/<run_id> --output-dir results/curated/portfolio --epsilon 8/255 --expected-sample-count 10000
+```
+
+EWP4-D preparation does not execute the full 10k PGD run locally, does not
+change PGD numerical semantics, does not add multi-restart PGD, and does not
+add parameter sweeps.
 
 ## WP13: Grad-CAM Implementation Validation
 

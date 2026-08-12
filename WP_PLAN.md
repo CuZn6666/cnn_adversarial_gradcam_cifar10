@@ -17,8 +17,8 @@ do not rewrite the original definitions.
 Latest local validation:
 
 ```text
-Non-CuPy local regression: 293 passed, 23 deselected
-Full local suite on this machine: 293 passed, 23 skipped
+Non-CuPy local regression: 300 passed, 23 deselected
+Full local suite on this machine: 300 passed, 23 skipped
 Data-marked cluster suite after CIFAR-10 staging: 3 passed, 240 deselected
 ```
 
@@ -36,8 +36,8 @@ Current implementation summary:
 * WP9 now has a local EWP4-A L-infinity PGD core implementation, EWP4-B
   NumPy/CuPy PGD equivalence validation on the tested RTX 2080 Ti
   environment, and EWP4-C PGD runner/curation infrastructure validated by a
-  small real cluster smoke run. Full PGD robustness evaluation remains future
-  work.
+  small real cluster smoke run. EWP4-D final PGD curation/comparison
+  infrastructure is prepared, but the full 10k PGD run has not been executed.
 * WP10-WP12 remain intentionally deferred.
 * WP13 implementation exists and needs formal documentation/closeout.
 * WP14 currently covers clean-vs-FGSM Grad-CAM analysis only.
@@ -56,8 +56,8 @@ Current implementation summary:
 | WP6 | Focused Runtime Bottleneck Handling | COMPLETE | `Conv2D.backward` was profiled, selected, optimized, benchmarked, and tested. |
 | WP7 | FGSM Attack and Input-Gradient Visualization | COMPLETE | Input gradients, FGSM, qualitative visualizations, and controlled example generation are implemented and tested. |
 | WP8 | FGSM robustness evaluation | COMPLETE | Original FGSM robustness scope is complete, including batch evaluation, epsilon sweeps, plots, representative metadata, and 1024-sample quantitative evaluation. Larger GPU runs are an extension, not missing WP8 work. |
-| WP9 | PGD Attack Implementation | PARTIALLY COMPLETE | EWP4-A implements the local L-infinity PGD core and focused NumPy tests. EWP4-B PGD equivalence is validated on the tested RTX 2080 Ti environment. EWP4-C PGD runner/curation infrastructure is validated by a 32-sample real cluster smoke run. Full PGD robustness evaluation remains future work. |
-| WP10 | PGD Robustness Evaluation and Comparison | DEFERRED | Intentionally not active beyond EWP4-C smoke infrastructure. No full PGD robustness evaluation exists. |
+| WP9 | PGD Attack Implementation | PARTIALLY COMPLETE | EWP4-A implements the local L-infinity PGD core and focused NumPy tests. EWP4-B PGD equivalence is validated on the tested RTX 2080 Ti environment. EWP4-C PGD runner/curation infrastructure is validated by a 32-sample real cluster smoke run. EWP4-D final-run curation/comparison infrastructure is prepared. |
+| WP10 | PGD Robustness Evaluation and Comparison | PARTIALLY COMPLETE | EWP4-D infrastructure is prepared for the full 10k PGD run and FGSM-vs-PGD comparison, but no full PGD result has been executed or curated yet. |
 | WP11 | Non-Gradient Black-Box Attack Implementation | DEFERRED | Intentionally not active. No black-box attack implementation exists. |
 | WP12 | Black-Box Attack Evaluation | DEFERRED | Intentionally not active. Query-count evaluation is not implemented. |
 | WP13 | Grad-CAM Implementation | NEEDS DOCUMENTATION | Core Grad-CAM implementation exists and is tested; formal WP13 closeout remains to be written. |
@@ -2465,6 +2465,86 @@ Not included in EWP4-C:
 * PGD-vs-FGSM final robustness comparison.
 * CUDA kernel optimization.
 
+#### EWP4-D: Full CIFAR-10 PGD Robustness Evaluation
+
+Status:
+
+PREPARED / FULL 10K CLUSTER RUN PENDING.
+
+Implemented preparation:
+
+* Reuses `experiments/pgd/run_pgd_experiment.py` for the production PGD
+  numerical path. No second PGD attack implementation is introduced.
+* Extends `experiments/pgd/plot_pgd_run.py` so the final PGD curation can
+  enforce the canonical 10k run configuration and write
+  `final_pgd_robustness_summary.png`.
+* Adds `experiments/pgd/compare_fgsm_pgd.py` to generate structured
+  FGSM-vs-PGD comparison evidence after the real PGD artifact exists.
+* The comparison uses tracked EWP3-E full-test-set FGSM evidence as the FGSM
+  source of truth and requires matched checkpoint, dataset split, sample count,
+  backend, GPU, and epsilon.
+
+Final planned PGD workload:
+
+```text
+backend: cupy
+GPU: NVIDIA GeForce RTX 2080 Ti
+split: test
+sample_count: 10000
+batch_size: 128
+checkpoint: results/checkpoints/portfolio_baseline_best.npz
+epsilon: 8/255
+alpha: 2/255
+steps: 10
+random_start: true
+seed: 42
+```
+
+Final PGD curation validation gates:
+
+* `status = COMPLETED`.
+* `attack = pgd_linf`.
+* `backend = cupy`.
+* `sample_count = 10000`.
+* `dataset_split = test`.
+* CIFAR-10 checksum metadata is valid.
+* checkpoint path is `results/checkpoints/portfolio_baseline_best.npz`.
+* `epsilon = 8/255`, `alpha = 2/255`, `steps = 10`,
+  `random_start = true`, and `seed = 42`.
+* GPU metadata is `NVIDIA GeForce RTX 2080 Ti`.
+* Metrics are finite, bounded, and internally count-consistent.
+* Timing values are positive.
+* `gradient_evaluations = sample_count * steps = 100000`.
+* `sample_steps = sample_count * steps = 100000`.
+
+Planned final PGD curated artifacts:
+
+```text
+results/curated/ewp4d/<run_id>/
+  robustness_summary.csv
+  timing_summary.json
+  run_metadata.json
+  final_pgd_robustness_summary.png
+```
+
+Planned portfolio comparison artifacts after the PGD run exists:
+
+```text
+results/curated/portfolio/
+  fgsm_vs_pgd_summary.csv
+  fgsm_vs_pgd_summary.json
+  final_fgsm_vs_pgd_summary.png
+```
+
+Interpretation:
+
+EWP4-D is prepared for the full 10k PGD cluster run, but no EWP4-D result has
+been executed or curated yet. Timing from EWP4-D will be experiment execution
+evidence, not a CPU/GPU optimization benchmark. EWP3-D remains the dedicated
+CPU/GPU benchmark. Multi-restart PGD, parameter sweeps, targeted PGD,
+PGD-20/PGD-50, AutoAttack, adversarial training, and new attack algorithms are
+out of scope.
+
 ---
 
 ### EWP5: Runtime and Robustness Analysis
@@ -2516,11 +2596,12 @@ EWP3-F -> COMPLETE
 EWP4-A -> COMPLETE
 EWP4-B -> COMPLETE
 EWP4-C -> COMPLETE
-Next -> EWP4-D full PGD evaluation planning
+EWP4-D -> PREPARED / FULL 10K CLUSTER RUN PENDING
+Next -> EWP4-D full PGD cluster execution
 ```
 
-Full PGD robustness evaluation, black-box attacks, and adversarial training
-remain deferred.
+Full PGD robustness results, black-box attacks, and adversarial training remain
+deferred until the EWP4-D cluster run completes and is curated.
 
 ### Planned Visualization and Artifact Matrix
 

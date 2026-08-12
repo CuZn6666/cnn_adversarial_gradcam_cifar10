@@ -24,7 +24,7 @@ validated 32-sample cluster smoke, but not final PGD robustness evidence.
 | **Manual backward propagation** | Layer-level and full-model `backward(...)` pipeline implemented and tested. |
 | **NumPy/CuPy backend** | NumPy is the reference backend; CuPy runtime validated on an RTX 2080 Ti with CuPy `14.1.1`. |
 | **Numerical equivalence** | Backend primitives, layers, loss, full model training step, input gradients, FGSM, and robustness sweeps validated across NumPy/CuPy. |
-| **Automated tests and CI** | Current local suite: `293 passed, 23 skipped`; non-CuPy regression: `293 passed, 23 deselected`. |
+| **Automated tests and CI** | Current local suite: `300 passed, 23 skipped`; non-CuPy regression: `300 passed, 23 deselected`. |
 | **Clean CIFAR-10 baseline** | Deterministic NumPy baseline checkpoint reached `47.07%` validation accuracy and `44.73%` clean test-subset accuracy. |
 | **Reproducible cluster runner** | Scheduler-neutral FGSM runner records config, environment, metrics, timing, status, and curated evidence. |
 | **Full FGSM robustness** | Full CIFAR-10 test set evaluated with CuPy on `10,000` samples and seven FGSM epsilons. |
@@ -769,6 +769,34 @@ Curated smoke artifacts are tracked under:
 ```text
 results/curated/ewp4c/20260812T134536776276Z_pgd_linf_cupy/
 ```
+
+### Prepare the full PGD evaluation
+
+EWP4-D prepares the final full CIFAR-10 test-set PGD-Linf evaluation at the
+canonical `8/255` point. This run is not executed locally, and until the real
+cluster run exists there is no final PGD robustness result to report.
+
+Planned full RTX 2080 Ti workload:
+
+```bash
+python -m experiments.pgd.run_pgd_experiment --backend cupy --data-dir data/raw --checkpoint results/checkpoints/portfolio_baseline_best.npz --split test --max-samples 10000 --batch-size 128 --epsilon 8/255 --alpha 2/255 --steps 10 --random-start --seed 42 --output-root results/runs
+```
+
+Curate the completed run with:
+
+```bash
+python -m experiments.pgd.plot_pgd_run --run-dir results/runs/<run_id> --output-root results/curated/ewp4d --expected-sample-count 10000 --expected-epsilon 8/255 --expected-alpha 2/255 --expected-steps 10 --expected-random-start true --expected-seed 42 --expected-split test --expected-checkpoint results/checkpoints/portfolio_baseline_best.npz --expected-backend cupy --expected-gpu-name "NVIDIA GeForce RTX 2080 Ti" --plot-filename final_pgd_robustness_summary.png --plot-title "Final PGD-Linf Robustness" --interpretation "Full CIFAR-10 test-set PGD-Linf robustness evaluation; final EWP4-D PGD evidence, not a CPU/GPU benchmark."
+```
+
+After the PGD artifact exists, generate a matched FGSM-vs-PGD comparison from
+tracked curated evidence:
+
+```bash
+python -m experiments.pgd.compare_fgsm_pgd --fgsm-curated-dir results/curated/ewp3e/20260812T115232600695Z_fgsm_cupy --pgd-curated-dir results/curated/ewp4d/<run_id> --output-dir results/curated/portfolio --epsilon 8/255 --expected-sample-count 10000
+```
+
+The comparison must report the observed empirical result. It should not assume
+PGD will appear stronger from the attack name alone.
 
 ## Numerical Gradient Checking
 
