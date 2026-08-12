@@ -4,14 +4,17 @@
 
 A **NumPy-first, from-scratch CompactCNN pipeline for CIFAR-10** with manual
 forward/backward propagation, optional CuPy GPU execution, numerical
-equivalence validation, FGSM adversarial robustness evaluation, CPU/GPU
-benchmarking, and Grad-CAM-based explainability analysis.
+equivalence validation, FGSM adversarial robustness evaluation, PGD core
+attack validation, CPU/GPU benchmarking, and Grad-CAM-based explainability
+analysis.
 
 This repository is built as an engineering project, not a thin wrapper around
 PyTorch or TensorFlow: the CNN layers, gradients, optimizer path, input
 gradients, and FGSM attack pipeline are implemented directly with NumPy-style
 array operations. NumPy remains the default and authoritative correctness
-reference; CuPy is an optional backend for the compute-heavy tensor path.
+reference; CuPy is an optional backend for the compute-heavy tensor path. The
+final full-test-set robustness evidence is FGSM-only; PGD runner smoke
+validation is in progress and is not yet final PGD robustness evidence.
 
 ## Project Highlights
 
@@ -21,10 +24,11 @@ reference; CuPy is an optional backend for the compute-heavy tensor path.
 | **Manual backward propagation** | Layer-level and full-model `backward(...)` pipeline implemented and tested. |
 | **NumPy/CuPy backend** | NumPy is the reference backend; CuPy runtime validated on an RTX 2080 Ti with CuPy `14.1.1`. |
 | **Numerical equivalence** | Backend primitives, layers, loss, full model training step, input gradients, FGSM, and robustness sweeps validated across NumPy/CuPy. |
-| **Automated tests and CI** | Current local suite: `256 passed, 19 skipped`; non-CuPy regression: `256 passed, 19 deselected`. |
+| **Automated tests and CI** | Current local suite: `293 passed, 23 skipped`; non-CuPy regression: `293 passed, 23 deselected`. |
 | **Clean CIFAR-10 baseline** | Deterministic NumPy baseline checkpoint reached `47.07%` validation accuracy and `44.73%` clean test-subset accuracy. |
 | **Reproducible cluster runner** | Scheduler-neutral FGSM runner records config, environment, metrics, timing, status, and curated evidence. |
 | **Full FGSM robustness** | Full CIFAR-10 test set evaluated with CuPy on `10,000` samples and seven FGSM epsilons. |
+| **PGD attack validation** | L-infinity PGD core and NumPy/CuPy numerical equivalence validated; PGD runner smoke infrastructure is under validation. |
 | **GPU performance evidence** | Matched CPU/GPU benchmark found first tested GPU-faster batch size `64` and best tested median speedup `2.88x` at batch `128`. |
 | **Grad-CAM explainability** | Clean and adversarial Grad-CAM comparisons generated from the validated `relu2` target activation. |
 | **Runtime engineering** | Profiling identified `Conv2D.backward` as the bottleneck; a focused NumPy optimization achieved a documented `207.72x` local speedup. |
@@ -61,8 +65,9 @@ MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -
 The performance speedup is evaluation-wall-time speedup for matched workloads:
 `CPU evaluation_wall_seconds / GPU evaluation_wall_seconds`. Batch size `128`
 is the best tested configuration in the benchmark range, not a global optimum.
-The robustness evidence is FGSM-only; PGD and black-box attacks remain
-deferred.
+The final robustness evidence is FGSM-only. PGD core/equivalence validation is
+implemented, but full PGD robustness evidence and black-box attacks remain
+future work.
 
 ## Architecture Diagram
 
@@ -75,7 +80,7 @@ flowchart TD
     D --> E[Softmax cross entropy]
     E --> F[Manual backward pass]
     F --> G[Input gradients]
-    G --> H[FGSM perturbation and clipping]
+    G --> H[FGSM / PGD perturbation and clipping]
     H --> I[Adversarial forward pass]
     I --> J[Robustness metrics]
     J --> K[Experiment runner]
@@ -711,6 +716,37 @@ epsilon increases, and attack success rate approaches `1.0` at larger
 epsilons. The two runs should not be combined into one statistical estimate.
 Raw run artifacts remain under ignored `results/runs/<run_id>/`.
 
+### Run the PGD smoke runner
+
+The L-infinity PGD core attack and NumPy/CuPy numerical-equivalence tests are
+validated. EWP4-C adds runner and curation infrastructure for a small PGD
+cluster smoke run. This validates integration only; it is not final PGD
+robustness evidence.
+
+Planned Hawaii cluster smoke workload:
+
+```bash
+python -m experiments.pgd.run_pgd_experiment --backend cupy --data-dir data/raw --checkpoint results/checkpoints/portfolio_baseline_best.npz --split test --max-samples 32 --batch-size 8 --epsilon 8/255 --alpha 2/255 --steps 10 --random-start --seed 42 --output-root results/runs
+```
+
+Curate the saved PGD smoke artifacts with:
+
+```bash
+python -m experiments.pgd.plot_pgd_run --run-dir results/runs/<run_id> --output-root results/curated/ewp4c --expected-sample-count 32 --expected-epsilon 8/255 --expected-backend cupy --expected-gpu-name "NVIDIA GeForce RTX 2080 Ti" --interpretation "Small PGD cluster smoke run; use for runner and artifact validation, not as final PGD robustness evidence."
+```
+
+Expected raw PGD run artifacts:
+
+```text
+config.json
+environment.json
+metrics.csv
+metrics.json
+timing.json
+summary.json
+status.json
+```
+
 ## Numerical Gradient Checking
 
 Manual backpropagation is validated against numerical finite differences.
@@ -955,18 +991,24 @@ emphasized:
 * FGSM qualitative comparison and epsilon progression figures.
 * Full CIFAR-10 test-set FGSM robustness evaluation on the validated RTX 2080 Ti / CuPy environment.
 * CPU/GPU FGSM scaling benchmark and curated performance plots.
+* L-infinity PGD core attack and NumPy/CuPy PGD numerical equivalence.
+* Local PGD runner and curation infrastructure for a small cluster smoke
+  validation.
 * Clean Grad-CAM core for the final `relu2` activation.
 * Clean vs adversarial Grad-CAM qualitative comparison figures.
 * GitHub Actions CI workflow for automated test validation.
 
 ### Planned
 
-* PGD and additional attack evaluation if time and runtime allow.
+* Real PGD cluster smoke validation.
+* Full PGD robustness evaluation if time and runtime allow.
+* Additional attack evaluation if time and runtime allow.
 * Optional adversarial training.
 * Final reproducibility packaging.
 
-PGD, black-box attacks, and adversarial training are planned work; they are not
-implemented in the current repository state.
+PGD core attack support is implemented and numerically validated. Full PGD
+robustness evidence, black-box attacks, and adversarial training are planned
+work; they are not implemented in the current repository state.
 
 ## Scope and Limitations
 
