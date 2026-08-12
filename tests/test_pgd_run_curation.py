@@ -226,6 +226,32 @@ def test_curate_pgd_run_writes_summary_plot_and_metadata(
     assert math.isclose(timing["sample_steps_per_second"], 100.0)
 
 
+def test_curate_pgd_run_supports_final_output_name_and_strict_expectations(
+    tmp_path: Path,
+) -> None:
+    run_dir = _write_synthetic_pgd_run(tmp_path)
+
+    outputs = plot_pgd_run.curate_pgd_run(
+        run_dir,
+        tmp_path / "curated",
+        expected_sample_count=32,
+        expected_epsilon=8.0 / 255.0,
+        expected_alpha=2.0 / 255.0,
+        expected_steps=10,
+        expected_random_start=True,
+        expected_seed=42,
+        expected_split="test",
+        expected_checkpoint_path="results/checkpoints/portfolio_baseline_best.npz",
+        expected_backend="cupy",
+        expected_gpu_name="NVIDIA GeForce RTX 2080 Ti",
+        plot_filename="final_pgd_robustness_summary.png",
+        plot_title="Final PGD-Linf Robustness",
+    )
+
+    assert outputs["final_pgd_robustness_summary"].is_file()
+    assert outputs["pgd_summary_plot"] == outputs["final_pgd_robustness_summary"]
+
+
 def test_curate_pgd_run_rejects_existing_outputs_without_overwrite(
     tmp_path: Path,
 ) -> None:
@@ -295,6 +321,42 @@ def test_validate_pgd_run_artifacts_rejects_mismatched_config(
     artifacts = plot_pgd_run.load_run_artifacts(run_dir)
 
     with pytest.raises(ValueError, match="steps"):
+        plot_pgd_run.validate_run_artifacts(artifacts)
+
+
+def test_validate_pgd_run_artifacts_rejects_bad_gradient_count(
+    tmp_path: Path,
+) -> None:
+    timing = {
+        "schema_version": 1,
+        "timing_method": "time.perf_counter",
+        "gpu_synchronization": (
+            "cupy Stream.null synchronized before and after evaluation"
+        ),
+        "total_wall_seconds": 4.0,
+        "evaluation_wall_seconds": 3.2,
+        "sample_count": 32,
+        "pgd_steps": 10,
+        "gradient_evaluations": 319,
+        "sample_steps": 320,
+        "samples_per_second": 10.0,
+        "sample_steps_per_second": 100.0,
+    }
+    run_dir = _write_synthetic_pgd_run(tmp_path, timing=timing)
+    artifacts = plot_pgd_run.load_run_artifacts(run_dir)
+
+    with pytest.raises(ValueError, match="gradient_evaluations"):
+        plot_pgd_run.validate_run_artifacts(artifacts)
+
+
+def test_validate_pgd_run_artifacts_rejects_inconsistent_counts(
+    tmp_path: Path,
+) -> None:
+    row = {**_metric_row(), "adversarial_correct": 33}
+    run_dir = _write_synthetic_pgd_run(tmp_path, row=row)
+    artifacts = plot_pgd_run.load_run_artifacts(run_dir)
+
+    with pytest.raises(ValueError, match="adversarial_correct"):
         plot_pgd_run.validate_run_artifacts(artifacts)
 
 

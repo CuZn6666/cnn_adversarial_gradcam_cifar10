@@ -1,0 +1,51 @@
+{
+  "backend": "cupy",
+  "checkpoint_path": "results/checkpoints/portfolio_baseline_best.npz",
+  "dataset_split": "test",
+  "epsilon": 0.03137254901960784,
+  "epsilon_label": "8/255",
+  "fgsm_run_id": "20260812T115232600695Z_fgsm_cupy",
+  "fgsm_source": "results/curated/ewp3e/20260812T115232600695Z_fgsm_cupy",
+  "gpu": "NVIDIA GeForce RTX 2080 Ti",
+  "interpretation": "Empirical FGSM-vs-PGD comparison at a matched epsilon and dataset. Do not infer attack strength from labels alone; use the observed metrics.",
+  "pgd_run_id": "20260812T143028388690Z_pgd_linf_cupy",
+  "pgd_source": "results/curated/ewp4d/20260812T143028388690Z_pgd_linf_cupy",
+  "results": [
+    {
+      "accuracy_drop": 0.45399999999999996,
+      "adversarial_accuracy": 0.0099,
+      "adversarial_correct": 99,
+      "attack": "fgsm",
+      "attack_success_rate": 0.9786591937917655,
+      "clean_accuracy": 0.4639,
+      "clean_correct": 4639,
+      "clean_correct_samples": 4639,
+      "epsilon": 0.03137254901960784,
+      "epsilon_label": "8/255",
+      "run_id": "20260812T115232600695Z_fgsm_cupy",
+      "sample_count": 10000,
+      "source_dir": "results/curated/ewp3e/20260812T115232600695Z_fgsm_cupy",
+      "successful_attacks": 4540,
+      "total_samples": 10000
+    },
+    {
+      "accuracy_drop": 0.46159999999999995,
+      "adversarial_accuracy": 0.0023,
+      "adversarial_correct": 23,
+      "attack": "pgd_linf",
+      "attack_success_rate": 0.9950420349213193,
+      "clean_accuracy": 0.4639,
+      "clean_correct": 4639,
+      "clean_correct_samples": 4639,
+      "epsilon": 0.03137254901960784,
+      "epsilon_label": "8/255",
+      "run_id": "20260812T143028388690Z_pgd_linf_cupy",
+      "sample_count": 10000,
+      "source_dir": "results/curated/ewp4d/20260812T143028388690Z_pgd_linf_cupy",
+      "successful_attacks": 4616,
+      "total_samples": 10000
+    }
+  ],
+  "sample_count": 10000,
+  "schema_version": 1
+}
