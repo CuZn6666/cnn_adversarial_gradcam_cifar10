@@ -33,6 +33,10 @@ EWP4-B real GPU PGD equivalence tests: 4 passed
 EWP4-C local PGD runner/curation tests: 19 passed
 EWP4-C real 32-sample CuPy PGD smoke run: completed and curated
 EWP4-D local final PGD curation/comparison preparation tests: 17 passed
+EWP4-D full 10k CuPy PGD run: completed and curated
+EWP4-D final PGD configuration: epsilon=8/255, alpha=2/255, steps=10, random_start=true, seed=42
+EWP4-D final PGD result: clean_accuracy=0.4639, adversarial_accuracy=0.0023, attack_success_rate=0.9950420349213193
+EWP4-D final timing: evaluation_wall_seconds=49.57189846501569, total_wall_seconds=50.52436269199825, gradient_evaluations=100000
 EWP2-B local slice on this machine: 2 skipped because cupy is not installed
 EWP2-C local slice on this machine: 2 skipped because cupy is not installed
 EWP2-D local slice on this machine: 3 skipped because cupy is not installed

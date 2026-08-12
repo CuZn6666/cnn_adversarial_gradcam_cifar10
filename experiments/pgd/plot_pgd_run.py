@@ -447,7 +447,7 @@ def plot_pgd_smoke_summary(
     )
     axes[0].set_ylim(0.0, 1.0)
     axes[0].set_ylabel("Rate")
-    axes[0].set_title("PGD smoke metrics")
+    axes[0].set_title("PGD robustness metrics")
     axes[0].grid(axis="y", alpha=0.3)
     axes[0].tick_params(axis="x", rotation=20)
     for bar, value in zip(bars, metric_values):

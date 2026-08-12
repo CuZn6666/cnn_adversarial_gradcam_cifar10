@@ -33,11 +33,10 @@ Current implementation summary:
 * WP8 includes the validated FGSM pipeline and a 1024-sample quantitative FGSM
   evaluation. The historical WP8 smoke runner currently uses 17 epsilon values
   from `0/255` through `16/255`.
-* WP9 now has a local EWP4-A L-infinity PGD core implementation, EWP4-B
+* WP9 now includes the validated EWP4-A L-infinity PGD core, EWP4-B
   NumPy/CuPy PGD equivalence validation on the tested RTX 2080 Ti
-  environment, and EWP4-C PGD runner/curation infrastructure validated by a
-  small real cluster smoke run. EWP4-D final PGD curation/comparison
-  infrastructure is prepared, but the full 10k PGD run has not been executed.
+  environment, EWP4-C runner/curation validation, and the completed EWP4-D
+  full 10,000-sample PGD evaluation with curated FGSM-vs-PGD comparison evidence.
 * WP10-WP12 remain intentionally deferred.
 * WP13 implementation exists and needs formal documentation/closeout.
 * WP14 currently covers clean-vs-FGSM Grad-CAM analysis only.
@@ -56,8 +55,8 @@ Current implementation summary:
 | WP6 | Focused Runtime Bottleneck Handling | COMPLETE | `Conv2D.backward` was profiled, selected, optimized, benchmarked, and tested. |
 | WP7 | FGSM Attack and Input-Gradient Visualization | COMPLETE | Input gradients, FGSM, qualitative visualizations, and controlled example generation are implemented and tested. |
 | WP8 | FGSM robustness evaluation | COMPLETE | Original FGSM robustness scope is complete, including batch evaluation, epsilon sweeps, plots, representative metadata, and 1024-sample quantitative evaluation. Larger GPU runs are an extension, not missing WP8 work. |
-| WP9 | PGD Attack Implementation | PARTIALLY COMPLETE | EWP4-A implements the local L-infinity PGD core and focused NumPy tests. EWP4-B PGD equivalence is validated on the tested RTX 2080 Ti environment. EWP4-C PGD runner/curation infrastructure is validated by a 32-sample real cluster smoke run. EWP4-D final-run curation/comparison infrastructure is prepared. |
-| WP10 | PGD Robustness Evaluation and Comparison | PARTIALLY COMPLETE | EWP4-D infrastructure is prepared for the full 10k PGD run and FGSM-vs-PGD comparison, but no full PGD result has been executed or curated yet. |
+| WP9 | PGD Attack Implementation | COMPLETE | EWP4-A implements the L-infinity PGD core, EWP4-B validates NumPy/CuPy equivalence on the tested RTX 2080 Ti environment, EWP4-C validates runner/curation integration, and EWP4-D completes the full 10,000-sample PGD evaluation path. |
+| WP10 | PGD Robustness Evaluation and Comparison | COMPLETE | Full CIFAR-10 test-set PGD-Linf evaluation completed on 10,000 samples at epsilon `8/255`, alpha `2/255`, 10 steps, random start, seed 42. PGD adversarial accuracy was `0.23%` with `99.50%` ASR, and matched FGSM-vs-PGD curated comparison artifacts were generated. |
 | WP11 | Non-Gradient Black-Box Attack Implementation | DEFERRED | Intentionally not active. No black-box attack implementation exists. |
 | WP12 | Black-Box Attack Evaluation | DEFERRED | Intentionally not active. Query-count evaluation is not implemented. |
 | WP13 | Grad-CAM Implementation | NEEDS DOCUMENTATION | Core Grad-CAM implementation exists and is tested; formal WP13 closeout remains to be written. |

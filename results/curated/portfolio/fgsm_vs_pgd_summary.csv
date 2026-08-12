@@ -1,0 +1,3 @@
+attack,run_id,epsilon,epsilon_label,sample_count,clean_accuracy,adversarial_accuracy,accuracy_drop,attack_success_rate,total_samples,clean_correct,adversarial_correct,clean_correct_samples,successful_attacks,source_dir
+fgsm,20260812T115232600695Z_fgsm_cupy,0.03137254901960784,8/255,10000,0.4639,0.0099,0.45399999999999996,0.9786591937917655,10000,4639,99,4639,4540,results/curated/ewp3e/20260812T115232600695Z_fgsm_cupy
+pgd_linf,20260812T143028388690Z_pgd_linf_cupy,0.03137254901960784,8/255,10000,0.4639,0.0023,0.46159999999999995,0.9950420349213193,10000,4639,23,4639,4616,results/curated/ewp4d/20260812T143028388690Z_pgd_linf_cupy

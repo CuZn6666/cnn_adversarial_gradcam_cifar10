@@ -12,9 +12,9 @@ This repository is built as an engineering project, not a thin wrapper around
 PyTorch or TensorFlow: the CNN layers, gradients, optimizer path, input
 gradients, and FGSM attack pipeline are implemented directly with NumPy-style
 array operations. NumPy remains the default and authoritative correctness
-reference; CuPy is an optional backend for the compute-heavy tensor path. The
-final full-test-set robustness evidence is FGSM-only; the PGD runner has a
-validated 32-sample cluster smoke, but not final PGD robustness evidence.
+reference; CuPy is an optional backend for the compute-heavy tensor path. The final full-test-set robustness evidence now includes both FGSM and
+10-step L-infinity PGD evaluated on all 10,000 CIFAR-10 test images using the
+validated CuPy / RTX 2080 Ti execution path.
 
 ## Project Highlights
 
@@ -28,7 +28,7 @@ validated 32-sample cluster smoke, but not final PGD robustness evidence.
 | **Clean CIFAR-10 baseline** | Deterministic NumPy baseline checkpoint reached `47.07%` validation accuracy and `44.73%` clean test-subset accuracy. |
 | **Reproducible cluster runner** | Scheduler-neutral FGSM runner records config, environment, metrics, timing, status, and curated evidence. |
 | **Full FGSM robustness** | Full CIFAR-10 test set evaluated with CuPy on `10,000` samples and seven FGSM epsilons. |
-| **PGD attack validation** | L-infinity PGD core and NumPy/CuPy numerical equivalence validated; a 32-sample CuPy PGD runner smoke completed on the RTX 2080 Ti. |
+| **Full PGD robustness** | L-infinity PGD core and NumPy/CuPy equivalence validated; PGD-10 at `epsilon=8/255`, `alpha=2/255`, random start, and `10,000` CIFAR-10 test samples reduced adversarial accuracy to `0.23%`. |
 | **GPU performance evidence** | Matched CPU/GPU benchmark found first tested GPU-faster batch size `64` and best tested median speedup `2.88x` at batch `128`. |
 | **Grad-CAM explainability** | Clean and adversarial Grad-CAM comparisons generated from the validated `relu2` target activation. |
 | **Runtime engineering** | Profiling identified `Conv2D.backward` as the bottleneck; a focused NumPy optimization achieved a documented `207.72x` local speedup. |
@@ -37,12 +37,15 @@ validated 32-sample cluster smoke, but not final PGD robustness evidence.
 ## Final Evidence Snapshot
 
 The final portfolio evidence is generated from tracked curated artifacts under
-`results/curated/ewp3d/` and `results/curated/ewp3e/`:
+`results/curated/ewp3d/`, `results/curated/ewp3e/`, and
+`results/curated/ewp4d/`:
 
 | Claim | Validated result | Source |
 | ----- | ---------------- | ------ |
 | Full-test clean accuracy | `46.39%` on `10,000` CIFAR-10 test images | [EWP3-E robustness summary](results/curated/ewp3e/20260812T115232600695Z_fgsm_cupy/robustness_summary.csv) |
 | FGSM adversarial accuracy | `7.43%` at `4/255`, `0.99%` at `8/255`, `0.04%` at `16/255` | [EWP3-E robustness summary](results/curated/ewp3e/20260812T115232600695Z_fgsm_cupy/robustness_summary.csv) |
+| PGD-10 adversarial accuracy | `0.23%` at `8/255` (`alpha=2/255`, 10 steps, random start); ASR `99.50%` | [EWP4-D robustness summary](results/curated/ewp4d/20260812T143028388690Z_pgd_linf_cupy/robustness_summary.csv) |
+| FGSM vs PGD at `8/255` | FGSM: `0.99%` adv. accuracy / `97.87%` ASR; PGD-10: `0.23%` / `99.50%` | [FGSM vs PGD summary](results/curated/portfolio/fgsm_vs_pgd_summary.csv) |
 | Full-run throughput | `1891.39` sample-epsilon pairs/s for `70,000` pairs | [EWP3-E timing summary](results/curated/ewp3e/20260812T115232600695Z_fgsm_cupy/timing_summary.json) |
 | CPU/GPU crossover | First tested GPU-faster batch size: `64` | [EWP3-D crossover analysis](results/curated/ewp3d/20260811T185420645969Z_fgsm_benchmark/crossover_analysis.json) |
 | Best tested speedup | Median `2.88x` evaluation-wall-time speedup at batch `128` | [EWP3-D speedup summary](results/curated/ewp3d/20260811T185420645969Z_fgsm_benchmark/speedup_summary.csv) |
@@ -62,12 +65,26 @@ MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -
 | ------------------- | ------------------------- |
 | [![Final performance summary](results/curated/portfolio/final_performance_summary.png)](results/curated/portfolio/final_performance_summary.png) | [![Final robustness summary](results/curated/portfolio/final_robustness_summary.png)](results/curated/portfolio/final_robustness_summary.png) |
 
+### Full-test FGSM vs PGD-Linf comparison
+
+[![FGSM vs PGD-Linf final robustness comparison](results/curated/portfolio/final_fgsm_vs_pgd_summary.png)](results/curated/portfolio/final_fgsm_vs_pgd_summary.png)
+
+At `epsilon=8/255` on the same `10,000` CIFAR-10 test images and checkpoint,
+FGSM achieved `0.99%` adversarial accuracy with `97.87%` attack success rate,
+while 10-step PGD-Linf (`alpha=2/255`, random start) achieved `0.23%`
+adversarial accuracy with `99.50%` attack success rate.
+
+
 The performance speedup is evaluation-wall-time speedup for matched workloads:
 `CPU evaluation_wall_seconds / GPU evaluation_wall_seconds`. Batch size `128`
 is the best tested configuration in the benchmark range, not a global optimum.
-The final robustness evidence is FGSM-only. PGD core/equivalence and a small
-runner smoke are validated, but full PGD robustness evidence and black-box
-attacks remain future work.
+The final robustness evidence now includes full-test-set FGSM and PGD-Linf
+results. At `epsilon=8/255`, FGSM reduced adversarial accuracy to `0.99%`
+with `97.87%` attack success rate, while PGD-10 (`alpha=2/255`, random start)
+reduced adversarial accuracy to `0.23%` with `99.50%` attack success rate.
+These are empirical results for the evaluated configurations; they are not a
+claim that PGD is universally stronger than FGSM. Black-box attacks remain
+future work.
 
 ## Architecture Diagram
 
