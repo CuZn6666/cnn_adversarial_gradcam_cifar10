@@ -18,8 +18,8 @@ visible CUDA GPU is unavailable.
 Latest verified local state:
 
 ```text
-Non-CuPy local regression: 256 passed, 19 deselected
-Full local suite: 256 passed, 19 skipped
+Non-CuPy local regression: 274 passed, 19 deselected
+Full local suite: 274 passed, 19 skipped
 EWP3-A local staging validation tests: 4 passed
 EWP3-B local runner infrastructure tests: 7 passed
 EWP3-C/EWP3-E local run-curation tests: 11 passed
@@ -27,6 +27,7 @@ EWP3-C real 1000-sample CuPy sanity run: completed and curated
 EWP3-D local benchmark infrastructure tests: 10 passed
 EWP3-E full 10k CuPy robustness run: completed and curated
 EWP3-F local portfolio evidence tests: 4 passed
+EWP4-A local PGD core tests: 18 passed
 EWP2-B local slice on this machine: 2 skipped because cupy is not installed
 EWP2-C local slice on this machine: 2 skipped because cupy is not installed
 EWP2-D local slice on this machine: 3 skipped because cupy is not installed
@@ -471,19 +472,64 @@ tests/test_fgsm_quantitative_runner.py
 tests/test_plotting.py
 ```
 
-## WP9-WP12: Deferred Attack Work
+## WP9-WP12: Attack Work Status
 
-PGD and black-box attacks are intentionally deferred.
+EWP4-A now provides a local NumPy-validated L-infinity PGD core attack. PGD
+GPU equivalence, PGD robustness evaluation, PGD experiment-runner support, and
+black-box attacks remain deferred.
 
 Current expected result:
 
-* No PGD implementation exists.
+* `src.attacks.pgd_linf_attack(...)` exists for local PGD core validation.
+* No PGD GPU equivalence test exists yet.
 * No PGD evaluation exists.
+* No PGD experiment runner exists.
 * No black-box attack implementation exists.
 * No query-count evaluation exists.
 
-Do not add PGD, PGD tests, black-box attacks, or black-box tests during the
-current CuPy preparation cycle.
+Do not add PGD robustness sweeps, PGD cluster experiments, black-box attacks,
+or black-box tests unless the active task explicitly opens that phase.
+
+## EWP4-A L-infinity PGD Core Attack
+
+Status: IMPLEMENTED LOCALLY.
+
+Focused tests:
+
+```text
+tests/test_pgd.py
+```
+
+The local PGD test slice validates:
+
+* `epsilon=0` returns a clean input copy.
+* `steps=0` is an explicit no-op and does not apply random initialization.
+* One-step PGD matches existing FGSM semantics when `random_start=False`,
+  `steps=1`, and `alpha=epsilon`.
+* L-infinity projection and `[0, 1]` clipping.
+* Deterministic NumPy random start when a seed is provided.
+* Different seeds can produce different random starts.
+* Multi-step updates and batch support.
+* The clean input is not mutated.
+* `CompactCNN` trainable parameters are not mutated by the attack.
+* Invalid configuration handling for negative epsilon, invalid alpha, negative
+  steps, invalid image shape/range, invalid label shape, invalid
+  `random_start`, and invalid seed.
+
+EWP4-A intentionally does not validate CuPy/GPU PGD equivalence, PGD
+robustness metrics, PGD experiment runners, or full CIFAR-10 PGD execution.
+
+Focused local command:
+
+```bash
+MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q tests/test_pgd.py
+```
+
+Expected local result:
+
+```text
+18 passed
+```
 
 ## WP13: Grad-CAM Implementation Validation
 
