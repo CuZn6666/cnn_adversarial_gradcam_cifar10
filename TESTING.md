@@ -18,8 +18,8 @@ visible CUDA GPU is unavailable.
 Latest verified local state:
 
 ```text
-Non-CuPy local regression: 274 passed, 19 deselected
-Full local suite: 274 passed, 19 skipped
+Non-CuPy local regression: 274 passed, 23 deselected
+Full local suite: 274 passed, 23 skipped
 EWP3-A local staging validation tests: 4 passed
 EWP3-B local runner infrastructure tests: 7 passed
 EWP3-C/EWP3-E local run-curation tests: 11 passed
@@ -28,10 +28,11 @@ EWP3-D local benchmark infrastructure tests: 10 passed
 EWP3-E full 10k CuPy robustness run: completed and curated
 EWP3-F local portfolio evidence tests: 4 passed
 EWP4-A local PGD core tests: 18 passed
+EWP4-B local PGD CuPy equivalence slice: 4 skipped because cupy is not installed
 EWP2-B local slice on this machine: 2 skipped because cupy is not installed
 EWP2-C local slice on this machine: 2 skipped because cupy is not installed
 EWP2-D local slice on this machine: 3 skipped because cupy is not installed
-CuPy runtime/equivalence slices on this machine: 19 skipped because cupy is not installed
+CuPy runtime/equivalence slices on this machine: 23 skipped because cupy is not installed
 ```
 
 Latest verified real GPU EWP1-B state:
@@ -474,14 +475,16 @@ tests/test_plotting.py
 
 ## WP9-WP12: Attack Work Status
 
-EWP4-A now provides a local NumPy-validated L-infinity PGD core attack. PGD
-GPU equivalence, PGD robustness evaluation, PGD experiment-runner support, and
+EWP4-A now provides a local NumPy-validated L-infinity PGD core attack. EWP4-B
+adds optional NumPy/CuPy PGD equivalence tests that require real GPU
+validation. PGD robustness evaluation, PGD experiment-runner support, and
 black-box attacks remain deferred.
 
 Current expected result:
 
 * `src.attacks.pgd_linf_attack(...)` exists for local PGD core validation.
-* No PGD GPU equivalence test exists yet.
+* `tests/test_cupy_pgd_equivalence.py` exists for optional PGD GPU
+  equivalence validation.
 * No PGD evaluation exists.
 * No PGD experiment runner exists.
 * No black-box attack implementation exists.
@@ -492,7 +495,7 @@ or black-box tests unless the active task explicitly opens that phase.
 
 ## EWP4-A L-infinity PGD Core Attack
 
-Status: IMPLEMENTED LOCALLY.
+Status: COMPLETE for local NumPy core validation.
 
 Focused tests:
 
@@ -530,6 +533,65 @@ Expected local result:
 ```text
 18 passed
 ```
+
+## EWP4-B NumPy/CuPy PGD Equivalence Tests
+
+Status: IMPLEMENTED LOCALLY / GPU VALIDATION PENDING.
+
+Optional GPU tests:
+
+```text
+tests/test_cupy_pgd_equivalence.py
+```
+
+The tests validate NumPy/CuPy equivalence for:
+
+* Synchronized `CompactCNN` parameters.
+* No-random-start multi-step PGD with `steps > 1` and `alpha < epsilon`.
+* Shared-initial-state PGD using an identical deterministic initial
+  adversarial image transferred from NumPy to CuPy.
+* `epsilon=0` clean-image copy semantics.
+* Final adversarial images.
+* Final adversarial logits and exact predictions.
+* Projection/clipping invariants for both backends.
+* Parameter preservation on both backends.
+* CuPy device integrity for model parameters, adversarial images, logits,
+  predictions, and recorded forward/backward tensors.
+* One-step PGD / FGSM relationship on both NumPy and CuPy.
+
+The tests use `rtol=1e-5` and `atol=1e-6` for tensor comparisons. Predictions
+are compared exactly.
+
+RNG policy:
+
+* Production `pgd_linf_attack(...)` keeps backend-native random-start
+  semantics.
+* Equivalence tests do not require NumPy and CuPy RNG streams to match.
+* Shared-random-start validation uses `_pgd_linf_attack_from_initial(...)`, a
+  private helper that lets tests inject the same initial adversarial state
+  while preserving the public PGD API.
+
+Local non-CuPy validation command:
+
+```bash
+MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q tests/test_cupy_pgd_equivalence.py -rs
+```
+
+Expected local result on machines without CuPy/CUDA:
+
+```text
+4 skipped
+```
+
+GPU validation command:
+
+```bash
+python -m pytest -q tests/test_cupy_pgd_equivalence.py -rs
+python -m pytest -q -m "not requires_data"
+```
+
+EWP4-B does not validate PGD robustness metrics, PGD experiment runners, full
+CIFAR-10 PGD execution, or CUDA kernel optimization.
 
 ## WP13: Grad-CAM Implementation Validation
 

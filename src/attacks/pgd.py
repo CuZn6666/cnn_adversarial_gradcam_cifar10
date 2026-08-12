@@ -44,17 +44,10 @@ def pgd_linf_attack(
         seed=seed,
     )
 
-    backend = getattr(model, "xp", get_array_module(images))
-    xp = ensure_backend_array(images, backend, name="images")
-    ensure_backend_array(labels, backend, name="labels")
-    _validate_images(images, xp)
-    _validate_labels(labels, images)
+    xp = _validate_pgd_inputs(model, images, labels)
 
     if steps == 0 or epsilon == 0.0:
         return images.copy()
-
-    lower_bound = xp.maximum(images - epsilon, 0.0)
-    upper_bound = xp.minimum(images + epsilon, 1.0)
 
     if random_start:
         perturbation = _uniform_perturbation(
@@ -64,14 +57,67 @@ def pgd_linf_attack(
             epsilon,
             seed,
         )
-        adversarial_images = _project_linf(
-            images + perturbation,
-            lower_bound,
-            upper_bound,
-            xp,
-        )
+        initial_adversarial_images = images + perturbation
     else:
-        adversarial_images = images.copy()
+        initial_adversarial_images = images.copy()
+
+    return _pgd_linf_attack_from_initial(
+        model,
+        loss_function,
+        images,
+        labels,
+        initial_adversarial_images=initial_adversarial_images,
+        epsilon=epsilon,
+        alpha=alpha,
+        steps=steps,
+    )
+
+
+def _pgd_linf_attack_from_initial(
+    model: CompactCNN,
+    loss_function: SoftmaxCrossEntropyLoss,
+    images: np.ndarray,
+    labels: np.ndarray,
+    *,
+    initial_adversarial_images: np.ndarray,
+    epsilon: float,
+    alpha: float,
+    steps: int,
+) -> np.ndarray:
+    """Run L-infinity PGD steps from a caller-provided initial state."""
+    _validate_pgd_config(
+        epsilon=epsilon,
+        alpha=alpha,
+        steps=steps,
+        random_start=False,
+        seed=None,
+    )
+    xp = _validate_pgd_inputs(model, images, labels)
+    ensure_backend_array(
+        initial_adversarial_images,
+        xp,
+        name="initial_adversarial_images",
+    )
+    if initial_adversarial_images.shape != images.shape:
+        raise ValueError(
+            "initial_adversarial_images must match the image shape."
+        )
+    if not isfinite_all(initial_adversarial_images):
+        raise ValueError(
+            "initial_adversarial_images must contain only finite values."
+        )
+
+    if steps == 0 or epsilon == 0.0:
+        return images.copy()
+
+    lower_bound = xp.maximum(images - epsilon, 0.0)
+    upper_bound = xp.minimum(images + epsilon, 1.0)
+    adversarial_images = _project_linf(
+        initial_adversarial_images,
+        lower_bound,
+        upper_bound,
+        xp,
+    )
 
     for _ in range(steps):
         grad_input = compute_input_gradient(
@@ -89,6 +135,19 @@ def pgd_linf_attack(
         )
 
     return adversarial_images
+
+
+def _validate_pgd_inputs(
+    model: CompactCNN,
+    images: np.ndarray,
+    labels: np.ndarray,
+) -> Any:
+    backend = getattr(model, "xp", get_array_module(images))
+    xp = ensure_backend_array(images, backend, name="images")
+    ensure_backend_array(labels, backend, name="labels")
+    _validate_images(images, xp)
+    _validate_labels(labels, images)
+    return xp
 
 
 def _validate_pgd_config(
