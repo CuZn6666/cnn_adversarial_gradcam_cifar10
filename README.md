@@ -2,13 +2,16 @@
 
 [![CI](https://github.com/CuZn6666/cnn_adversarial_gradcam_cifar10/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/CuZn6666/cnn_adversarial_gradcam_cifar10/actions/workflows/ci.yml?query=branch%3Amain)
 
-A **NumPy-only, from-scratch CompactCNN pipeline for CIFAR-10** with manual
-forward/backward propagation, numerical gradient validation, FGSM adversarial
-robustness evaluation, and Grad-CAM-based explainability analysis.
+A **NumPy-first, from-scratch CompactCNN pipeline for CIFAR-10** with manual
+forward/backward propagation, optional CuPy GPU execution, numerical
+equivalence validation, FGSM adversarial robustness evaluation, CPU/GPU
+benchmarking, and Grad-CAM-based explainability analysis.
 
 This repository is built as an engineering project, not a thin wrapper around
 PyTorch or TensorFlow: the CNN layers, gradients, optimizer path, input
-gradients, and FGSM attack pipeline are implemented directly with NumPy.
+gradients, and FGSM attack pipeline are implemented directly with NumPy-style
+array operations. NumPy remains the default and authoritative correctness
+reference; CuPy is an optional backend for the compute-heavy tensor path.
 
 ## Project Highlights
 
@@ -16,14 +19,70 @@ gradients, and FGSM attack pipeline are implemented directly with NumPy.
 | ---- | --------------- |
 | **From-scratch NumPy CNN** | `Conv2D`, `ReLU`, `MaxPool2D`, `Flatten`, `Linear`, and `CompactCNN` implemented manually. |
 | **Manual backward propagation** | Layer-level and full-model `backward(...)` pipeline implemented and tested. |
-| **Numerical gradient verification** | `Linear`, `Conv2D`, `SoftmaxCrossEntropyLoss`, and input-gradient sanity checks validated. |
-| **Automated tests and CI** | Offline CI suite: `212 passed, 3 deselected`; full local suite with CIFAR-10 available: `215 passed`. |
+| **NumPy/CuPy backend** | NumPy is the reference backend; CuPy runtime validated on an RTX 2080 Ti with CuPy `14.1.1`. |
+| **Numerical equivalence** | Backend primitives, layers, loss, full model training step, input gradients, FGSM, and robustness sweeps validated across NumPy/CuPy. |
+| **Automated tests and CI** | Current local suite: `256 passed, 19 skipped`; non-CuPy regression: `256 passed, 19 deselected`. |
 | **Clean CIFAR-10 baseline** | Deterministic NumPy baseline checkpoint reached `47.07%` validation accuracy and `44.73%` clean test-subset accuracy. |
-| **FGSM adversarial attack pipeline** | Input gradients, FGSM perturbations, clipping, and qualitative visualizations implemented. |
-| **FGSM quantitative robustness** | Reproducible baseline evaluated on `1024` CIFAR-10 test samples across `0`, `2/255`, `4/255`, `8/255`, and `16/255`. |
+| **Reproducible cluster runner** | Scheduler-neutral FGSM runner records config, environment, metrics, timing, status, and curated evidence. |
+| **Full FGSM robustness** | Full CIFAR-10 test set evaluated with CuPy on `10,000` samples and seven FGSM epsilons. |
+| **GPU performance evidence** | Matched CPU/GPU benchmark found first tested GPU-faster batch size `64` and best tested median speedup `2.88x` at batch `128`. |
 | **Grad-CAM explainability** | Clean and adversarial Grad-CAM comparisons generated from the validated `relu2` target activation. |
 | **Runtime engineering** | Profiling identified `Conv2D.backward` as the bottleneck; a focused NumPy optimization achieved a documented `207.72x` local speedup. |
-| **Structured workflow** | Work-package-based development with tests, deliverables, metrics, and result artifacts. |
+| **Structured workflow** | Work-package-based development with tests, deliverables, metrics, plots, and tracked curated artifacts. |
+
+## Final Evidence Snapshot
+
+The final portfolio evidence is generated from tracked curated artifacts under
+`results/curated/ewp3d/` and `results/curated/ewp3e/`:
+
+| Claim | Validated result | Source |
+| ----- | ---------------- | ------ |
+| Full-test clean accuracy | `46.39%` on `10,000` CIFAR-10 test images | [EWP3-E robustness summary](results/curated/ewp3e/20260812T115232600695Z_fgsm_cupy/robustness_summary.csv) |
+| FGSM adversarial accuracy | `7.43%` at `4/255`, `0.99%` at `8/255`, `0.04%` at `16/255` | [EWP3-E robustness summary](results/curated/ewp3e/20260812T115232600695Z_fgsm_cupy/robustness_summary.csv) |
+| Full-run throughput | `1891.39` sample-epsilon pairs/s for `70,000` pairs | [EWP3-E timing summary](results/curated/ewp3e/20260812T115232600695Z_fgsm_cupy/timing_summary.json) |
+| CPU/GPU crossover | First tested GPU-faster batch size: `64` | [EWP3-D crossover analysis](results/curated/ewp3d/20260811T185420645969Z_fgsm_benchmark/crossover_analysis.json) |
+| Best tested speedup | Median `2.88x` evaluation-wall-time speedup at batch `128` | [EWP3-D speedup summary](results/curated/ewp3d/20260811T185420645969Z_fgsm_benchmark/speedup_summary.csv) |
+
+Summary artifacts:
+
+* [Final portfolio summary CSV](results/curated/portfolio/portfolio_summary.csv)
+* [Final portfolio summary JSON](results/curated/portfolio/portfolio_summary.json)
+
+Regenerate the final summary and figures from tracked curated evidence:
+
+```bash
+MPLCONFIGDIR=/tmp/cnn-ci-matplotlib PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m experiments.generate_final_portfolio_evidence --overwrite
+```
+
+| Performance scaling | Full-test FGSM robustness |
+| ------------------- | ------------------------- |
+| [![Final performance summary](results/curated/portfolio/final_performance_summary.png)](results/curated/portfolio/final_performance_summary.png) | [![Final robustness summary](results/curated/portfolio/final_robustness_summary.png)](results/curated/portfolio/final_robustness_summary.png) |
+
+The performance speedup is evaluation-wall-time speedup for matched workloads:
+`CPU evaluation_wall_seconds / GPU evaluation_wall_seconds`. Batch size `128`
+is the best tested configuration in the benchmark range, not a global optimum.
+The robustness evidence is FGSM-only; PGD and black-box attacks remain
+deferred.
+
+## Architecture Diagram
+
+```mermaid
+flowchart TD
+    A[CIFAR-10 NCHW batches] --> B[CPU data loading and batching]
+    B --> C{Backend boundary}
+    C -->|NumPy reference| D[CompactCNN]
+    C -->|CuPy GPU backend| D
+    D --> E[Softmax cross entropy]
+    E --> F[Manual backward pass]
+    F --> G[Input gradients]
+    G --> H[FGSM perturbation and clipping]
+    H --> I[Adversarial forward pass]
+    I --> J[Robustness metrics]
+    J --> K[Experiment runner]
+    K --> L[Raw run artifacts under results/runs]
+    L --> M[Curation and plotting scripts]
+    M --> N[Tracked portfolio evidence]
+```
 
 ## Visual Results
 
@@ -231,8 +290,8 @@ The output shape is:
 Latest validation:
 
 ```text
-Offline CI suite: 212 passed, 3 deselected
-Full local suite with CIFAR-10 available: 215 passed
+Non-CuPy local regression: 256 passed, 19 deselected
+Full local suite on this machine: 256 passed, 19 skipped
 ```
 
 The tests cover:
@@ -253,6 +312,7 @@ The tests cover:
 * FGSM qualitative runner and visualizations,
 * Grad-CAM core and adversarial Grad-CAM visualization helpers,
 * experiment runner smoke tests.
+* final portfolio evidence generation from curated artifacts.
 
 Run the full suite:
 

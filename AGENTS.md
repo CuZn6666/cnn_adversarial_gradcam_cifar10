@@ -53,24 +53,26 @@ The project is organized by Work Packages. Codex must follow `WP_PLAN.md` before
   local smoke runner are implemented and tested.
 * The committed smoke run produced zero clean-correct samples, so it validates
   pipeline execution only and is not a meaningful robustness conclusion.
-* PGD, black-box attacks, Grad-CAM, and final analysis have not been started.
+* EWP1 and EWP2 are complete: NumPy remains the default/reference backend and
+  CuPy numerical equivalence has been validated on the tested RTX 2080 Ti
+  environment.
+* EWP3-A through EWP3-E are complete: cluster data staging, reproducible FGSM
+  runner infrastructure, medium-scale validation, CPU/GPU benchmarking, and
+  full CIFAR-10 test-set FGSM robustness evidence are implemented and
+  documented.
+* EWP3-F final portfolio evidence and project presentation is implemented
+  locally and ready for review.
+* PGD and black-box attacks remain deferred.
 
 ## Current Development Priority
 
-EWP1 and EWP2 are complete. NumPy remains the default backend and
-authoritative correctness reference. The next engineering phase is cluster
-preparation:
+EWP1 through EWP3-E are complete. The current branch contains EWP3-F final
+portfolio evidence and project-presentation work for review.
 
-1. Correct CIFAR-10 dataset staging on the cluster.
-2. Add scheduler-neutral cluster experiment infrastructure.
-3. Run a small GPU FGSM smoke experiment.
-4. Scale to medium-size evaluation.
-5. Run full CIFAR-10 test-set FGSM evaluation.
-6. Produce CPU/GPU runtime, scaling, robustness, and artifact analysis.
-
-PGD remains deferred. Do not start cluster runners, large-scale FGSM,
-full-dataset evaluation, PGD, or scheduler-specific workflows without an
-explicit user request for that phase.
+The active priority is review, polish, and validation of the final portfolio
+evidence derived from tracked curated artifacts. Do not start new numerical
+experiments, PGD, black-box attacks, scheduler-specific workflows, or further
+optimization work without an explicit user request for that phase.
 
 ## General Working Rules
 
