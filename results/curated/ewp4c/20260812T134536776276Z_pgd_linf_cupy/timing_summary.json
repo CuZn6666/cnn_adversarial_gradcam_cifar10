@@ -1,0 +1,16 @@
+{
+  "attack": "pgd_linf",
+  "backend": "cupy",
+  "evaluation_wall_seconds": 3.2447034979995806,
+  "gpu_synchronization": "cupy Stream.null synchronized before and after evaluation",
+  "gradient_evaluations": 320,
+  "pgd_steps": 10,
+  "run_id": "20260812T134536776276Z_pgd_linf_cupy",
+  "sample_count": 32,
+  "sample_steps": 320,
+  "sample_steps_per_second": 98.62226246474782,
+  "samples_per_second": 9.862226246474782,
+  "schema_version": 1,
+  "timing_method": "time.perf_counter",
+  "total_wall_seconds": 4.805044429987902
+}
