@@ -300,7 +300,12 @@ def plot_runtime_breakdown(
         raise ValueError("Runtime results must not be empty.")
 
     sorted_results = sort_runtime_results(results)
-    labels = [result.operation for result in sorted_results]
+    labels = [
+        "MaxPool2D.forward + argmax cache"
+        if result.operation == "MaxPool2D.forward"
+        else result.operation
+        for result in sorted_results
+    ]
     runtimes = [result.runtime_ms for result in sorted_results]
 
     output_png = Path(png_path)
