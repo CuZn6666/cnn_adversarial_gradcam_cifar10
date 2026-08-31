@@ -1,0 +1,9 @@
+operation,runtime_ms
+MaxPool2D.forward,6.429166
+Conv2D.backward,4.315459
+MaxPool2D.backward,4.130750
+Conv2D.forward,1.097541
+ReLU.forward,0.326458
+ReLU.backward,0.310667
+Linear.backward,0.010833
+Linear.forward,0.009709
